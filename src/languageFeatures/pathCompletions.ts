@@ -288,7 +288,7 @@ export class MdPathCompletionProvider {
 		const pathSegmentEnd = translatePosition(position, { characterDelta: context.linkSuffix.length });
 		const replacementRange = makeRange(pathSegmentStart, pathSegmentEnd);
 
-		let dirInfo: [string, FileStat][];
+		let dirInfo: Iterable<readonly [string, FileStat]>;
 		try {
 			dirInfo = await this.workspace.readDirectory(parentDir);
 		} catch {

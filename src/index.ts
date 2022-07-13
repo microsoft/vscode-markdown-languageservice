@@ -83,7 +83,7 @@ export interface IMdLanguageService {
 	dispose(): void;
 }
 
-export interface LanguageServiceConfiguration {
+export interface LanguageServiceInitialization {
 	readonly workspace: IWorkspace;
 	readonly parser: IMdParser;
 	readonly logger: ILogger;
@@ -92,13 +92,15 @@ export interface LanguageServiceConfiguration {
 /**
  * Create a new instance of the language service.
  */
-export function createLanguageService(config: LanguageServiceConfiguration): IMdLanguageService {
-	const tocProvider = new MdTableOfContentsProvider(config.parser, config.workspace, config.logger);
-	const docSymbolProvider = new MdDocumentSymbolProvider(tocProvider, config.logger);
-	const smartSelectProvider = new MdSelectionRangeProvider(config.parser, tocProvider, config.logger);
-	const foldingProvider = new MdFoldingProvider(config.parser, tocProvider, config.logger);
+export function createLanguageService(config: LanguageServiceInitialization): IMdLanguageService {
+	const logger = config.logger;
+
+	const tocProvider = new MdTableOfContentsProvider(config.parser, config.workspace, logger);
+	const docSymbolProvider = new MdDocumentSymbolProvider(tocProvider, logger);
+	const smartSelectProvider = new MdSelectionRangeProvider(config.parser, tocProvider, logger);
+	const foldingProvider = new MdFoldingProvider(config.parser, tocProvider, logger);
 	const workspaceSymbolProvider = new MdWorkspaceSymbolProvider(config.workspace, docSymbolProvider);
-	const linkProvider = new MdLinkProvider(config.parser, config.workspace, tocProvider, config.logger);
+	const linkProvider = new MdLinkProvider(config.parser, config.workspace, tocProvider, logger);
 	const pathCompletionProvider = new MdPathCompletionProvider(config.workspace, config.parser, linkProvider);
 
 	return Object.freeze<IMdLanguageService>({

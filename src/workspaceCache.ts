@@ -91,7 +91,7 @@ export class MdDocumentInfoCache<T> extends Disposable {
 			return existing;
 		}
 
-		const p = this.workspace.getOrLoadMarkdownDocument(resource);
+		const p = this.workspace.openMarkdownDocument(resource);
 		this._loadingDocuments.set(resource, p);
 		p.finally(() => {
 			this._loadingDocuments.delete(resource);

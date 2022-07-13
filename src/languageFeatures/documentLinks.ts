@@ -605,7 +605,7 @@ export class MdLinkProvider extends Disposable {
 		}
 
 		// Try navigating to header in file
-		const doc = await this._workspace.getOrLoadMarkdownDocument(target);
+		const doc = await this._workspace.openMarkdownDocument(target);
 		if (doc) {
 			const toc = await this._tocProvider.getForDocument(doc);
 			const entry = toc.lookup(mdLink.href.fragment);

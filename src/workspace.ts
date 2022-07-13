@@ -12,14 +12,20 @@ export interface FileStat {
 }
 
 /**
- * Provides set of markdown files in the current workspace.
+ * Provide information about the contents of a workspace.
  */
 export interface IWorkspace {
 
+	/**
+	 * Get the root folders for this workspace.
+	 */
 	get workspaceFolders(): readonly URI[];
 
 	/**
-	 * Get list of all known markdown files.
+	 * Get complete list of markdown documents.
+	 *
+	 * This may include documents that have not been opened yet (for example, getAllMarkdownDocuments should
+	 * return documents from disk even if they have not been opened yet in the editor)
 	 */
 	getAllMarkdownDocuments(): Promise<Iterable<ITextDocument>>;
 
@@ -28,19 +34,46 @@ export interface IWorkspace {
 	 */
 	hasMarkdownDocument(resource: URI): boolean;
 
-	getOrLoadMarkdownDocument(resource: URI): Promise<ITextDocument | undefined>;
+	/**
+	 * Try to open a markdown document.
+	 *
+	 * This may either get the document from a cache or open it and add it to the cache.
+	 *
+	 * @return The document, or `undefined` if the file could not be opened or was not a markdown file.
+	 */
+	openMarkdownDocument(resource: URI): Promise<ITextDocument | undefined>;
 
 	/**
 	 * Get metadata about a file.
+	 *
+	 * @param resource URI to check. Does not have to be to a markdown file.
 	 *
 	 * @return Metadata or `undefined` if the resource does not exist.
 	 */
 	stat(resource: URI): Promise<FileStat | undefined>;
 
-	readDirectory(resource: URI): Promise<[string, FileStat][]>;
+	/**
+	 * List all files in a directory.
+	 *
+	 * @param resource URI of the directory to check. Does not have to be to a markdown file.
+	 *
+	 * @return List of `[fileName, metadata]` tuples.
+	 */
+	readDirectory(resource: URI): Promise<Iterable<readonly [string, FileStat]>>;
 
+	/**
+	 * Fired when the content of a markdown document changes.
+	 */
 	readonly onDidChangeMarkdownDocument: Event<ITextDocument>;
+
+	/**
+	 * Fired when a markdown document is first created.
+	 */
 	readonly onDidCreateMarkdownDocument: Event<ITextDocument>;
+
+	/**
+	 * Fired when a markdown document is deleted.
+	 */
 	readonly onDidDeleteMarkdownDocument: Event<URI>;
 }
 
@@ -58,7 +91,7 @@ export function getWorkspaceFolder(workspace: IWorkspace, docUri: URI): URI | un
 
 export async function resolveUriToMarkdownFile(workspace: IWorkspace, resource: URI): Promise<ITextDocument | undefined> {
 	try {
-		const doc = await workspace.getOrLoadMarkdownDocument(resource);
+		const doc = await workspace.openMarkdownDocument(resource);
 		if (doc) {
 			return doc;
 		}
@@ -68,7 +101,7 @@ export async function resolveUriToMarkdownFile(workspace: IWorkspace, resource: 
 
 	// If no extension, try with `.md` extension
 	if (Utils.extname(resource) === '') {
-		return workspace.getOrLoadMarkdownDocument(resource.with({ path: resource.path + '.md' }));
+		return workspace.openMarkdownDocument(resource.with({ path: resource.path + '.md' }));
 	}
 
 	return undefined;

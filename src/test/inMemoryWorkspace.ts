@@ -44,7 +44,7 @@ export class InMemoryWorkspace extends Disposable implements IWorkspace {
 		return this.values();
 	}
 
-	public async getOrLoadMarkdownDocument(resource: URI): Promise<ITextDocument | undefined> {
+	public async openMarkdownDocument(resource: URI): Promise<ITextDocument | undefined> {
 		return this._documents.get(resource);
 	}
 

@@ -38,6 +38,13 @@ Currently supported language features:
 
 - Smart select (expand selection)
 
+- Completions
+
+	Supports completions for:
+
+	- Links to headers
+	- Path links
+	- Reference links
 
 ## Usage
 
@@ -74,9 +81,21 @@ import { CancellationTokenSource } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 const cts = new CancellationTokenSource();
-const myDocument = TextDocument.create('/path/to/file.md', 'markdown', 1, '# Header 1');
 
-const symbols = await languageService.provideDocumentSymbols(myDocument, cts.token);
+// Create a virtual document that holds our file content
+const myDocument = TextDocument.create(
+	URI.file('/path/to/file.md').toString(), // file path
+	'markdown', // file language
+	1, // version
+	[ // File contents
+		'# Hello',
+		'from **Markdown**',
+		'',
+		'## World!',
+	].join('\n')
+);
+
+const symbols = await languageService.getDocumentSymbols(myDocument, cts.token);
 ```
 
 See [example.cjs](./example.cjs) for complete, minimal example of using the language service. You can run in using `node example.cjs`.

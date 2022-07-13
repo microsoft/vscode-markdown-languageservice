@@ -33,10 +33,10 @@ export interface IMdLanguageService {
 	 *
 	 * Note that you must invoke {@link resolveDocumentLink} on each link before executing the link.
 	 */
-	provideDocumentLinks(document: ITextDocument, token: CancellationToken): Promise<lsp.DocumentLink[]>;
+	getDocumentLinks(document: ITextDocument, token: CancellationToken): Promise<lsp.DocumentLink[]>;
 
 	/**
-	 * Resolves a link from {@link provideDocumentLinks}.
+	 * Resolves a link from {@link getDocumentLinks}.
 	 *
 	 * This fills in the target on the link.
 	 *
@@ -49,7 +49,7 @@ export interface IMdLanguageService {
 	 *
 	 * This currently returns the headers in the file.
 	 */
-	provideDocumentSymbols(document: ITextDocument, token: CancellationToken): Promise<lsp.DocumentSymbol[]>;
+	getDocumentSymbols(document: ITextDocument, token: CancellationToken): Promise<lsp.DocumentSymbol[]>;
 
 	/**
 	 * Get the folding ranges of a markdown file.
@@ -60,22 +60,22 @@ export interface IMdLanguageService {
 	 * - Regions
 	 * - List and other block element
 	 */
-	provideFoldingRanges(document: ITextDocument, token: CancellationToken): Promise<lsp.FoldingRange[]>;
+	getFoldingRanges(document: ITextDocument, token: CancellationToken): Promise<lsp.FoldingRange[]>;
 
 	/**
 	 * Get the selection ranges of a markdown file.
 	 */
-	provideSelectionRanges(document: ITextDocument, positions: lsp.Position[], token: CancellationToken): Promise<lsp.SelectionRange[] | undefined>;
+	getSelectionRanges(document: ITextDocument, positions: lsp.Position[], token: CancellationToken): Promise<lsp.SelectionRange[] | undefined>;
 
 	/**
 	 * Get the symbols for all markdown files in the current workspace.
 	 */
-	provideWorkspaceSymbols(query: string, token: CancellationToken): Promise<lsp.WorkspaceSymbol[]>;
+	getWorkspaceSymbols(query: string, token: CancellationToken): Promise<lsp.WorkspaceSymbol[]>;
 
 	/**
 	 * Get completions items at a given position in a markdown file.
 	 */
-	provideCompletionItems(document: ITextDocument, position: lsp.Position, context: CompletionContext, token: CancellationToken): Promise<lsp.CompletionItem[]>;
+	getCompletionItems(document: ITextDocument, position: lsp.Position, context: CompletionContext, token: CancellationToken): Promise<lsp.CompletionItem[]>;
 
 	/**
 	 * Dispose of the language service, freeing any associated resources.
@@ -107,12 +107,12 @@ export function createLanguageService(config: LanguageServiceConfiguration): IMd
 			workspaceSymbolProvider.dispose();
 			linkProvider.dispose();
 		},
-		provideDocumentLinks: linkProvider.provideDocumentLinks.bind(linkProvider),
+		getDocumentLinks: linkProvider.provideDocumentLinks.bind(linkProvider),
 		resolveDocumentLink: linkProvider.resolveDocumentLink.bind(linkProvider),
-		provideDocumentSymbols: docSymbolProvider.provideDocumentSymbols.bind(docSymbolProvider),
-		provideFoldingRanges: foldingProvider.provideFoldingRanges.bind(foldingProvider),
-		provideSelectionRanges: smartSelectProvider.provideSelectionRanges.bind(smartSelectProvider),
-		provideWorkspaceSymbols: workspaceSymbolProvider.provideWorkspaceSymbols.bind(workspaceSymbolProvider),
-		provideCompletionItems: pathCompletionProvider.provideCompletionItems.bind(pathCompletionProvider),
+		getDocumentSymbols: docSymbolProvider.provideDocumentSymbols.bind(docSymbolProvider),
+		getFoldingRanges: foldingProvider.provideFoldingRanges.bind(foldingProvider),
+		getSelectionRanges: smartSelectProvider.provideSelectionRanges.bind(smartSelectProvider),
+		getWorkspaceSymbols: workspaceSymbolProvider.provideWorkspaceSymbols.bind(workspaceSymbolProvider),
+		getCompletionItems: pathCompletionProvider.provideCompletionItems.bind(pathCompletionProvider),
 	});
 }

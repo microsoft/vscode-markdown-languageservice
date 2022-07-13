@@ -10,7 +10,7 @@ import { URI } from 'vscode-uri';
 import { ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
 import { ResourceMap } from '../util/resourceMap';
-import { IWorkspace } from '../workspace';
+import { FileStat, IWorkspace } from '../workspace';
 
 
 export class InMemoryWorkspace extends Disposable implements IWorkspace {
@@ -21,6 +21,19 @@ export class InMemoryWorkspace extends Disposable implements IWorkspace {
 		for (const doc of documents) {
 			this._documents.set(URI.parse(doc.uri), doc);
 		}
+	}
+
+	get workspaceFolders(): readonly URI[] {
+		return [
+			URI.file('/workspace'),
+		]
+	}
+
+	async stat(resource: URI): Promise<FileStat | undefined> {
+		if (this._documents.has(resource)) {
+			return { isDirectory: false }
+		}
+		return undefined;
 	}
 
 	public values() {

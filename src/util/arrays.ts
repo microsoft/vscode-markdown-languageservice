@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-export const Schemes = Object.freeze({
-	file: 'file',
-	untitled: 'untitled',
-	notebookCell: 'vscode-notebook-cell',
-});
-
+/**
+ * @returns New array with all falsy values removed. The original array IS NOT modified.
+ */
+export function coalesce<T>(array: ReadonlyArray<T | undefined | null>): T[] {
+	return <T[]>array.filter(e => !!e);
+}

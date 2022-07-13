@@ -5,17 +5,17 @@
 
 import * as assert from 'assert';
 import 'mocha';
+import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { InMemoryDocument } from '../inMemoryDocument';
 import { MdFoldingProvider } from '../languageFeatures/folding';
 import { MdTableOfContentsProvider } from '../tableOfContents';
+import { noopToken } from '../util/cancellation';
 import { DisposableStore } from '../util/dispose';
 import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
 import { joinLines, withStore } from './util';
-import * as lsp from 'vscode-languageserver-types';
-import { noopToken } from '../util/cancellation';
 
 const testFileName = URI.file('test.md');
 

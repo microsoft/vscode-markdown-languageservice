@@ -13,6 +13,5 @@ module.exports = {
 		"@typescript-eslint/no-explicit-any": 0,
 		"@typescript-eslint/no-unused-vars": 0,
 		"no-useless-escape": 0,
-
 	},
 };

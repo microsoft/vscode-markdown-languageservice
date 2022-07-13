@@ -5,6 +5,7 @@
 
 import * as assert from 'assert';
 import 'mocha';
+import * as lsp from 'vscode-languageserver-types';
 import { InMemoryDocument } from '../inMemoryDocument';
 import { MdDocumentSymbolProvider } from '../languageFeatures/documentSymbols';
 import { MdTableOfContentsProvider } from '../tableOfContents';
@@ -24,10 +25,32 @@ function getSymbolsForFile(store: DisposableStore, fileContents: string) {
 	return provider.provideDocumentSymbols(doc);
 }
 
+type ExpectedDocSymbol = {
+	name: string;
+	children?: readonly ExpectedDocSymbol[];
+};
+
+function assertDocumentSymbolsEqual(actual: readonly lsp.DocumentSymbol[], expected: ReadonlyArray<ExpectedDocSymbol>, path = '') {
+	assert.strictEqual(actual.length, expected.length, 'Link counts to be equal');
+
+	for (let i = 0; i < actual.length; ++i) {
+		const exp = expected[i];
+		const act = actual[i];
+		assert.strictEqual(act.name, exp.name, `Name to be equal. Path: ${path}`);
+		if (!act.children) {
+			assert.ok(!exp.children || exp.children.length === 0);
+		} else if (!exp.children) {
+			assert.ok(!act.children || act.children.length === 0);
+		} else {
+			assertDocumentSymbolsEqual(act.children, exp.children, path ? `${path}-${i}` : `${i}`);
+		}
+	}
+}
+
 suite('Document symbols', () => {
 	test('Should not return anything for empty document', withStore(async (store) => {
 		const symbols = await getSymbolsForFile(store, '');
-		assert.strictEqual(symbols.length, 0);
+		assertDocumentSymbolsEqual(symbols, []);
 	}));
 
 	test('Should not return anything for document with no headers', withStore(async (store) => {
@@ -35,7 +58,7 @@ suite('Document symbols', () => {
 			`a`,
 			`a`,
 		));
-		assert.strictEqual(symbols.length, 0);
+		assertDocumentSymbolsEqual(symbols, []);
 	}));
 
 	test('Should not return anything for document with # but no real headers', withStore(async (store) => {
@@ -43,19 +66,21 @@ suite('Document symbols', () => {
 			`a#a`,
 			`a#`,
 		));
-		assert.strictEqual(symbols.length, 0);
+		assertDocumentSymbolsEqual(symbols, []);
 	}));
 
 	test('Should return single symbol for single header', withStore(async (store) => {
 		const symbols = await getSymbolsForFile(store, '# h');
-		assert.strictEqual(symbols.length, 1);
-		assert.strictEqual(symbols[0].name, '# h');
+		assertDocumentSymbolsEqual(symbols, [
+			{ name: '# h' },
+		]);
 	}));
 
 	test('Should not care about symbol level for single header', withStore(async (store) => {
 		const symbols = await getSymbolsForFile(store, '### h');
-		assert.strictEqual(symbols.length, 1);
-		assert.strictEqual(symbols[0].name, '### h');
+		assertDocumentSymbolsEqual(symbols, [
+			{ name: '### h' },
+		]);
 	}));
 
 	test('Should put symbols of same level in flat list', withStore(async (store) => {
@@ -63,9 +88,10 @@ suite('Document symbols', () => {
 			`## h`,
 			`## h2`,
 		));
-		assert.strictEqual(symbols.length, 2);
-		assert.strictEqual(symbols[0].name, '## h');
-		assert.strictEqual(symbols[1].name, '## h2');
+		assertDocumentSymbolsEqual(symbols, [
+			{ name: '## h' },
+			{ name: '## h2' },
+		]);
 	}));
 
 	test('Should nest symbol of level - 1 under parent', withStore(async (store) => {
@@ -74,11 +100,15 @@ suite('Document symbols', () => {
 			`## h2`,
 			`## h3`,
 		));
-		assert.strictEqual(symbols.length, 1);
-		assert.strictEqual(symbols[0].name, '# h');
-		assert.strictEqual(symbols[0].children!.length, 2);
-		assert.strictEqual(symbols[0].children![0].name, '## h2');
-		assert.strictEqual(symbols[0].children![1].name, '## h3');
+		assertDocumentSymbolsEqual(symbols, [
+			{
+				name: '# h',
+				children: [
+					{ name: '## h2' },
+					{ name: '## h3' },
+				]
+			}
+		]);
 	}));
 
 	test('Should nest symbol of level - n under parent', withStore(async (store) => {
@@ -86,10 +116,14 @@ suite('Document symbols', () => {
 			`# h`,
 			`#### h2`,
 		));
-		assert.strictEqual(symbols.length, 1);
-		assert.strictEqual(symbols[0].name, '# h');
-		assert.strictEqual(symbols[0].children!.length, 1);
-		assert.strictEqual(symbols[0].children![0].name, '#### h2');
+		assertDocumentSymbolsEqual(symbols, [
+			{
+				name: '# h',
+				children: [
+					{ name: '#### h2' }
+				]
+			}
+		]);
 	}));
 
 	test('Should flatten children where lower level occurs first', withStore(async (store) => {
@@ -98,11 +132,15 @@ suite('Document symbols', () => {
 			`### h2`,
 			`## h3`,
 		));
-		assert.strictEqual(symbols.length, 1);
-		assert.strictEqual(symbols[0].name, '# h');
-		assert.strictEqual(symbols[0].children!.length, 2);
-		assert.strictEqual(symbols[0].children![0].name, '### h2');
-		assert.strictEqual(symbols[0].children![1].name, '## h3');
+		assertDocumentSymbolsEqual(symbols, [
+			{
+				name: '# h',
+				children: [
+					{ name: '### h2' },
+					{ name: '## h3' },
+				]
+			},
+		]);
 	}));
 
 	test('Should handle line separator in file. Issue #63749', withStore(async (store) => {
@@ -113,9 +151,10 @@ suite('Document symbols', () => {
 			`# B`,
 			`- bar`,
 		));
-		assert.strictEqual(symbols.length, 2);
-		assert.strictEqual(symbols[0].name, '# A');
-		assert.strictEqual(symbols[1].name, '# B');
+		assertDocumentSymbolsEqual(symbols, [
+			{ name: '# A' },
+			{ name: '# B' },
+		]);
 	}));
 });
 

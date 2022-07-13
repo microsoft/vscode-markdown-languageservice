@@ -15,7 +15,7 @@ import { getLine, ITextDocument } from '../types/textDocument';
 import { coalesce } from '../util/arrays';
 import { noopToken } from '../util/cancellation';
 import { Disposable } from '../util/dispose';
-import { IWorkspace } from '../workspace';
+import { getWorkspaceFolder, IWorkspace } from '../workspace';
 import { MdDocumentInfoCache } from '../workspaceCache';
 
 
@@ -56,13 +56,13 @@ function resolveLink(
 	if (!tempUri.path) {
 		resourceUri = URI.parse(document.uri);
 	} else if (tempUri.path[0] === '/') {
-		const root = getWorkspaceFolder(workspace, document);
+		const root = getWorkspaceFolder(workspace, URI.parse(document.uri));
 		if (root) {
 			resourceUri = Utils.joinPath(root, tempUri.path);
 		}
 	} else {
 		if (URI.parse(document.uri).scheme === 'untitled') {
-			const root = getWorkspaceFolder(workspace, document);
+			const root = getWorkspaceFolder(workspace, URI.parse(document.uri));
 			if (root) {
 				resourceUri = Utils.joinPath(root, tempUri.path);
 			}
@@ -91,19 +91,6 @@ function resolveLink(
 		path: resourceUri.with({ fragment: '' }),
 		fragment: tempUri.fragment,
 	};
-}
-
-function getWorkspaceFolder(workspace: IWorkspace, document: ITextDocument): URI | undefined {
-	const docUri = URI.parse(document.uri);
-	for (const folder of workspace.workspaceFolders) {
-		if (folder.scheme === docUri.scheme
-			&& folder.authority === docUri.authority
-			&& docUri.path.startsWith(folder.path + '/')
-		) {
-			return folder;
-		}
-	}
-	return workspace.workspaceFolders[0];
 }
 
 export interface MdLinkSource {

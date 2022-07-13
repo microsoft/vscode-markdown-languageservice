@@ -3,11 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CancellationToken } from 'vscode-languageserver';
+import type { CancellationToken, CompletionContext } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { MdLinkProvider } from './languageFeatures/documentLinks';
 import { MdDocumentSymbolProvider } from './languageFeatures/documentSymbols';
 import { MdFoldingProvider } from './languageFeatures/folding';
+import { MdPathCompletionProvider } from './languageFeatures/pathCompletions';
 import { MdSelectionRangeProvider } from './languageFeatures/smartSelect';
 import { MdWorkspaceSymbolProvider } from './languageFeatures/workspaceSymbols';
 import { ILogger } from './logging';
@@ -21,7 +22,7 @@ export { ILogger } from './logging';
 export { IMdParser, Token } from './parser';
 export { githubSlugifier, ISlugifier } from './slugify';
 export { ITextDocument } from './types/textDocument';
-export { IWorkspace, FileStat } from './workspace';
+export { FileStat, IWorkspace } from './workspace';
 
 // Language service
 
@@ -72,6 +73,11 @@ export interface IMdLanguageService {
 	provideWorkspaceSymbols(query: string, token: CancellationToken): Promise<lsp.WorkspaceSymbol[]>;
 
 	/**
+	 * Get completions items at a given position in a markdown file.
+	 */
+	provideCompletionItems(document: ITextDocument, position: lsp.Position, context: CompletionContext, token: CancellationToken): Promise<lsp.CompletionItem[]>;
+
+	/**
 	 * Dispose of the language service, freeing any associated resources.
 	 */
 	dispose(): void;
@@ -93,6 +99,7 @@ export function createLanguageService(config: LanguageServiceConfiguration): IMd
 	const foldingProvider = new MdFoldingProvider(config.parser, tocProvider, config.logger);
 	const workspaceSymbolProvider = new MdWorkspaceSymbolProvider(config.workspace, docSymbolProvider);
 	const linkProvider = new MdLinkProvider(config.parser, config.workspace, tocProvider, config.logger);
+	const pathCompletionProvider = new MdPathCompletionProvider(config.workspace, config.parser, linkProvider);
 
 	return Object.freeze<IMdLanguageService>({
 		dispose: () => {
@@ -106,5 +113,6 @@ export function createLanguageService(config: LanguageServiceConfiguration): IMd
 		provideFoldingRanges: foldingProvider.provideFoldingRanges.bind(foldingProvider),
 		provideSelectionRanges: smartSelectProvider.provideSelectionRanges.bind(smartSelectProvider),
 		provideWorkspaceSymbols: workspaceSymbolProvider.provideWorkspaceSymbols.bind(workspaceSymbolProvider),
+		provideCompletionItems: pathCompletionProvider.provideCompletionItems.bind(pathCompletionProvider),
 	});
 }

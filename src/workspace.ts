@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Event } from 'vscode-languageserver';
+import { URI, Utils } from 'vscode-uri';
 import { ITextDocument } from './types/textDocument';
-import { URI } from 'vscode-uri';
 
 export interface FileStat {
 	readonly isDirectory?: boolean;
@@ -37,9 +37,39 @@ export interface IWorkspace {
 	 */
 	stat(resource: URI): Promise<FileStat | undefined>;
 
-	// readDirectory(resource: URI): Promise<[string, { isDir: boolean }][]>;
+	readDirectory(resource: URI): Promise<[string, FileStat][]>;
 
 	readonly onDidChangeMarkdownDocument: Event<ITextDocument>;
 	readonly onDidCreateMarkdownDocument: Event<ITextDocument>;
 	readonly onDidDeleteMarkdownDocument: Event<URI>;
+}
+
+export function getWorkspaceFolder(workspace: IWorkspace, docUri: URI): URI | undefined {
+	for (const folder of workspace.workspaceFolders) {
+		if (folder.scheme === docUri.scheme
+			&& folder.authority === docUri.authority
+			&& docUri.path.startsWith(folder.path + '/')
+		) {
+			return folder;
+		}
+	}
+	return workspace.workspaceFolders[0];
+}
+
+export async function resolveUriToMarkdownFile(workspace: IWorkspace, resource: URI): Promise<ITextDocument | undefined> {
+	try {
+		const doc = await workspace.getOrLoadMarkdownDocument(resource);
+		if (doc) {
+			return doc;
+		}
+	} catch {
+		// Noop
+	}
+
+	// If no extension, try with `.md` extension
+	if (Utils.extname(resource) === '') {
+		return workspace.getOrLoadMarkdownDocument(resource.with({ path: resource.path + '.md' }));
+	}
+
+	return undefined;
 }

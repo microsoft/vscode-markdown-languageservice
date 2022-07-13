@@ -56,14 +56,14 @@ export class InMemoryWorkspace extends Disposable implements IWorkspace {
 		return this._documents.has(resource);
 	}
 
-	public async readDirectory(resource: URI): Promise<[string, { isDir: boolean }][]> {
-		const files = new Map<string, { isDir: boolean }>();
+	public async readDirectory(resource: URI): Promise<[string, FileStat][]> {
+		const files = new Map<string, FileStat>();
 		const pathPrefix = resource.fsPath + (resource.fsPath.endsWith('/') || resource.fsPath.endsWith('\\') ? '' : path.sep);
 		for (const doc of this._documents.values()) {
 			const path = URI.parse(doc.uri).fsPath;
 			if (path.startsWith(pathPrefix)) {
 				const parts = path.slice(pathPrefix.length).split(/\/|\\/g);
-				files.set(parts[0], parts.length > 1 ? { isDir: true } : { isDir: false });
+				files.set(parts[0], parts.length > 1 ? { isDirectory: true } : { isDirectory: false });
 			}
 		}
 		return Array.from(files.entries());

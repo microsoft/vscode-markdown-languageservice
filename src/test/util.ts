@@ -13,8 +13,10 @@ import { DisposableStore } from '../util/dispose';
 export const joinLines = (...args: string[]) =>
 	args.join(os.platform() === 'win32' ? '\r\n' : '\n');
 
+export const workspaceRoot = URI.URI.file(os.platform() === 'win32' ? 'c:\\workspace' : '/workspace');
+
 export function workspacePath(...segments: string[]): URI.URI {
-	return URI.Utils.joinPath(URI.URI.file(os.platform() === 'win32' ? 'c:\\workspace' : '/workspace'), ...segments);
+	return URI.Utils.joinPath(workspaceRoot, ...segments);
 }
 
 export function assertRangeEqual(expected: Range, actual: Range, message?: string) {

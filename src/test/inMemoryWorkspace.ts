@@ -11,6 +11,7 @@ import { ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
 import { ResourceMap } from '../util/resourceMap';
 import { FileStat, IWorkspace } from '../workspace';
+import { workspaceRoot } from './util';
 
 
 export class InMemoryWorkspace extends Disposable implements IWorkspace {
@@ -25,7 +26,7 @@ export class InMemoryWorkspace extends Disposable implements IWorkspace {
 
 	get workspaceFolders(): readonly URI[] {
 		return [
-			URI.file('/workspace'),
+			workspaceRoot,
 		]
 	}
 

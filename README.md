@@ -1,6 +1,6 @@
 # VS Code Markdown Language Service
 
-> ❗ Note this project is actively being develope and not yet ready for production use!
+> ❗ Note this project is actively being developed and not yet ready for production use!
 
 The language service that powers VS Code's Markdown support, extracted so that it can be reused by other editors and tools.
 

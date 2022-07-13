@@ -1,0 +1,10 @@
+.vscode/
+out/test/
+*.map
+src/
+.eslintrc.js
+.gitignore
+tsconfig*.json
+example.cjs
+CODE_OF_CONDUCT.md
+SECURITY.md

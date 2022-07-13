@@ -44,8 +44,42 @@ Currently supported language features:
 To get started using this library, first install it into your workspace:
 
 ```bash
-npm install vcode-markdown-languageservice
+npm install vscode-markdown-languageservice
 ```
+
+To use the language service, first you need to create an instance of it using `createLanguageService`. We use dependency injection to allow the language service to be used in as many contexts as possible.
+
+```ts
+import * as md from 'vscode-markdown-languageservice';
+
+// Implement these
+const parser: md.IMdParser = ...;
+const workspace: md.IWorkspace = ...;
+const logger: md.ILogger = ...;
+
+const languageService = md.createLanguageService({ workspace, parser, logger });
+```
+
+After creating the service, you can ask it for the language features it supports:
+
+```ts
+// We're using the vscode-language types in this demo
+// If you want to use them, make sure to run:
+//
+//     npm install vscode-languageserver vscode-languageserver-textdocument
+//
+// However you can also bring your own types if you want to instead.
+
+import { CancellationTokenSource } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+
+const cts = new CancellationTokenSource();
+const myDocument = TextDocument.create('/path/to/file.md', 'markdown', 1, '# Header 1');
+
+const symbols = await languageService.provideDocumentSymbols(myDocument, cts.token);
+```
+
+See [example.cjs](./example.cjs) for complete, minimal example of using the language service. You can run in using `node example.cjs`.
 
 
 ## Additional Links

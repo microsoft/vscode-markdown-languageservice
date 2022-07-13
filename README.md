@@ -1,33 +1,64 @@
-# Project
+# VS Code Markdown Language Service
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
+> ❗ Note this project is actively being develope and not yet ready for production use!
 
-As the maintainer of this project, please make a few updates:
+The language service that powers VS Code's Markdown support, extracted so that it can be reused by other editors and tools.
 
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+
+## Features
+
+This library targets [CommonMark](https://commonmark.org). Support for other Markdown dialects and extensions is not within the scope of this project.
+
+Currently supported language features:
+
+- Document links (clickable spans in the editor)
+
+	Supported links include:
+
+	- Links to headers within the current file: `[text](#header)`
+	- Absolute and relative links to files: `[text](path/to/file.md)`
+	- Reference links: `[text][link-name]`
+
+- Document symbols
+
+	Finds all headers within a markdown file
+
+- Workspace symbols
+
+	Find all headers across all markdown files in the workspace.
+
+- Folding ranges
+
+	Folding ranges are computed for:
+
+	- Header sections
+	- Region sections
+	- Lists
+	- Block elements
+
+- Smart select (expand selection)
+
+
+## Usage
+
+To get started using this library, first install it into your workspace:
+
+```bash
+npm install vcode-markdown-languageservice
+```
+
+
+## Additional Links
+
+- [VS Code's Markdown language server](https://github.com/microsoft/vscode/blob/main/extensions/markdown-language-features/server/)
+
 
 ## Contributing
 
-This project welcomes contributions and suggestions.  Most contributions require you to agree to a
-Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
-the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
+If you're interested in contributing
 
-When you submit a pull request, a CLA bot will automatically determine whether you need to provide
-a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
-provided by the bot. You will only need to do this once across all repos using our CLA.
+1. Clone this repo
+1. Install dependencies using `npm install`
+1. Start compilation using `npm run watch`
 
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
-
-## Trademarks
-
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
-trademarks or logos is subject to and must follow 
-[Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
-Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
-Any use of third-party trademarks or logos are subject to those third-party's policies.
+You can run the unit tests using `npm test` or by opening the project in VS Code and pressing `F5` to debug.

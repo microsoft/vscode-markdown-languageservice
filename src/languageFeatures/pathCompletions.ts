@@ -256,6 +256,7 @@ export class MdPathCompletionProvider {
 	}
 
 	private async *provideHeaderSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, insertionRange: lsp.Range): AsyncIterable<lsp.CompletionItem> {
+		// TODO: notebook support
 		// const toc = await TableOfContents.createForDocumentOrNotebook(this.parser, document);
 		const toc = await TableOfContents.create(this.parser, document);
 		for (const entry of toc.entries) {
@@ -345,6 +346,7 @@ export class MdPathCompletionProvider {
 	}
 
 	private getFileUriOfTextDocument(document: ITextDocument): URI {
+		// TODO: notebook support
 		// if (document.uri.scheme === 'vscode-notebook-cell') {
 		// 	const notebook = lsp.workspace.notebookDocuments
 		// 		.find(notebook => notebook.getCells().some(cell => cell.document === document));

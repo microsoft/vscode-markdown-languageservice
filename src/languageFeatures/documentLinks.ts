@@ -76,6 +76,7 @@ function resolveLink(
 		return undefined;
 	}
 
+	// TODO: notebook support
 	// If we are in a notebook cell, resolve relative to notebook instead
 	// if (resourceUri.scheme === Schemes.notebookCell) {
 	// 	const notebook = lsp.workspace.notebookDocuments

@@ -1,4 +1,5 @@
 .vscode/
+.github/
 out/test/
 *.map
 src/

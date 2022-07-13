@@ -7,8 +7,8 @@ on:
     branches: [ "main" ]
 
 jobs:
-  buildAndTest:
-  
+  build:
+
     strategy:
       matrix:
         node-version: [16.x]
@@ -23,7 +23,7 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: npm ci
-    - run: npm run compile --if-present
+    - run: npm install
+    - run: npm run compile
     - run: npm lint
     - run: npm test

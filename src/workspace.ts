@@ -81,7 +81,7 @@ export function getWorkspaceFolder(workspace: IWorkspace, docUri: URI): URI | un
 	for (const folder of workspace.workspaceFolders) {
 		if (folder.scheme === docUri.scheme
 			&& folder.authority === docUri.authority
-			&& docUri.path.startsWith(folder.path + '/')
+			&& (docUri.path.startsWith(folder.path + '/') || docUri.path.startsWith(folder.path + '\\'))
 		) {
 			return folder;
 		}

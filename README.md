@@ -104,6 +104,7 @@ See [example.cjs](./example.cjs) for complete, minimal example of using the lang
 ## Additional Links
 
 - [VS Code's Markdown language server](https://github.com/microsoft/vscode/blob/main/extensions/markdown-language-features/server/)
+- [The TextMate grammar VS Code uses for Markdown syntax highlighting](https://github.com/microsoft/vscode-markdown-tm-grammar)
 
 
 ## Contributing

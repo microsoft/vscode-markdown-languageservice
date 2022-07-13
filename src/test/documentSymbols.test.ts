@@ -24,7 +24,7 @@ function getSymbolsForFile(store: DisposableStore, fileContents: string) {
 	return provider.provideDocumentSymbols(doc);
 }
 
-suite('DocumentSymbolProvider', () => {
+suite('Document symbols', () => {
 	test('Should not return anything for empty document', withStore(async (store) => {
 		const symbols = await getSymbolsForFile(store, '');
 		assert.strictEqual(symbols.length, 0);

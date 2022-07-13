@@ -26,7 +26,7 @@ function getWorkspaceSymbols(store: DisposableStore, workspace: IWorkspace, quer
 	return workspaceSymbolProvider.provideWorkspaceSymbols(query, noopToken);
 }
 
-suite('markdown.WorkspaceSymbolProvider', () => {
+suite('Workspace symbols', () => {
 	test('Should not return anything for empty workspace', withStore(async (store) => {
 		const workspace = store.add(new InMemoryWorkspace([]));
 		assert.deepStrictEqual(await getWorkspaceSymbols(store, workspace, ''), []);

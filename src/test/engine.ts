@@ -8,12 +8,10 @@ import { githubSlugifier } from '../slugify';
 import MarkdownIt = require('markdown-it');
 
 export function createNewMarkdownEngine(): IMdParser {
+	const md = MarkdownIt({ html: true, });
 	return {
 		slugifier: githubSlugifier,
 		async tokenize(document) {
-			const md: MarkdownIt = MarkdownIt({
-				html: true,
-			});
 			return md.parse(document.getText(), {});
 		},
 	};

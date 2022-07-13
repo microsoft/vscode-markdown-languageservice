@@ -19,7 +19,7 @@ import { CURSOR, getCursorPositions, joinLines } from './util';
 
 const testFileName = URI.file('test.md');
 
-suite('markdown.SmartSelect', () => {
+suite('Smart select', () => {
 	test('Smart select single word', async () => {
 		const ranges = await getSelectionRangesForDocument(`Hel${CURSOR}lo`);
 		assertNestedLineNumbersEqual(ranges![0], [0, 0]);

@@ -19,7 +19,7 @@ function createToc(doc: ITextDocument): Promise<TableOfContents> {
 	return TableOfContents.create(engine, doc);
 }
 
-suite('TableOfContents', () => {
+suite('Table of contents', () => {
 	test('Lookup should not return anything for empty document', async () => {
 		const doc = new InMemoryDocument(testFileName, '');
 		const provider = await createToc(doc);

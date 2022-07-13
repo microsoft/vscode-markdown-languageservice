@@ -28,7 +28,7 @@ async function getFoldsForDocument(store: DisposableStore, contents: string) {
 	return provider.provideFoldingRanges(doc, noopToken);
 }
 
-suite('markdown.FoldingProvider', () => {
+suite('Folding', () => {
 	test('Should not return anything for empty document', withStore(async (store) => {
 		const folds = await getFoldsForDocument(store, ``);
 		assert.strictEqual(folds.length, 0);

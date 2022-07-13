@@ -5,19 +5,19 @@
 
 import * as assert from 'assert';
 import 'mocha';
+import * as lsp from 'vscode-languageserver-types';
+import { InMemoryDocument } from '../inMemoryDocument';
 import { MdLink, MdLinkComputer, MdLinkProvider } from '../languageFeatures/documentLinks';
+import { MdTableOfContentsProvider } from '../tableOfContents';
+import { makeRange } from '../types/range';
 import { noopToken } from '../util/cancellation';
 import { createNewMarkdownEngine } from './engine';
+import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
 import { assertRangeEqual, joinLines, workspacePath } from './util';
-import * as lsp from 'vscode-languageserver-types';
-import { makeRange } from '../types/range';
-import { InMemoryDocument } from '../inMemoryDocument';
-import { InMemoryWorkspace } from './inMemoryWorkspace';
-import { MdTableOfContentsProvider } from '../tableOfContents';
 
 
-suite('Markdown: MdLinkComputer', () => {
+suite('Link computer', () => {
 
 	function getLinksForFile(fileContents: string): Promise<MdLink[]> {
 		const doc = new InMemoryDocument(workspacePath('x.md'), fileContents);
@@ -499,7 +499,7 @@ suite('Markdown: MdLinkComputer', () => {
 });
 
 
-suite('Markdown: VS Code DocumentLinkProvider', () => {
+suite('Link provider', () => {
 
 	function getLinksForFile(fileContents: string) {
 		const doc = new InMemoryDocument(workspacePath('x.md'), fileContents);

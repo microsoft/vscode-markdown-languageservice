@@ -256,9 +256,7 @@ export class MdPathCompletionProvider {
 	}
 
 	private async *provideHeaderSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, insertionRange: lsp.Range): AsyncIterable<lsp.CompletionItem> {
-		// TODO: notebook support
-		// const toc = await TableOfContents.createForDocumentOrNotebook(this.parser, document);
-		const toc = await TableOfContents.create(this.parser, document);
+		const toc = await TableOfContents.createForContainingDoc(this.parser, this.workspace, document);
 		for (const entry of toc.entries) {
 			const replacementRange = makeRange(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
 			const label = '#' + decodeURIComponent(entry.slug.value);
@@ -346,16 +344,6 @@ export class MdPathCompletionProvider {
 	}
 
 	private getFileUriOfTextDocument(document: ITextDocument): URI {
-		// TODO: notebook support
-		// if (document.uri.scheme === 'vscode-notebook-cell') {
-		// 	const notebook = lsp.workspace.notebookDocuments
-		// 		.find(notebook => notebook.getCells().some(cell => cell.document === document));
-
-		// 	if (notebook) {
-		// 		return notebook.uri;
-		// 	}
-		// }
-
-		return URI.parse(document.uri);
+		return this.workspace.getContainingDocument?.(URI.parse(document.uri))?.uri ?? URI.parse(document.uri);
 	}
 }

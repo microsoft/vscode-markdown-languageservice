@@ -6,6 +6,5 @@
 export const Schemes = Object.freeze({
 	file: 'file',
 	untitled: 'untitled',
-	notebookCell: 'vscode-notebook-cell',
 });
 

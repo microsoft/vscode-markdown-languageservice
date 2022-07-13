@@ -11,6 +11,18 @@ export interface FileStat {
 	readonly isDirectory?: boolean;
 }
 
+export interface ContainingDocumentContext {
+	/**
+	 * Uri of the parent document.
+	 */
+	readonly uri: URI;
+
+	/**
+	 * List of child markdown documents.
+	 */
+	readonly children: Iterable<{ readonly uri: URI }>;
+}
+
 /**
  * Provide information about the contents of a workspace.
  */
@@ -60,6 +72,15 @@ export interface IWorkspace {
 	 * @return List of `[fileName, metadata]` tuples.
 	 */
 	readDirectory(resource: URI): Promise<Iterable<readonly [string, FileStat]>>;
+
+	/**
+	 * Get the document that contains `resource` as a sub document.
+	 *
+	 * If `resource` is a notebook cell for example, this should return the parent notebook.
+	 *
+	 * @return The parent document info or `undefined` if none.
+	 */
+	getContainingDocument?(resource: URI): ContainingDocumentContext | undefined;
 
 	/**
 	 * Fired when the content of a markdown document changes.

@@ -52,22 +52,24 @@ function resolveLink(
 	// Use a fake scheme to avoid parse warnings
 	const tempUri = URI.parse(`vscode-resource:${link}`);
 
+	const docUri = workspace.getContainingDocument?.(URI.parse(document.uri))?.uri ?? URI.parse(document.uri);
+
 	let resourceUri: URI | undefined;
 	if (!tempUri.path) {
-		resourceUri = URI.parse(document.uri);
+		resourceUri = docUri;
 	} else if (tempUri.path[0] === '/') {
-		const root = getWorkspaceFolder(workspace, URI.parse(document.uri));
+		const root = getWorkspaceFolder(workspace, docUri);
 		if (root) {
 			resourceUri = Utils.joinPath(root, tempUri.path);
 		}
 	} else {
-		if (URI.parse(document.uri).scheme === 'untitled') {
-			const root = getWorkspaceFolder(workspace, URI.parse(document.uri));
+		if (docUri.scheme === 'untitled') {
+			const root = getWorkspaceFolder(workspace, docUri);
 			if (root) {
 				resourceUri = Utils.joinPath(root, tempUri.path);
 			}
 		} else {
-			const base = Utils.dirname(URI.parse(document.uri));
+			const base = Utils.dirname(docUri);
 			resourceUri = Utils.joinPath(base, tempUri.path);
 		}
 	}
@@ -75,17 +77,6 @@ function resolveLink(
 	if (!resourceUri) {
 		return undefined;
 	}
-
-	// TODO: notebook support
-	// If we are in a notebook cell, resolve relative to notebook instead
-	// if (resourceUri.scheme === Schemes.notebookCell) {
-	// 	const notebook = lsp.workspace.notebookDocuments
-	// 		.find(notebook => notebook.getCells().some(cell => cell.document === document));
-
-	// 	if (notebook) {
-	// 		resourceUri = resourceUri.with({ scheme: notebook.uri.scheme });
-	// 	}
-	// }
 
 	return {
 		kind: 'internal',

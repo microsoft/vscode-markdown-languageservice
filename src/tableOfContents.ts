@@ -71,6 +71,22 @@ export class TableOfContents {
 		return new TableOfContents(entries, parser.slugifier);
 	}
 
+	public static async createForContainingDoc(parser: IMdParser, workspace: IWorkspace, document: ITextDocument): Promise<TableOfContents> {
+		const context = workspace.getContainingDocument?.(URI.parse(document.uri));
+		if (context) {
+			const entries: TocEntry[] = [];
+			await Promise.all(Array.from(context.children, async cell => {
+				const doc = await workspace.openMarkdownDocument(cell.uri);
+				if (doc) {
+					entries.push(...(await this.buildToc(parser, doc)));
+				}
+			}));
+			return new TableOfContents(entries, parser.slugifier);
+		}
+
+		return this.create(parser, document);
+	}
+
 	private static async buildToc(parser: IMdParser, document: ITextDocument): Promise<TocEntry[]> {
 		const docUri = URI.parse(document.uri);
 

@@ -86,7 +86,7 @@ suite('Path completions', () => {
 		const workspace = new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
-			new InMemoryDocument(workspacePath('sub/foo.md'), ''),
+			new InMemoryDocument(workspacePath('sub', 'foo.md'), ''),
 		]);
 		const completions = await getCompletionsAtCursor(workspacePath('new.md'), joinLines(
 			`[](${CURSOR}`,
@@ -106,7 +106,7 @@ suite('Path completions', () => {
 		const workspace = new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
-			new InMemoryDocument(workspacePath('sub/foo.md'), ''),
+			new InMemoryDocument(workspacePath('sub', 'foo.md'), ''),
 		]);
 
 		const completions = await getCompletionsAtCursor(workspacePath('new.md'), joinLines(
@@ -126,7 +126,7 @@ suite('Path completions', () => {
 		const workspace = new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
-			new InMemoryDocument(workspacePath('sub/c.md'), ''),
+			new InMemoryDocument(workspacePath('sub', 'c.md'), ''),
 		]);
 
 		const completions = await getCompletionsAtCursor(workspacePath('sub', 'new.md'), joinLines(
@@ -194,7 +194,7 @@ suite('Path completions', () => {
 		const workspace = new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
-			new InMemoryDocument(workspacePath('sub/c.md'), ''),
+			new InMemoryDocument(workspacePath('sub', 'c.md'), ''),
 		]);
 
 		const completions = await getCompletionsAtCursor(workspacePath('new.md'), joinLines(
@@ -214,7 +214,7 @@ suite('Path completions', () => {
 		const workspace = new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
-			new InMemoryDocument(workspacePath('sub/file with space.md'), ''),
+			new InMemoryDocument(workspacePath('sub', 'file with space.md'), ''),
 		]);
 
 		const completions = await getCompletionsAtCursor(workspacePath('new.md'), joinLines(
@@ -228,7 +228,7 @@ suite('Path completions', () => {
 
 	test('Should support completions on angle bracket path with spaces', async () => {
 		const workspace = new InMemoryWorkspace([
-			new InMemoryDocument(workspacePath('sub with space/a.md'), ''),
+			new InMemoryDocument(workspacePath('sub with space', 'a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
 		]);
 
@@ -243,7 +243,7 @@ suite('Path completions', () => {
 
 	test('Should not escape spaces in path names that use angle brackets', async () => {
 		const workspace = new InMemoryWorkspace([
-			new InMemoryDocument(workspacePath('sub/file with space.md'), ''),
+			new InMemoryDocument(workspacePath('sub', 'file with space.md'), ''),
 		]);
 
 		{
@@ -270,7 +270,7 @@ suite('Path completions', () => {
 		const workspace = new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
-			new InMemoryDocument(workspacePath('sub with space/file.md'), ''),
+			new InMemoryDocument(workspacePath('sub with space', 'file.md'), ''),
 		]);
 
 		const completions = await getCompletionsAtCursor(workspacePath('new.md'), joinLines(
@@ -286,7 +286,7 @@ suite('Path completions', () => {
 		const workspace = new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
-			new InMemoryDocument(workspacePath('sub with space/file.md'), ''),
+			new InMemoryDocument(workspacePath('sub with space', 'file.md'), ''),
 		]);
 
 		const completions = await getCompletionsAtCursor(workspacePath('new.md'), joinLines(
@@ -302,7 +302,7 @@ suite('Path completions', () => {
 		const workspace = new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
-			new InMemoryDocument(workspacePath('sub with space/file.md'), ''),
+			new InMemoryDocument(workspacePath('sub with space', 'file.md'), ''),
 		]);
 
 		const completions = await getCompletionsAtCursor(workspacePath('new.md'), joinLines(

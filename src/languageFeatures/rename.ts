@@ -5,7 +5,6 @@
 import * as path from 'path';
 import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
-import * as nls from 'vscode-nls';
 import { URI, Utils } from 'vscode-uri';
 import { ISlugifier } from '../slugify';
 import { arePositionsEqual, translatePosition } from '../types/position';
@@ -15,8 +14,6 @@ import { Disposable } from '../util/dispose';
 import { IWorkspace } from '../workspace';
 import { InternalHref, resolveDocumentLink } from './documentLinks';
 import { MdHeaderReference, MdLinkReference, MdReference, MdReferencesProvider, tryResolveLinkPath } from './references';
-
-const localize = nls.loadMessageBundle();
 
 
 export interface MdReferencesResponse {
@@ -58,7 +55,7 @@ export class MdRenameProvider extends Disposable {
 		readonly references: MdReference[];
 	} | undefined;
 
-	private readonly renameNotSupportedText = localize('invalidRenameLocation', "Rename not supported at location");
+	private readonly renameNotSupportedText = "Rename not supported at location";
 
 	public constructor(
 		private readonly workspace: IWorkspace,

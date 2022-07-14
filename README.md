@@ -46,6 +46,23 @@ Currently supported language features:
 	- Path links
 	- Reference links
 
+- Find all references
+
+	Supports finding references to:
+
+	- Headers
+	- Path links
+	- Fragments in links
+	- Reference links
+
+- Definitions
+
+	Supports finding definitions headers and reference links.
+
+- Renames
+
+	Supports renaming of headers and links.
+
 ## Usage
 
 To get started using this library, first install it into your workspace:

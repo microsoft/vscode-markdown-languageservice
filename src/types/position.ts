@@ -48,3 +48,20 @@ export function isBeforeOrEqual(pos: Position, other: Position): boolean {
 export function isAfter(pos: Position, other: Position): boolean {
 	return !isBeforeOrEqual(pos, other);
 }
+export function comparePosition(a: Position, b: Position): number {
+	if (a.line < b.line) {
+		return -1;
+	} else if (a.line > b.line) {
+		return 1;
+	} else {
+		// equal line
+		if (a.character < b.character) {
+			return -1;
+		} else if (a.character > b.character) {
+			return 1;
+		} else {
+			// equal line and character
+			return 0;
+		}
+	}
+}

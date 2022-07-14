@@ -48,11 +48,30 @@ function resolveLink(
 		return { kind: 'external', uri: URI.parse(cleanLink) };
 	}
 
+	const resolved = resolveDocumentLink(URI.parse(document.uri), link, workspace);
+	if (!resolved) {
+		return undefined;
+	}
+
+	return {
+		kind: 'internal',
+		path: resolved.path,
+		fragment: resolved.fragment,
+	};
+}
+
+
+export function resolveDocumentLink(
+	inputDocument: URI,
+	link: string,
+	workspace: IWorkspace,
+): { path: URI; fragment: string } | undefined {
+
 	// Assume it must be an relative or absolute file path
 	// Use a fake scheme to avoid parse warnings
 	const tempUri = URI.parse(`vscode-resource:${link}`);
 
-	const docUri = workspace.getContainingDocument?.(URI.parse(document.uri))?.uri ?? URI.parse(document.uri);
+	const docUri = workspace.getContainingDocument?.(inputDocument)?.uri ?? inputDocument;
 
 	let resourceUri: URI | undefined;
 	if (!tempUri.path) {
@@ -73,13 +92,10 @@ function resolveLink(
 			resourceUri = Utils.joinPath(base, tempUri.path);
 		}
 	}
-
 	if (!resourceUri) {
 		return undefined;
 	}
-
 	return {
-		kind: 'internal',
 		path: resourceUri.with({ fragment: '' }),
 		fragment: tempUri.fragment,
 	};

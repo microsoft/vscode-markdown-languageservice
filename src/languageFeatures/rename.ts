@@ -286,7 +286,6 @@ class WorkspaceEditBuilder {
 
 	private edit: lsp.WorkspaceEdit = {
 		changes: {},
-		documentChanges: [],
 	};
 
 	replace(resource: URI, range: lsp.Range, newText: string) {
@@ -305,6 +304,9 @@ class WorkspaceEditBuilder {
 	}
 
 	renameFile(targetUri: URI, resolvedNewFilePath: URI) {
-		this.edit.documentChanges!.push(lsp.RenameFile.create(targetUri.toString(), resolvedNewFilePath.toString()));
+		if (!this.edit.documentChanges) {
+			this.edit.documentChanges = [];
+		}
+		this.edit.documentChanges.push(lsp.RenameFile.create(targetUri.toString(), resolvedNewFilePath.toString()));
 	}
 }

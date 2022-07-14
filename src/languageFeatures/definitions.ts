@@ -15,7 +15,7 @@ export class MdDefinitionProvider {
 
 	async provideDefinition(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<lsp.Definition | undefined> {
 		const allRefs = await this.referencesProvider.getReferencesAtPosition(document, position, token);
-		return allRefs.find(ref => ref.kind === 'link' && ref.isDefinition)?.location;
+		return allRefs.find(ref => ref.isDefinition)?.location;
 	}
 }
 

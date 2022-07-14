@@ -143,4 +143,27 @@ suite('Definitions', () => {
 			{ uri: docUri, line: 2 },
 		);
 	}));
+
+	test('Should support going to header from link', withStore(async (store) => {
+		const docUri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(docUri, joinLines(
+			`# Header`,
+			`[text](#header)`,
+			`[ref]: #header`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		{
+			const defs = await getDefinition(store, doc, { line: 1, character: 8 }, workspace);
+			assertDefinitionsEqual(defs!,
+				{ uri: docUri, line: 0 },
+			);
+		}
+		{
+			const defs = await getDefinition(store, doc, { line: 2, character: 8 }, workspace);
+			assertDefinitionsEqual(defs!,
+				{ uri: docUri, line: 0 },
+			);
+		}
+	}));
 });

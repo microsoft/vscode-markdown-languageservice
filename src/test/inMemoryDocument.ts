@@ -6,7 +6,7 @@
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Position, Range } from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
-import { ITextDocument } from './types/textDocument';
+import { ITextDocument } from '../types/textDocument';
 
 export class InMemoryDocument implements ITextDocument {
 

@@ -4,13 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import 'mocha';
 import * as lsp from 'vscode-languageserver-types';
-import { InMemoryDocument } from '../inMemoryDocument';
 import { MdDocumentSymbolProvider } from '../languageFeatures/documentSymbols';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { DisposableStore } from '../util/dispose';
 import { createNewMarkdownEngine } from './engine';
+import { InMemoryDocument } from './inMemoryDocument';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
 import { joinLines, withStore, workspacePath } from './util';

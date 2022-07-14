@@ -3,10 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as assert from 'assert';
-import 'mocha';
 import * as lsp from 'vscode-languageserver-types';
 import { IWorkspace } from '..';
-import { InMemoryDocument } from '../inMemoryDocument';
 import { MdDocumentSymbolProvider } from '../languageFeatures/documentSymbols';
 import { MdWorkspaceSymbolProvider } from '../languageFeatures/workspaceSymbols';
 import { MdTableOfContentsProvider } from '../tableOfContents';
@@ -14,6 +12,7 @@ import { ITextDocument } from '../types/textDocument';
 import { noopToken } from '../util/cancellation';
 import { DisposableStore } from '../util/dispose';
 import { createNewMarkdownEngine } from './engine';
+import { InMemoryDocument } from './inMemoryDocument';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
 import { withStore, workspacePath } from './util';

@@ -22,7 +22,6 @@ import { MdTableOfContentsProvider } from './tableOfContents';
 import { ITextDocument } from './types/textDocument';
 import { IWorkspace } from './workspace';
 
-export { InMemoryDocument } from './inMemoryDocument'; // TODO: Does this really need to be exposed?
 export { MdLink } from './languageFeatures/documentLinks';
 export { ILogger } from './logging';
 export { IMdParser, Token } from './parser';

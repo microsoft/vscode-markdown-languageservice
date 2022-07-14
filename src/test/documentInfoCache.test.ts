@@ -4,9 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import 'mocha';
-import { InMemoryDocument } from '../inMemoryDocument';
 import { MdDocumentInfoCache } from '../workspaceCache';
+import { InMemoryDocument } from './inMemoryDocument';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 
 import { workspacePath } from './util';

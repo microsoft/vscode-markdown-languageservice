@@ -4,12 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import 'mocha';
 import { URI } from 'vscode-uri';
-import { InMemoryDocument } from '../inMemoryDocument';
 import { TableOfContents } from '../tableOfContents';
 import { ITextDocument } from '../types/textDocument';
 import { createNewMarkdownEngine } from './engine';
+import { InMemoryDocument } from './inMemoryDocument';
 
 
 const testFileName = URI.file('test.md');

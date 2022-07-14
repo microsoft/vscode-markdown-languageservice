@@ -4,11 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import 'mocha';
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration } from '../config';
-import { InMemoryDocument } from '../inMemoryDocument';
 import { MdReferencesProvider } from '../languageFeatures/references';
 import { MdRenameProvider, MdWorkspaceEdit } from '../languageFeatures/rename';
 import { githubSlugifier } from '../slugify';
@@ -18,6 +16,7 @@ import { noopToken } from '../util/cancellation';
 import { DisposableStore } from '../util/dispose';
 import { IWorkspace } from '../workspace';
 import { createNewMarkdownEngine } from './engine';
+import { InMemoryDocument } from './inMemoryDocument';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
 import { assertRangeEqual, joinLines, withStore, workspacePath } from './util';

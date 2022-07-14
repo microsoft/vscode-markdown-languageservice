@@ -7,8 +7,8 @@ import * as assert from 'assert';
 import * as os from 'os';
 import { Position, Range } from 'vscode-languageserver-types';
 import * as URI from 'vscode-uri';
-import { InMemoryDocument } from '../inMemoryDocument';
 import { DisposableStore } from '../util/dispose';
+import { InMemoryDocument } from './inMemoryDocument';
 
 export const joinLines = (...args: string[]) =>
 	args.join(os.platform() === 'win32' ? '\r\n' : '\n');

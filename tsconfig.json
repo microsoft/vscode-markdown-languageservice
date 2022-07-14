@@ -1,9 +1,11 @@
 {
-	"extends": "./tsconfig.base.json",
-	"compilerOptions": {
-		"sourceMap": true
-	},
-	"include": [
-		"src/**/*"
-	]
+	"references": [
+		{
+			"path": "tsconfig.lib.json"
+		},
+		{
+			"path": "tsconfig.tests.json"
+		}
+	],
+	"include": []
 }

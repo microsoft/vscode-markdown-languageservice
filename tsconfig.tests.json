@@ -1,0 +1,20 @@
+{
+	"extends": "./tsconfig.base.json",
+	"compilerOptions": {
+		"composite": true,
+		"lib": [
+			"ES2020",
+			"DOM"
+		],
+		"rootDir": "./src",
+		"outDir": "./out"
+	},
+	"include": [
+		"src/test/**/*"
+	],
+	"references": [
+		{
+			"path": "tsconfig.lib.json"
+		}
+	]
+}

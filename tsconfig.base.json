@@ -3,10 +3,8 @@
 		"target": "es2020",
 		"lib": [
 			"ES2020",
-			"DOM"
 		],
-		"rootDir": "./src",
-		"outDir": "./out",
+		"sourceMap": true,
 		"declaration": true,
 		"module": "commonjs",
 		"strict": true,
@@ -16,8 +14,5 @@
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"forceConsistentCasingInFileNames": true
-	},
-	"include": [
-		"src/**/*"
-	]
+	}
 }

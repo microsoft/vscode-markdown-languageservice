@@ -15,6 +15,7 @@ import { getLine, ITextDocument } from '../types/textDocument';
 import { coalesce } from '../util/arrays';
 import { noopToken } from '../util/cancellation';
 import { Disposable } from '../util/dispose';
+import { r } from '../util/string';
 import { getWorkspaceFolder, IWorkspace } from '../workspace';
 import { MdDocumentInfoCache } from '../workspaceCache';
 
@@ -215,8 +216,6 @@ const angleBracketLinkRe = /^<(.*)>$/;
 function stripAngleBrackets(link: string) {
 	return link.replace(angleBracketLinkRe, '$1');
 }
-
-const r = String.raw;
 
 /**
  * Matches `[text](link)` or `[text](<link>)`

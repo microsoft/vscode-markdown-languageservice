@@ -15,6 +15,7 @@ import type { CancellationToken, CompletionContext } from 'vscode-languageserver
 import { makeRange } from '../types/range';
 import { URI, Utils } from 'vscode-uri';
 import { translatePosition } from '../types/position';
+import { r } from '../util/string';
 
 enum CompletionContextKind {
 	/** `[...](|)` */
@@ -152,7 +153,19 @@ export class MdPathCompletionProvider {
 	}
 
 	/// [...](...|
-	private readonly linkStartPattern = /\[([^\]]*?)\]\(\s*(<[^\>\)]*|[^\s\(\)]*)$/;
+	private readonly linkStartPattern = new RegExp(
+		// text
+		r`\[` +
+		/**/r`(?:` +
+		/*****/r`[^\[\]\\]|` + // Non-bracket chars, or...
+		/*****/r`\\.|` + // Escaped char, or...
+		/*****/r`\[[^\[\]]*\]` + // Matched bracket pair
+		/**/r`)*` +
+		r`\]` +
+		// Destination start
+		r`\(\s*(<[^\>\)]*|[^\s\(\)]*)` +
+		r`$`// Must match cursor position
+	);
 
 	/// [...][...|
 	private readonly referenceLinkStartPattern = /\[([^\]]*?)\]\[\s*([^\s\(\)]*)$/;
@@ -168,8 +181,8 @@ export class MdPathCompletionProvider {
 
 		const linkPrefixMatch = linePrefixText.match(this.linkStartPattern);
 		if (linkPrefixMatch) {
-			const isAngleBracketLink = linkPrefixMatch[2].startsWith('<');
-			const prefix = linkPrefixMatch[2].slice(isAngleBracketLink ? 1 : 0);
+			const isAngleBracketLink = linkPrefixMatch[1].startsWith('<');
+			const prefix = linkPrefixMatch[1].slice(isAngleBracketLink ? 1 : 0);
 			if (this.refLooksLikeUrl(prefix)) {
 				return undefined;
 			}

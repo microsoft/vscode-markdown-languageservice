@@ -315,4 +315,16 @@ suite('Path completions', () => {
 			{ label: 'sub with space/', insertText: 'sub with space/' },
 		]);
 	}));
+
+	test('Should return completions for links with square brakets', withStore(async (store) => {
+		const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+			`[x [y] z](#${CURSOR}`,
+			``,
+			`# A b C`,
+		));
+
+		assertCompletionsEqual(completions, [
+			{ label: '#a-b-c' },
+		]);
+	}));
 });

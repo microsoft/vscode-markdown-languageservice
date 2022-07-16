@@ -6,3 +6,5 @@
 export function isEmptyOrWhitespace(str: string): boolean {
 	return /^\s*$/.test(str);
 }
+
+export const r = String.raw;

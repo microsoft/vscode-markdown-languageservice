@@ -46,11 +46,10 @@ function toSeverity(level: DiagnosticLevel | undefined): DiagnosticSeverity | un
 	}
 }
 
-
 export enum DiagnosticCode {
 	link_noSuchReferences = 'link.no-such-reference',
 	link_noSuchHeaderInOwnFile = 'link.no-such-header-in-own-file',
-	link_NoSuchFile = 'link.no-such-file',
+	link_noSuchFile = 'link.no-such-file',
 	link_noSuchHeaderInFile = 'link.no-such-header-in-file',
 }
 
@@ -220,7 +219,7 @@ export class DiagnosticComputer {
 							invalidFiles.set(path);
 							if (!this.isIgnoredLink(options, link.source.pathText)) {
 								diagnostics.push({
-									code: DiagnosticCode.link_NoSuchFile,
+									code: DiagnosticCode.link_noSuchFile,
 									message: localize('invalidPathLink', 'File does not exist at path: {0}', path.fsPath),
 									range: link.source.hrefRange,
 									severity: pathErrorSeverity,

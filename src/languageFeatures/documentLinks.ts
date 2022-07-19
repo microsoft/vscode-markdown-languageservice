@@ -6,7 +6,7 @@
 import type { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { URI, Utils } from 'vscode-uri';
-import { ILogger } from '../logging';
+import { ILogger, LogLevel } from '../logging';
 import { IMdParser } from '../parser';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { translatePosition } from '../types/position';
@@ -533,7 +533,7 @@ export class MdLinkProvider extends Disposable {
 		super();
 		this._linkComputer = new MdLinkComputer(tokenizer, _workspace);
 		this._linkCache = this._register(new MdDocumentInfoCache(this._workspace, async doc => {
-			logger.verbose('LinkProvider', `compute - ${doc.uri}`);
+			logger.log(LogLevel.Debug, 'LinkProvider', `compute - ${doc.uri}`);
 
 			const links = await this._linkComputer.getAllLinks(doc, noopToken);
 			return {

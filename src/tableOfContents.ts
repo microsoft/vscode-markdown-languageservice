@@ -5,7 +5,7 @@
 
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
-import { ILogger } from './logging';
+import { ILogger, LogLevel } from './logging';
 import { IMdParser } from './parser';
 import { githubSlugifier, ISlugifier, Slug } from './slugify';
 import { makeRange } from './types/range';
@@ -194,7 +194,7 @@ export class MdTableOfContentsProvider extends Disposable {
 	) {
 		super();
 		this._cache = this._register(new MdDocumentInfoCache<TableOfContents>(workspace, doc => {
-			this.logger.verbose('TableOfContentsProvider', `create - ${doc.uri}`);
+			this.logger.log(LogLevel.Debug, 'TableOfContentsProvider', `create - ${doc.uri}`);
 			return TableOfContents.create(parser, doc);
 		}));
 	}

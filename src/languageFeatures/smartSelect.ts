@@ -5,7 +5,7 @@
 import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { Position, Range } from 'vscode-languageserver-types';
-import { ILogger } from '../logging';
+import { ILogger, LogLevel } from '../logging';
 import { IMdParser, Token, TokenWithMap } from '../parser';
 import { MdTableOfContentsProvider, TocEntry } from '../tableOfContents';
 import { translatePosition } from '../types/position';
@@ -22,7 +22,7 @@ export class MdSelectionRangeProvider {
 	) { }
 
 	public async provideSelectionRanges(document: ITextDocument, positions: Position[], _token: CancellationToken): Promise<lsp.SelectionRange[] | undefined> {
-		this.logger.verbose('MdSelectionRangeProvider', `provideSelectionRanges - ${document.uri}`);
+		this.logger.log(LogLevel.Debug, 'MdSelectionRangeProvider', `provideSelectionRanges - ${document.uri}`);
 
 		const promises = await Promise.all(positions.map((position) => {
 			return this.provideSelectionRange(document, position);

@@ -10,14 +10,14 @@ import { ITextDocument } from '../types/textDocument';
 
 export class InMemoryDocument implements ITextDocument {
 
-	private readonly _doc: TextDocument;
+	private _doc: TextDocument;
 
 	public readonly uri: string;
 
 	constructor(
 		uri: URI,
 		contents: string,
-		public readonly version = 0,
+		public version = 0,
 	) {
 		this.uri = uri.toString();
 
@@ -34,5 +34,10 @@ export class InMemoryDocument implements ITextDocument {
 
 	getText(range?: Range): string {
 		return this._doc.getText(range);
+	}
+
+	updateContent(newContent: string) {
+		++this.version;
+		this._doc = TextDocument.create(this.uri.toString(), 'markdown', this.version, newContent);
 	}
 }

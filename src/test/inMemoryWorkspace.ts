@@ -10,17 +10,36 @@ import { URI } from 'vscode-uri';
 import { ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
 import { ResourceMap } from '../util/resourceMap';
-import { FileStat, IWorkspace } from '../workspace';
+import { FileStat, FileWatcherOptions, IFileSystemWatcher, IWorkspaceWithWatching } from '../workspace';
+import { InMemoryDocument } from './inMemoryDocument';
 import { workspaceRoot } from './util';
 
+export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatching {
 
-export class InMemoryWorkspace extends Disposable implements IWorkspace {
 	private readonly _documents = new ResourceMap<ITextDocument>(uri => uri.fsPath);
+	private readonly _additionalFiles = new ResourceMap<void>();
 
-	constructor(documents: ITextDocument[]) {
+	private readonly _watchers = new Set<{
+		readonly resource: URI;
+		readonly options: FileWatcherOptions;
+		readonly onDidChange: Emitter<URI>;
+		readonly onDidCreate: Emitter<URI>;
+		readonly onDidDelete: Emitter<URI>;
+	}>();
+
+	/**
+	 * List of calls to `stat`.
+	 */
+	public readonly statCallList: URI[] = [];
+
+	constructor(documents: ReadonlyArray<InMemoryDocument | URI>) {
 		super();
 		for (const doc of documents) {
-			this._documents.set(URI.parse(doc.uri), doc);
+			if (doc instanceof InMemoryDocument) {
+				this._documents.set(URI.parse(doc.uri), doc);
+			} else {
+				this._additionalFiles.set(doc);
+			}
 		}
 	}
 
@@ -31,7 +50,8 @@ export class InMemoryWorkspace extends Disposable implements IWorkspace {
 	}
 
 	async stat(resource: URI): Promise<FileStat | undefined> {
-		if (this._documents.has(resource)) {
+		this.statCallList.push(resource);
+		if (await this.pathExists(resource)) {
 			return { isDirectory: false }
 		}
 		return undefined;
@@ -54,14 +74,17 @@ export class InMemoryWorkspace extends Disposable implements IWorkspace {
 	}
 
 	public async pathExists(resource: URI): Promise<boolean> {
-		return this._documents.has(resource);
+		return this._documents.has(resource) || this._additionalFiles.has(resource);
 	}
 
 	public async readDirectory(resource: URI): Promise<[string, FileStat][]> {
 		const files = new Map<string, FileStat>();
 		const pathPrefix = resource.fsPath + (resource.fsPath.endsWith('/') || resource.fsPath.endsWith('\\') ? '' : path.sep);
-		for (const doc of this._documents.values()) {
-			const path = URI.parse(doc.uri).fsPath;
+		const allPaths = [
+			...Array.from(this._documents.values(), doc => URI.parse(doc.uri).fsPath),
+			...Array.from(this._additionalFiles.keys(), uri => uri.toString()),
+		];
+		for (const path of allPaths) {
 			if (path.startsWith(pathPrefix)) {
 				const parts = path.slice(pathPrefix.length).split(/\/|\\/g);
 				files.set(parts[0], parts.length > 1 ? { isDirectory: true } : { isDirectory: false });
@@ -89,6 +112,35 @@ export class InMemoryWorkspace extends Disposable implements IWorkspace {
 
 		this._documents.set(URI.parse(document.uri), document);
 		this._onDidCreateMarkdownDocumentEmitter.fire(document);
+	}
+
+	public watchFile(resource: URI, options: FileWatcherOptions): IFileSystemWatcher {
+		const entry = {
+			resource,
+			options,
+			onDidCreate: new Emitter<URI>(),
+			onDidChange: new Emitter<URI>(),
+			onDidDelete: new Emitter<URI>(),
+		};
+		this._watchers.add(entry);
+		return {
+			onDidCreate: entry.onDidCreate.event,
+			onDidChange: entry.onDidChange.event,
+			onDidDelete: entry.onDidDelete.event,
+			dispose: () => {
+				this._watchers.delete(entry);
+			}
+		};
+	}
+
+	public triggerFileDelete(resource: URI) {
+		for (const watcher of this._watchers) {
+			if (watcher.resource.toString() === resource.toString()) {
+				watcher.onDidDelete?.fire(watcher.resource);
+			}
+		}
+
+		this._additionalFiles.delete(resource);
 	}
 
 	public deleteDocument(resource: URI) {

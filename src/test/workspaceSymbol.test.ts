@@ -8,7 +8,6 @@ import { IWorkspace } from '..';
 import { MdDocumentSymbolProvider } from '../languageFeatures/documentSymbols';
 import { MdWorkspaceSymbolProvider } from '../languageFeatures/workspaceSymbols';
 import { MdTableOfContentsProvider } from '../tableOfContents';
-import { ITextDocument } from '../types/textDocument';
 import { noopToken } from '../util/cancellation';
 import { DisposableStore } from '../util/dispose';
 import { createNewMarkdownEngine } from './engine';
@@ -44,7 +43,7 @@ suite('Workspace symbols', () => {
 
 	test('Should return all content  basic workspace', withStore(async (store) => {
 		const fileNameCount = 10;
-		const files: ITextDocument[] = [];
+		const files: InMemoryDocument[] = [];
 		for (let i = 0; i < fileNameCount; ++i) {
 			const testFileName = workspacePath(`test${i}.md`);
 			files.push(new InMemoryDocument(testFileName, `# common\nabc\n## header${i}`));

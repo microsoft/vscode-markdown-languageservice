@@ -6,6 +6,8 @@
 import { Event } from 'vscode-languageserver';
 import { URI, Utils } from 'vscode-uri';
 import { ITextDocument } from './types/textDocument';
+import { IDisposable } from './util/dispose';
+import { ResourceMap } from './util/resourceMap';
 
 export interface FileStat {
 	readonly isDirectory?: boolean;
@@ -32,6 +34,21 @@ export interface IWorkspace {
 	 * Get the root folders for this workspace.
 	 */
 	get workspaceFolders(): readonly URI[];
+
+	/**
+	 * Fired when the content of a markdown document changes.
+	 */
+	readonly onDidChangeMarkdownDocument: Event<ITextDocument>;
+
+	/**
+	 * Fired when a markdown document is first created.
+	 */
+	readonly onDidCreateMarkdownDocument: Event<ITextDocument>;
+
+	/**
+	 * Fired when a markdown document is deleted.
+	 */
+	readonly onDidDeleteMarkdownDocument: Event<URI>;
 
 	/**
 	 * Get complete list of markdown documents.
@@ -81,21 +98,32 @@ export interface IWorkspace {
 	 * @return The parent document info or `undefined` if none.
 	 */
 	getContainingDocument?(resource: URI): ContainingDocumentContext | undefined;
+}
 
-	/**
-	 * Fired when the content of a markdown document changes.
-	 */
-	readonly onDidChangeMarkdownDocument: Event<ITextDocument>;
+export interface FileWatcherOptions {
+	readonly ignoreCreate?: boolean;
+	readonly ignoreChange?: boolean;
+	readonly ignoreDelete?: boolean;
+}
 
+/**
+ * A workspace that also supports watching arbitrary files.
+ */
+export interface IWorkspaceWithWatching extends IWorkspace {
 	/**
-	 * Fired when a markdown document is first created.
+	 * Start watching a given file.
 	 */
-	readonly onDidCreateMarkdownDocument: Event<ITextDocument>;
+	watchFile(path: URI, options: FileWatcherOptions): IFileSystemWatcher;
+}
 
-	/**
-	 * Fired when a markdown document is deleted.
-	 */
-	readonly onDidDeleteMarkdownDocument: Event<URI>;
+export function isWorkspaceWithFileWatching(workspace: IWorkspace): workspace is IWorkspaceWithWatching {
+	return 'watchFile' in workspace;
+}
+
+export interface IFileSystemWatcher extends IDisposable {
+	readonly onDidCreate: Event<URI>;
+	readonly onDidChange: Event<URI>;
+	readonly onDidDelete: Event<URI>;
 }
 
 export function getWorkspaceFolder(workspace: IWorkspace, docUri: URI): URI | undefined {
@@ -123,6 +151,39 @@ export async function resolveUriToMarkdownFile(workspace: IWorkspace, resource: 
 	// If no extension, try with `.md` extension
 	if (Utils.extname(resource) === '') {
 		return workspace.openMarkdownDocument(resource.with({ path: resource.path + '.md' }));
+	}
+
+	return undefined;
+}
+
+/**
+ * Check that a link to a file exists.
+ *
+ * @return The resolved URI or `undefined` if the file does not exist.
+ */
+export async function statLinkToMarkdownFile(linkUri: URI, workspace: IWorkspace, knownFiles?: ResourceMap<{ readonly exists: boolean }>): Promise<URI | undefined> {
+	const exists = async (uri: URI): Promise<boolean> => {
+		const cached = knownFiles?.get(uri);
+		if (cached) {
+			if (cached.exists) {
+				return true;
+			}
+		} else if (await workspace.stat(uri)) {
+			return true;
+		}
+		return false;
+	}
+
+	if (await exists(linkUri)) {
+		return linkUri;
+	}
+
+	// We don't think the file exists. If it doesn't already have an extension, try tacking on a `.md` and using that instead
+	if (Utils.extname(linkUri) === '') {
+		const dotMdResource = linkUri.with({ path: linkUri.path + '.md' });
+		if (await exists(dotMdResource)) {
+			return dotMdResource;
+		}
 	}
 
 	return undefined;

@@ -7,7 +7,7 @@ import * as lsp from 'vscode-languageserver-types';
 import * as uri from 'vscode-uri';
 import { URI } from 'vscode-uri';
 import { LsConfiguration } from '../config';
-import { ILogger } from '../logging';
+import { ILogger, LogLevel } from '../logging';
 import { IMdParser } from '../parser';
 import { MdTableOfContentsProvider, TocEntry } from '../tableOfContents';
 import { translatePosition } from '../types/position';
@@ -16,7 +16,7 @@ import { ITextDocument } from '../types/textDocument';
 import { noopToken } from '../util/cancellation';
 import { Disposable } from '../util/dispose';
 import { looksLikeMarkdownPath } from '../util/file';
-import { IWorkspace } from '../workspace';
+import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
 import { InternalHref, MdLink, MdLinkComputer } from './documentLinks';
 
@@ -93,7 +93,7 @@ export class MdReferencesProvider extends Disposable {
 	}
 
 	public async getReferencesAtPosition(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<MdReference[]> {
-		this.logger.verbose('ReferencesProvider', `getReferencesAtPosition: ${document.uri}`);
+		this.logger.log(LogLevel.Debug, 'ReferencesProvider', `getReferencesAtPosition: ${document.uri}`);
 
 		const toc = await this.tocProvider.getForDocument(document);
 		if (token.isCancellationRequested) {
@@ -109,7 +109,7 @@ export class MdReferencesProvider extends Disposable {
 	}
 
 	public async getReferencesToFileInWorkspace(resource: URI, token: CancellationToken): Promise<MdReference[]> {
-		this.logger.verbose('ReferencesProvider', `getAllReferencesToFileInWorkspace: ${resource}`);
+		this.logger.log(LogLevel.Debug, 'ReferencesProvider', `getAllReferencesToFileInWorkspace: ${resource}`);
 
 		const allLinksInWorkspace = (await this._linkCache.values()).flat();
 		if (token.isCancellationRequested) {
@@ -120,7 +120,7 @@ export class MdReferencesProvider extends Disposable {
 	}
 
 	public async getReferencesToFileInDocs(resource: URI, otherDocs: readonly ITextDocument[], token: CancellationToken): Promise<MdReference[]> {
-		this.logger.verbose('ReferencesProvider', `getAllReferencesToFileInFiles: ${resource}`);
+		this.logger.log(LogLevel.Debug, 'ReferencesProvider', `getAllReferencesToFileInFiles: ${resource}`);
 
 		const links = (await this._linkCache.getForDocs(otherDocs)).flat();
 		if (token.isCancellationRequested) {
@@ -211,7 +211,7 @@ export class MdReferencesProvider extends Disposable {
 			return references;
 		}
 
-		const resolvedResource = await tryResolveLinkPath(sourceLink.href.path, this.workspace);
+		const resolvedResource = await statLinkToMarkdownFile(sourceLink.href.path, this.workspace);
 		if (token.isCancellationRequested) {
 			return [];
 		}
@@ -322,20 +322,4 @@ export class MdReferencesProvider extends Disposable {
 			? modifyRange(link.source.hrefRange, undefined, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 }))
 			: link.source.hrefRange;
 	}
-}
-
-export async function tryResolveLinkPath(originalUri: URI, workspace: IWorkspace): Promise<URI | undefined> {
-	if (await workspace.stat(originalUri)) {
-		return originalUri;
-	}
-
-	// We don't think the file exists. If it doesn't already have an extension, try tacking on a `.md` and using that instead
-	if (uri.Utils.extname(originalUri) === '') {
-		const dotMdResource = originalUri.with({ path: originalUri.path + '.md' });
-		if (await workspace.stat(dotMdResource)) {
-			return dotMdResource;
-		}
-	}
-
-	return undefined;
 }

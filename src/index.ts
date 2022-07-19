@@ -8,6 +8,7 @@ import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration } from './config';
 import { MdDefinitionProvider } from './languageFeatures/definitions';
+import { DiagnosticComputer, DiagnosticOptions, DiagnosticsManager, IPullDiagnosticsManager, MdDiagnostic } from './languageFeatures/diagnostics';
 import { MdLinkProvider } from './languageFeatures/documentLinks';
 import { MdDocumentSymbolProvider } from './languageFeatures/documentSymbols';
 import { MdFoldingProvider } from './languageFeatures/folding';
@@ -20,17 +21,19 @@ import { ILogger } from './logging';
 import { IMdParser } from './parser';
 import { MdTableOfContentsProvider } from './tableOfContents';
 import { ITextDocument } from './types/textDocument';
-import { IWorkspace } from './workspace';
+import { ResourceMap } from './util/resourceMap';
+import { isWorkspaceWithFileWatching, IWorkspace } from './workspace';
 
-export { MdLink } from './languageFeatures/documentLinks';
-export { ILogger } from './logging';
+export { DiagnosticLevel, DiagnosticOptions, MdDiagnostic } from './languageFeatures/diagnostics';
+export { ILogger, LogLevel } from './logging';
 export { IMdParser, Token } from './parser';
 export { githubSlugifier, ISlugifier } from './slugify';
 export { ITextDocument } from './types/textDocument';
-export { FileStat, IWorkspace } from './workspace';
+export { FileStat, FileWatcherOptions, IWorkspace, IWorkspaceWithWatching } from './workspace';
 
-// Language service
-
+/**
+ * Provides language tooling methods for working with markdown.
+ */
 export interface IMdLanguageService {
 
 	/**
@@ -106,6 +109,16 @@ export interface IMdLanguageService {
 	getRenameEdit(document: ITextDocument, position: lsp.Position, nameName: string, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined>;
 
 	/**
+	 * Compute diagnostics for a given file.
+	 *
+	 * Note that this function is stateless and revalidated all links every time you make the request. Use {@link createPullDiagnosticsManager}
+	 * to more efficiently get diagnostics, avoiding recomputation.
+	 */
+	computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<MdDiagnostic[]>;
+
+	createPullDiagnosticsManager(): IPullDiagnosticsManager;
+
+	/**
 	 * Dispose of the language service, freeing any associated resources.
 	 */
 	dispose(): void;
@@ -147,6 +160,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const referencesProvider = new MdReferencesProvider(config, init.parser, init.workspace, tocProvider, logger);
 	const definitionsProvider = new MdDefinitionProvider(referencesProvider);
 	const renameProvider = new MdRenameProvider(init.workspace, referencesProvider, init.parser.slugifier);
+	const diagnosticsComputer = new DiagnosticComputer(config, init.workspace, linkProvider, tocProvider);
 
 	return Object.freeze<IMdLanguageService>({
 		dispose: () => {
@@ -169,5 +183,14 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 		getDefinition: definitionsProvider.provideDefinition.bind(definitionsProvider),
 		prepareRename: renameProvider.prepareRename.bind(renameProvider),
 		getRenameEdit: renameProvider.provideRenameEdits.bind(renameProvider),
+		computeDiagnostics: async (doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<MdDiagnostic[]> => {
+			return (await diagnosticsComputer.compute(doc, options, new ResourceMap(), token))?.diagnostics;
+		},
+		createPullDiagnosticsManager: () => {
+			if (!isWorkspaceWithFileWatching(init.workspace)) {
+				throw new Error(`Workspace does not support file watching. Diagnostics manager not supported`);
+			}
+			return new DiagnosticsManager(init.workspace, diagnosticsComputer);
+		}
 	});
 }

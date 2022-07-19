@@ -5,7 +5,7 @@
 
 import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
-import { ILogger } from '../logging';
+import { ILogger, LogLevel } from '../logging';
 import { IMdParser, Token, TokenWithMap } from '../parser';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { getLine, ITextDocument } from '../types/textDocument';
@@ -25,7 +25,7 @@ export class MdFoldingProvider {
 		document: ITextDocument,
 		_token: CancellationToken
 	): Promise<lsp.FoldingRange[]> {
-		this.logger.verbose('MdFoldingProvider', `provideFoldingRanges - ${document.uri}`);
+		this.logger.log(LogLevel.Debug, 'MdFoldingProvider', `provideFoldingRanges - ${document.uri}`);
 
 		const foldables = await Promise.all([
 			this.getRegions(document),

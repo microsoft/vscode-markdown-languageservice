@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as lsp from 'vscode-languageserver-types';
-import { ILogger } from '../logging';
+import { ILogger, LogLevel } from '../logging';
 import { MdTableOfContentsProvider, TocEntry } from '../tableOfContents';
 import { ITextDocument } from '../types/textDocument';
 
@@ -22,7 +22,7 @@ export class MdDocumentSymbolProvider {
 	) { }
 
 	public async provideDocumentSymbolInformation(document: ITextDocument): Promise<lsp.SymbolInformation[]> {
-		this.logger.verbose('DocumentSymbolProvider', `provideDocumentSymbolInformation - ${document.uri}`);
+		this.logger.log(LogLevel.Debug, 'DocumentSymbolProvider', `provideDocumentSymbolInformation - ${document.uri}`);
 		const toc = await this.tocProvider.getForDocument(document);
 		return toc.entries.map(entry => this.toSymbolInformation(entry));
 	}

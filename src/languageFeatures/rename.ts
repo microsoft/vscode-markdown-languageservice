@@ -11,9 +11,9 @@ import { arePositionsEqual, translatePosition } from '../types/position';
 import { modifyRange, rangeContains } from '../types/range';
 import { ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
-import { IWorkspace } from '../workspace';
+import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
 import { InternalHref, resolveDocumentLink } from './documentLinks';
-import { MdHeaderReference, MdLinkReference, MdReference, MdReferencesProvider, tryResolveLinkPath } from './references';
+import { MdHeaderReference, MdLinkReference, MdReference, MdReferencesProvider } from './references';
 
 
 export interface MdReferencesResponse {
@@ -153,7 +153,7 @@ export class MdRenameProvider extends Disposable {
 		const builder = new WorkspaceEditBuilder();
 		const fileRenames: MdFileRenameEdit[] = [];
 
-		const targetUri = await tryResolveLinkPath(triggerHref.path, this.workspace) ?? triggerHref.path;
+		const targetUri = await statLinkToMarkdownFile(triggerHref.path, this.workspace) ?? triggerHref.path;
 
 		const rawNewFilePath = resolveDocumentLink(triggerDocument, newName, this.workspace);
 		if (!rawNewFilePath) {

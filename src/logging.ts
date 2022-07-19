@@ -3,6 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+export enum LogLevel {
+	Debug = 'Debug',
+	Trace = 'Trace',
+}
+
 export interface ILogger {
-	verbose(title: string, message: string, data?: any): void;
+	log(level: LogLevel, title: string, message: string, data?: any): void;
 }

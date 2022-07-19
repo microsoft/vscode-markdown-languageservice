@@ -56,7 +56,7 @@ const workspace = new class {
 	}
 
 	/** @returns {Promise<mdls.ITextDocument | undefined>} */
-	async getOrLoadMarkdownDocument(/** @type {URI} */resource) {
+	async openMarkdownDocument(/** @type {URI} */resource) {
 		if (resource.toString() === myDocument.uri) {
 			return myDocument;
 		}
@@ -70,6 +70,12 @@ const workspace = new class {
 		}
 		return undefined;
 	}
+
+	async readDirectory(/** @type {URI} */resource) {
+		// Not implemented
+		return []
+	}
+
 
 	/** @type {Emitter<mdls.ITextDocument>} */
 	#onDidChangeMarkdownDocument = new Emitter();
@@ -86,8 +92,11 @@ const workspace = new class {
 
 /** @type { mdls.ILogger} */
 const consoleLogger = {
-	verbose(title, message, data) {
-		console.log(title, message, data);
+	debug(title, message, data) {
+		// console.debug(title, message, data);
+	},
+	trace(title, message, data) {
+		// console.trace(title, message, data);
 	}
 };
 

@@ -92,12 +92,9 @@ const workspace = new class {
 
 /** @type { mdls.ILogger} */
 const consoleLogger = {
-	debug(title, message, data) {
+	log(level, title, message, data) {
 		// console.debug(title, message, data);
 	},
-	trace(title, message, data) {
-		// console.trace(title, message, data);
-	}
 };
 
 async function main() {

@@ -179,7 +179,7 @@ export class DiagnosticComputer {
 					data: {
 						ref: link.href.ref,
 					},
-				}
+				};
 			}
 		}
 	}
@@ -363,7 +363,7 @@ class LinkWatcher extends Disposable {
 	private startWatching(path: URI): IDisposable {
 		const watcher = this._workspace.watchFile(path, { ignoreChange: true });
 		const deleteReg = watcher.onDidDelete((resource: URI) => this.onLinkedResourceChanged(resource, false));
-		const createReg = watcher.onDidCreate((resource: URI) => this.onLinkedResourceChanged(resource, true))
+		const createReg = watcher.onDidCreate((resource: URI) => this.onLinkedResourceChanged(resource, true));
 		return {
 			dispose: () => {
 				watcher.dispose();
@@ -400,7 +400,7 @@ export class DiagnosticsManager extends Disposable implements IPullDiagnosticsMa
 		const uri = URI.parse(doc.uri);
 
 		const results = await this._computer.compute(doc, options, this._linkWatcher.allKnownFileLinksInDoc(uri), token);
-		this._linkWatcher.updateLinksForDocument(uri, results.links, results.invalidFiles)
+		this._linkWatcher.updateLinksForDocument(uri, results.links, results.invalidFiles);
 		return results.diagnostics;
 	}
 }

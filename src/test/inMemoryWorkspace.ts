@@ -46,13 +46,13 @@ export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatch
 	get workspaceFolders(): readonly URI[] {
 		return [
 			workspaceRoot,
-		]
+		];
 	}
 
 	async stat(resource: URI): Promise<FileStat | undefined> {
 		this.statCallList.push(resource);
 		if (await this.pathExists(resource)) {
-			return { isDirectory: false }
+			return { isDirectory: false };
 		}
 		return undefined;
 	}

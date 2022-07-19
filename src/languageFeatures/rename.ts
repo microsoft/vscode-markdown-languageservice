@@ -289,11 +289,11 @@ class WorkspaceEditBuilder {
 		const resourceKey = resource.toString();
 		let edits = this.edit.changes![resourceKey];
 		if (!edits) {
-			edits = []
+			edits = [];
 			this.edit.changes![resourceKey] = edits;
 		}
 
-		edits.push(lsp.TextEdit.replace(range, newText))
+		edits.push(lsp.TextEdit.replace(range, newText));
 	}
 
 	getEdit(): lsp.WorkspaceEdit {

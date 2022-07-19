@@ -403,7 +403,7 @@ suite('Diagnostic Manager', () => {
 			`![i](/nosuch.png)`,
 			`[ref]`,
 			`[ref]: http://example.com`
-		))
+		));
 		workspace.updateDocument(doc1);
 
 		const thirdRequest = await manager.computeDiagnostics(doc1, options, noopToken);

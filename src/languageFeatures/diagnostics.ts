@@ -6,6 +6,7 @@
 import * as picomatch from 'picomatch';
 import { CancellationToken, DiagnosticSeverity, Emitter } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
+import * as nls from 'vscode-nls';
 import { URI } from 'vscode-uri';
 import { LsConfiguration } from '../config';
 import { MdTableOfContentsProvider } from '../tableOfContents';
@@ -18,6 +19,9 @@ import { Limiter } from '../util/limiter';
 import { ResourceMap } from '../util/resourceMap';
 import { IWorkspace, IWorkspaceWithWatching as IWorkspaceWithFileWatching, statLinkToMarkdownFile } from '../workspace';
 import { InternalHref, LinkDefinitionSet, MdLink, MdLinkProvider, MdLinkSource } from './documentLinks';
+
+const localize = nls.loadMessageBundle();
+
 
 export enum DiagnosticLevel {
 	ignore = 'ignore',
@@ -42,40 +46,13 @@ function toSeverity(level: DiagnosticLevel | undefined): DiagnosticSeverity | un
 	}
 }
 
-export interface MdDiagnosticBase {
-	readonly code: string;
-	readonly range: lsp.Range;
-	readonly severity: DiagnosticSeverity;
-}
 
-export interface MdNoOwnHeaderDiagnostic extends MdDiagnosticBase {
-	readonly code: 'no-such-header-in-own-file';
-	readonly hrefText: string;
+export enum DiagnosticCode {
+	link_noSuchReferences = 'link.no-such-reference',
+	link_noSuchHeaderInOwnFile = 'link.no-such-header-in-own-file',
+	link_NoSuchFile = 'link.no-such-file',
+	link_noSuchHeaderInFile = 'link.no-such-header-in-file',
 }
-
-export interface MdNoHeaderInFileDiagnostic extends MdDiagnosticBase {
-	readonly code: 'no-such-header-in-file';
-	readonly hrefText: string;
-	readonly fragment: string;
-}
-
-export interface MdNoSuchFileDiagnostic extends MdDiagnosticBase {
-	readonly code: 'no-such-file';
-	readonly fsPath: string;
-	readonly hrefText: string;
-}
-
-export interface MdNoReference extends MdDiagnosticBase {
-	readonly code: 'no-such-reference';
-	readonly ref: string;
-}
-
-export type MdDiagnostic =
-	| MdNoOwnHeaderDiagnostic
-	| MdNoHeaderInFileDiagnostic
-	| MdNoSuchFileDiagnostic
-	| MdNoReference
-	;
 
 /**
  * Map of file paths to markdown links to that file.
@@ -129,7 +106,7 @@ export class DiagnosticComputer {
 		knownFileLinks: ResourceMap<{ readonly exists: boolean }>,
 		token: CancellationToken,
 	): Promise<{
-		readonly diagnostics: MdDiagnostic[];
+		readonly diagnostics: lsp.Diagnostic[];
 		readonly links: readonly MdLink[];
 		readonly invalidFiles: ResourceMap<void>;
 	}> {
@@ -151,7 +128,7 @@ export class DiagnosticComputer {
 		};
 	}
 
-	private async validateFragmentLinks(doc: ITextDocument, options: DiagnosticOptions, links: readonly MdLink[], token: CancellationToken): Promise<MdDiagnostic[]> {
+	private async validateFragmentLinks(doc: ITextDocument, options: DiagnosticOptions, links: readonly MdLink[], token: CancellationToken): Promise<lsp.Diagnostic[]> {
 		const severity = toSeverity(options.validateFragmentLinks);
 		if (typeof severity === 'undefined') {
 			return [];
@@ -162,7 +139,7 @@ export class DiagnosticComputer {
 			return [];
 		}
 
-		const diagnostics: MdDiagnostic[] = [];
+		const diagnostics: lsp.Diagnostic[] = [];
 		for (const link of links) {
 			if (link.href.kind === 'internal'
 				&& link.source.hrefText.startsWith('#')
@@ -171,11 +148,14 @@ export class DiagnosticComputer {
 				&& !toc.lookup(link.href.fragment)
 			) {
 				if (!this.isIgnoredLink(options, link.source.hrefText)) {
-					diagnostics.push(<MdNoOwnHeaderDiagnostic>{
-						code: 'no-such-header-in-own-file',
+					diagnostics.push({
+						code: DiagnosticCode.link_noSuchHeaderInOwnFile,
+						message: localize('invalidHeaderLink', 'No header found: \'{0}\'', link.href.fragment),
 						range: link.source.hrefRange,
 						severity,
-						hrefText: link.source.hrefText
+						data: {
+							hrefText: link.source.hrefText
+						}
 					});
 				}
 			}
@@ -184,7 +164,7 @@ export class DiagnosticComputer {
 		return diagnostics;
 	}
 
-	private *validateReferenceLinks(options: DiagnosticOptions, links: readonly MdLink[], definitions: LinkDefinitionSet): Iterable<MdDiagnostic> {
+	private *validateReferenceLinks(options: DiagnosticOptions, links: readonly MdLink[], definitions: LinkDefinitionSet): Iterable<lsp.Diagnostic> {
 		const severity = toSeverity(options.validateReferences);
 		if (typeof severity === 'undefined') {
 			return [];
@@ -193,10 +173,13 @@ export class DiagnosticComputer {
 		for (const link of links) {
 			if (link.href.kind === 'reference' && !definitions.lookup(link.href.ref)) {
 				yield {
-					code: 'no-such-reference',
+					code: DiagnosticCode.link_noSuchReferences,
+					message: localize('invalidReferenceLink', 'No link definition found: \'{0}\'', link.href.ref),
 					range: link.source.hrefRange,
 					severity,
-					ref: link.href.ref,
+					data: {
+						ref: link.href.ref,
+					},
 				}
 			}
 		}
@@ -208,7 +191,7 @@ export class DiagnosticComputer {
 		fileLinkCache: ResourceMap<{ readonly exists: boolean }>,
 		invalidFiles: ResourceMap<void>,
 		token: CancellationToken,
-	): Promise<MdDiagnostic[]> {
+	): Promise<lsp.Diagnostic[]> {
 		const pathErrorSeverity = toSeverity(options.validateFileLinks);
 		if (typeof pathErrorSeverity === 'undefined') {
 			return [];
@@ -223,7 +206,7 @@ export class DiagnosticComputer {
 
 		const limiter = new Limiter(10);
 
-		const diagnostics: MdDiagnostic[] = [];
+		const diagnostics: lsp.Diagnostic[] = [];
 		await Promise.all(
 			Array.from(linkSet.entries()).map(([path, { outgoingLinks: links }]) => {
 				return limiter.queue(async () => {
@@ -237,11 +220,14 @@ export class DiagnosticComputer {
 							invalidFiles.set(path);
 							if (!this.isIgnoredLink(options, link.source.pathText)) {
 								diagnostics.push({
-									code: 'no-such-file',
+									code: DiagnosticCode.link_NoSuchFile,
+									message: localize('invalidPathLink', 'File does not exist at path: {0}', path.fsPath),
 									range: link.source.hrefRange,
 									severity: pathErrorSeverity,
-									fsPath: path.fsPath,
-									hrefText: link.source.pathText,
+									data: {
+										fsPath: path.fsPath,
+										hrefText: link.source.pathText,
+									}
 								});
 							}
 						}
@@ -254,11 +240,14 @@ export class DiagnosticComputer {
 								if (!toc.lookup(link.fragment) && !this.isIgnoredLink(options, link.source.pathText) && !this.isIgnoredLink(options, link.source.hrefText)) {
 									const range = (link.source.fragmentRange && modifyRange(link.source.fragmentRange, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 }), undefined)) ?? link.source.hrefRange;
 									diagnostics.push({
-										code: 'no-such-header-in-file',
+										code: DiagnosticCode.link_noSuchHeaderInFile,
+										message: localize('invalidLinkToHeaderInOtherFile', 'Header does not exist in file: {0}', link.fragment),
 										range: range,
 										severity: fragmentErrorSeverity,
-										fragment: link.fragment,
-										hrefText: link.source.hrefText
+										data: {
+											fragment: link.fragment,
+											hrefText: link.source.hrefText
+										},
 									});
 								}
 							}
@@ -280,7 +269,7 @@ export class DiagnosticComputer {
 
 
 export interface IPullDiagnosticsManager extends IDisposable {
-	computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<MdDiagnostic[]>;
+	computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]>;
 }
 
 class LinkWatcher extends Disposable {
@@ -408,7 +397,7 @@ export class DiagnosticsManager extends Disposable implements IPullDiagnosticsMa
 
 	}
 
-	async computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<MdDiagnostic[]> {
+	async computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]> {
 		const uri = URI.parse(doc.uri);
 
 		const results = await this._computer.compute(doc, options, this._linkWatcher.allKnownFileLinksInDoc(uri), token);

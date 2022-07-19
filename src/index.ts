@@ -8,7 +8,7 @@ import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration } from './config';
 import { MdDefinitionProvider } from './languageFeatures/definitions';
-import { DiagnosticComputer, DiagnosticOptions, DiagnosticsManager, IPullDiagnosticsManager, MdDiagnostic } from './languageFeatures/diagnostics';
+import { DiagnosticComputer, DiagnosticOptions, DiagnosticsManager, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
 import { MdLinkProvider } from './languageFeatures/documentLinks';
 import { MdDocumentSymbolProvider } from './languageFeatures/documentSymbols';
 import { MdFoldingProvider } from './languageFeatures/folding';
@@ -24,7 +24,7 @@ import { ITextDocument } from './types/textDocument';
 import { ResourceMap } from './util/resourceMap';
 import { isWorkspaceWithFileWatching, IWorkspace } from './workspace';
 
-export { DiagnosticLevel, DiagnosticOptions, MdDiagnostic } from './languageFeatures/diagnostics';
+export { DiagnosticLevel, DiagnosticOptions, DiagnosticCode } from './languageFeatures/diagnostics';
 export { ILogger, LogLevel } from './logging';
 export { IMdParser, Token } from './parser';
 export { githubSlugifier, ISlugifier } from './slugify';
@@ -114,7 +114,7 @@ export interface IMdLanguageService {
 	 * Note that this function is stateless and revalidated all links every time you make the request. Use {@link createPullDiagnosticsManager}
 	 * to more efficiently get diagnostics, avoiding recomputation.
 	 */
-	computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<MdDiagnostic[]>;
+	computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]>;
 
 	createPullDiagnosticsManager(): IPullDiagnosticsManager;
 
@@ -183,7 +183,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 		getDefinition: definitionsProvider.provideDefinition.bind(definitionsProvider),
 		prepareRename: renameProvider.prepareRename.bind(renameProvider),
 		getRenameEdit: renameProvider.provideRenameEdits.bind(renameProvider),
-		computeDiagnostics: async (doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<MdDiagnostic[]> => {
+		computeDiagnostics: async (doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]> => {
 			return (await diagnosticsComputer.compute(doc, options, new ResourceMap(), token))?.diagnostics;
 		},
 		createPullDiagnosticsManager: () => {

@@ -6,7 +6,7 @@
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-types';
 import { getLsConfiguration } from '../config';
-import { DiagnosticComputer, DiagnosticLevel, DiagnosticOptions, DiagnosticsManager, MdDiagnostic } from '../languageFeatures/diagnostics';
+import { DiagnosticComputer, DiagnosticLevel, DiagnosticOptions, DiagnosticsManager } from '../languageFeatures/diagnostics';
 import { MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { comparePosition } from '../types/position';
@@ -29,7 +29,7 @@ const defaultDiagnosticsOptions = Object.freeze<DiagnosticOptions>({
 	ignoreLinks: [],
 });
 
-async function getComputedDiagnostics(store: DisposableStore, doc: InMemoryDocument, workspace: IWorkspace, options: Partial<DiagnosticOptions> = {}): Promise<MdDiagnostic[]> {
+async function getComputedDiagnostics(store: DisposableStore, doc: InMemoryDocument, workspace: IWorkspace, options: Partial<DiagnosticOptions> = {}): Promise<lsp.Diagnostic[]> {
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const linkProvider = store.add(new MdLinkProvider(engine, workspace, tocProvider, nulLogger));
@@ -43,7 +43,7 @@ function getDiagnosticsOptions(options: Partial<DiagnosticOptions>): DiagnosticO
 	return { ...defaultDiagnosticsOptions, ...options, };
 }
 
-function assertDiagnosticsEqual(actual: readonly MdDiagnostic[], expectedRanges: readonly lsp.Range[]) {
+function assertDiagnosticsEqual(actual: readonly lsp.Diagnostic[], expectedRanges: readonly lsp.Range[]) {
 	assert.strictEqual(actual.length, expectedRanges.length, "Diagnostic count equal");
 
 	for (let i = 0; i < actual.length; ++i) {
@@ -51,7 +51,7 @@ function assertDiagnosticsEqual(actual: readonly MdDiagnostic[], expectedRanges:
 	}
 }
 
-function orderDiagnosticsByRange(diagnostics: Iterable<MdDiagnostic>): readonly MdDiagnostic[] {
+function orderDiagnosticsByRange(diagnostics: Iterable<lsp.Diagnostic>): readonly lsp.Diagnostic[] {
 	return Array.from(diagnostics).sort((a, b) => comparePosition(a.range.start, b.range.start));
 }
 
@@ -389,7 +389,7 @@ suite('Diagnostic Manager', () => {
 		const options = getDiagnosticsOptions({});
 
 		const firstRequest = await manager.computeDiagnostics(doc1, options, noopToken);
-		assertDiagnosticsEqual(firstRequest as MdDiagnostic[], [
+		assertDiagnosticsEqual(firstRequest as lsp.Diagnostic[], [
 			makeRange(0, 5, 0, 16),
 			makeRange(1, 1, 1, 4),
 		]);
@@ -407,7 +407,7 @@ suite('Diagnostic Manager', () => {
 		workspace.updateDocument(doc1);
 
 		const thirdRequest = await manager.computeDiagnostics(doc1, options, noopToken);
-		assertDiagnosticsEqual(thirdRequest as MdDiagnostic[], [
+		assertDiagnosticsEqual(thirdRequest as lsp.Diagnostic[], [
 			makeRange(0, 5, 0, 16),
 		]);
 
@@ -427,14 +427,14 @@ suite('Diagnostic Manager', () => {
 		const options = getDiagnosticsOptions({});
 
 		const firstRequest = await manager.computeDiagnostics(doc1, options, noopToken);
-		assertDiagnosticsEqual(firstRequest as MdDiagnostic[], []);
+		assertDiagnosticsEqual(firstRequest as lsp.Diagnostic[], []);
 
 
 		// Trigger watcher change
 		workspace.triggerFileDelete(otherUri);
 
 		const thirdRequest = await manager.computeDiagnostics(doc1, options, noopToken);
-		assertDiagnosticsEqual(thirdRequest as MdDiagnostic[], [
+		assertDiagnosticsEqual(thirdRequest as lsp.Diagnostic[], [
 			makeRange(0, 5, 0, 15),
 		]);
 	}));

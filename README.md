@@ -63,6 +63,15 @@ Currently supported language features:
 
 	Supports renaming of headers and links.
 
+- Diagnostics (experimental)
+
+	Supports generating diagnostics for invalid links to:
+
+	- References.
+	- Header within the current file.
+	- Files in the workspace.
+	- Headers in other files.
+
 ## Usage
 
 To get started using this library, first install it into your workspace:

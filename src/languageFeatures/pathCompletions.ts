@@ -9,7 +9,7 @@ import { getLine, ITextDocument } from '../types/textDocument';
 import { Schemes } from '../util/schemes';
 import { MdLinkProvider } from './documentLinks';
 import * as lsp from 'vscode-languageserver-types';
-import { FileStat, getWorkspaceFolder, IWorkspace, resolveUriToMarkdownFile } from '../workspace';
+import { FileStat, getWorkspaceFolder, IWorkspace, openLinkToMarkdownFile } from '../workspace';
 import { IMdParser } from '../parser';
 import type { CancellationToken, CompletionContext } from 'vscode-languageserver-protocol';
 import { makeRange } from '../types/range';
@@ -131,7 +131,7 @@ export class MdPathCompletionProvider {
 					if (context.anchorInfo) { // Anchor to a different document
 						const rawUri = this.resolveReference(document, context.anchorInfo.beforeAnchor);
 						if (rawUri) {
-							const otherDoc = await resolveUriToMarkdownFile(this.workspace, rawUri);
+							const otherDoc = await openLinkToMarkdownFile(this.workspace, rawUri);
 							if (otherDoc) {
 								const anchorStartPosition = translatePosition(position, { characterDelta: -(context.anchorInfo.anchorPrefix.length + 1) });
 								const range = makeRange(anchorStartPosition, position);

@@ -205,7 +205,7 @@ export class DiagnosticComputer {
 	private async validateFileLinks(
 		options: DiagnosticOptions,
 		links: readonly MdLink[],
-		knownFileLinks: ResourceMap<{ readonly exists: boolean }>,
+		fileLinkCache: ResourceMap<{ readonly exists: boolean }>,
 		invalidFiles: ResourceMap<void>,
 		token: CancellationToken,
 	): Promise<MdDiagnostic[]> {
@@ -231,7 +231,7 @@ export class DiagnosticComputer {
 						return;
 					}
 
-					const resolvedHrefPath = await statLinkToMarkdownFile(path, this.workspace, knownFileLinks);
+					const resolvedHrefPath = await statLinkToMarkdownFile(this.workspace, path, fileLinkCache);
 					if (!resolvedHrefPath) {
 						for (const link of links) {
 							invalidFiles.set(path);

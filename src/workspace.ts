@@ -138,7 +138,7 @@ export function getWorkspaceFolder(workspace: IWorkspace, docUri: URI): URI | un
 	return workspace.workspaceFolders[0];
 }
 
-export async function resolveUriToMarkdownFile(workspace: IWorkspace, resource: URI): Promise<ITextDocument | undefined> {
+export async function openLinkToMarkdownFile(workspace: IWorkspace, resource: URI): Promise<ITextDocument | undefined> {
 	try {
 		const doc = await workspace.openMarkdownDocument(resource);
 		if (doc) {
@@ -161,7 +161,7 @@ export async function resolveUriToMarkdownFile(workspace: IWorkspace, resource: 
  *
  * @return The resolved URI or `undefined` if the file does not exist.
  */
-export async function statLinkToMarkdownFile(linkUri: URI, workspace: IWorkspace, knownFiles?: ResourceMap<{ readonly exists: boolean }>): Promise<URI | undefined> {
+export async function statLinkToMarkdownFile(workspace: IWorkspace, linkUri: URI, knownFiles?: ResourceMap<{ readonly exists: boolean }>): Promise<URI | undefined> {
 	const exists = async (uri: URI): Promise<boolean> => {
 		const cached = knownFiles?.get(uri);
 		if (cached) {

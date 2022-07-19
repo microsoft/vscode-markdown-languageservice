@@ -153,7 +153,7 @@ export class MdRenameProvider extends Disposable {
 		const builder = new WorkspaceEditBuilder();
 		const fileRenames: MdFileRenameEdit[] = [];
 
-		const targetUri = await statLinkToMarkdownFile(triggerHref.path, this.workspace) ?? triggerHref.path;
+		const targetUri = await statLinkToMarkdownFile(this.workspace, triggerHref.path) ?? triggerHref.path;
 
 		const rawNewFilePath = resolveDocumentLink(triggerDocument, newName, this.workspace);
 		if (!rawNewFilePath) {

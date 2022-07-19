@@ -211,7 +211,7 @@ export class MdReferencesProvider extends Disposable {
 			return references;
 		}
 
-		const resolvedResource = await statLinkToMarkdownFile(sourceLink.href.path, this.workspace);
+		const resolvedResource = await statLinkToMarkdownFile(this.workspace, sourceLink.href.path);
 		if (token.isCancellationRequested) {
 			return [];
 		}

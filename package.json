@@ -18,6 +18,7 @@
     "@types/markdown-it": "^12.2.3",
     "@types/mocha": "^9.1.1",
     "@types/node": "16.x",
+    "@types/picomatch": "^2.3.0",
     "@typescript-eslint/eslint-plugin": "^5.30.5",
     "@typescript-eslint/parser": "^5.30.5",
     "eslint": "^8.19.0",

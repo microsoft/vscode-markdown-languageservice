@@ -266,8 +266,13 @@ export class DiagnosticComputer {
 	}
 }
 
-
+/**
+ * Stateful object that can more efficiently compute diagnostics for the workspace.
+ */
 export interface IPullDiagnosticsManager extends IDisposable {
+	/**
+	 * Compute the current diagnostics for a file.
+	 */
 	computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]>;
 }
 

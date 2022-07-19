@@ -120,9 +120,17 @@ export function isWorkspaceWithFileWatching(workspace: IWorkspace): workspace is
 	return 'watchFile' in workspace;
 }
 
+/**
+ * Watches a file for changes to it on the file system.
+ */
 export interface IFileSystemWatcher extends IDisposable {
+	/** Fired when the file is created. */
 	readonly onDidCreate: Event<URI>;
+
+	/** Fired when the file is changed on the file system. */
 	readonly onDidChange: Event<URI>;
+
+	/** Fired when the file is deleted. */
 	readonly onDidDelete: Event<URI>;
 }
 
@@ -172,7 +180,7 @@ export async function statLinkToMarkdownFile(workspace: IWorkspace, linkUri: URI
 			return true;
 		}
 		return false;
-	}
+	};
 
 	if (await exists(linkUri)) {
 		return linkUri;

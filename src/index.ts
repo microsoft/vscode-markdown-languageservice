@@ -22,14 +22,15 @@ import { IMdParser } from './parser';
 import { MdTableOfContentsProvider } from './tableOfContents';
 import { ITextDocument } from './types/textDocument';
 import { ResourceMap } from './util/resourceMap';
-import { isWorkspaceWithFileWatching, IWorkspace } from './workspace';
+import { isWorkspaceWithFileWatching, IWorkspace, IWorkspaceWithWatching } from './workspace';
 
 export { DiagnosticLevel, DiagnosticOptions, DiagnosticCode } from './languageFeatures/diagnostics';
 export { ILogger, LogLevel } from './logging';
 export { IMdParser, Token } from './parser';
 export { githubSlugifier, ISlugifier } from './slugify';
 export { ITextDocument } from './types/textDocument';
-export { FileStat, FileWatcherOptions, IWorkspace, IWorkspaceWithWatching } from './workspace';
+export { FileStat, FileWatcherOptions, IWorkspace } from './workspace';
+export { IWorkspaceWithWatching };
 
 /**
  * Provides language tooling methods for working with markdown.
@@ -104,18 +105,35 @@ export interface IMdLanguageService {
 	 */
 	getDefinition(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<lsp.Definition | undefined>;
 
+	/**
+	 * Prepare for showing rename UI.
+	 *
+	 * Indicates if rename is supported. If it is, returns the range of symbol being renamed as well as the placeholder to show to the user for the rename.
+	 */
 	prepareRename(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<{ range: lsp.Range; placeholder: string } | undefined>;
 
+	/**
+	 * Get the edits for a rename operation.
+	 *
+	 * @return A workspace edit that performs the rename or undefined if the rename cannot be performed.
+	 */
 	getRenameEdit(document: ITextDocument, position: lsp.Position, nameName: string, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined>;
 
 	/**
 	 * Compute diagnostics for a given file.
 	 *
 	 * Note that this function is stateless and revalidated all links every time you make the request. Use {@link createPullDiagnosticsManager}
-	 * to more efficiently get diagnostics, avoiding recomputation.
+	 * to more efficiently get diagnostics.
 	 */
 	computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]>;
 
+	/**
+	 * Create a stateful object that is more efficient at computing diagnostics across repeated calls and workspace changes.
+	 *
+	 * This requires a {@link IWorkspace workspace} that {@link IWorkspaceWithWatching supports file watching}.
+	 *
+	 * Note that you must dispose of the returned object once you are done using it.
+	 */
 	createPullDiagnosticsManager(): IPullDiagnosticsManager;
 
 	/**

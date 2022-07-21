@@ -169,17 +169,11 @@ export async function openLinkToMarkdownFile(workspace: IWorkspace, resource: UR
  *
  * @return The resolved URI or `undefined` if the file does not exist.
  */
-export async function statLinkToMarkdownFile(workspace: IWorkspace, linkUri: URI, knownFiles?: ResourceMap<{ readonly exists: boolean }>): Promise<URI | undefined> {
+export async function statLinkToMarkdownFile(workspace: IWorkspace, linkUri: URI, out_statCache?: ResourceMap<{ readonly exists: boolean }>): Promise<URI | undefined> {
 	const exists = async (uri: URI): Promise<boolean> => {
-		const cached = knownFiles?.get(uri);
-		if (cached) {
-			if (cached.exists) {
-				return true;
-			}
-		} else if (await workspace.stat(uri)) {
-			return true;
-		}
-		return false;
+		const result = await workspace.stat(uri);
+		out_statCache?.set(uri, { exists: !!result });
+		return !!result;
 	};
 
 	if (await exists(linkUri)) {

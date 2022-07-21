@@ -21,10 +21,9 @@ import { ILogger } from './logging';
 import { IMdParser } from './parser';
 import { MdTableOfContentsProvider } from './tableOfContents';
 import { ITextDocument } from './types/textDocument';
-import { ResourceMap } from './util/resourceMap';
 import { isWorkspaceWithFileWatching, IWorkspace, IWorkspaceWithWatching } from './workspace';
 
-export { DiagnosticLevel, DiagnosticOptions, DiagnosticCode } from './languageFeatures/diagnostics';
+export { DiagnosticCode, DiagnosticLevel, DiagnosticOptions } from './languageFeatures/diagnostics';
 export { ILogger, LogLevel } from './logging';
 export { IMdParser, Token } from './parser';
 export { githubSlugifier, ISlugifier } from './slugify';
@@ -202,13 +201,13 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 		prepareRename: renameProvider.prepareRename.bind(renameProvider),
 		getRenameEdit: renameProvider.provideRenameEdits.bind(renameProvider),
 		computeDiagnostics: async (doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]> => {
-			return (await diagnosticsComputer.compute(doc, options, new ResourceMap(), token))?.diagnostics;
+			return (await diagnosticsComputer.compute(doc, options, token))?.diagnostics;
 		},
 		createPullDiagnosticsManager: () => {
 			if (!isWorkspaceWithFileWatching(init.workspace)) {
 				throw new Error(`Workspace does not support file watching. Diagnostics manager not supported`);
 			}
-			return new DiagnosticsManager(init.workspace, diagnosticsComputer);
+			return new DiagnosticsManager(config, init.workspace, linkProvider, tocProvider);
 		}
 	});
 }

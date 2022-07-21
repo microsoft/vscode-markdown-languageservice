@@ -13,7 +13,6 @@ import { comparePosition } from '../types/position';
 import { makeRange } from '../types/range';
 import { noopToken } from '../util/cancellation';
 import { DisposableStore } from '../util/dispose';
-import { ResourceMap } from '../util/resourceMap';
 import { IWorkspace } from '../workspace';
 import { createNewMarkdownEngine } from './engine';
 import { InMemoryDocument } from './inMemoryDocument';
@@ -35,7 +34,7 @@ async function getComputedDiagnostics(store: DisposableStore, doc: InMemoryDocum
 	const linkProvider = store.add(new MdLinkProvider(engine, workspace, tocProvider, nulLogger));
 	const computer = new DiagnosticComputer(getLsConfiguration({}), workspace, linkProvider, tocProvider);
 	return (
-		await computer.compute(doc, getDiagnosticsOptions(options), new ResourceMap(), noopToken)
+		await computer.compute(doc, getDiagnosticsOptions(options), noopToken)
 	).diagnostics;
 }
 
@@ -374,8 +373,7 @@ suite('Diagnostic Manager', () => {
 		const engine = createNewMarkdownEngine();
 		const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 		const linkProvider = store.add(new MdLinkProvider(engine, workspace, tocProvider, nulLogger));
-		const computer = new DiagnosticComputer(getLsConfiguration({}), workspace, linkProvider, tocProvider);
-		return store.add(new DiagnosticsManager(workspace, computer));
+		return store.add(new DiagnosticsManager(getLsConfiguration({}), workspace, linkProvider, tocProvider));
 	}
 
 	test('Should not re-stat files on simple edits', withStore(async (store) => {
@@ -428,7 +426,6 @@ suite('Diagnostic Manager', () => {
 
 		const firstRequest = await manager.computeDiagnostics(doc1, options, noopToken);
 		assertDiagnosticsEqual(firstRequest as lsp.Diagnostic[], []);
-
 
 		// Trigger watcher change
 		workspace.triggerFileDelete(otherUri);

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as picomatch from 'picomatch';
-import { CancellationToken, DiagnosticSeverity, Emitter } from 'vscode-languageserver';
+import { CancellationToken, DiagnosticSeverity, Emitter, Event } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import * as nls from 'vscode-nls';
 import { URI } from 'vscode-uri';
@@ -17,7 +17,7 @@ import { Disposable, IDisposable } from '../util/dispose';
 import { looksLikeMarkdownPath } from '../util/file';
 import { Limiter } from '../util/limiter';
 import { ResourceMap } from '../util/resourceMap';
-import { IWorkspace, IWorkspaceWithWatching as IWorkspaceWithFileWatching, statLinkToMarkdownFile } from '../workspace';
+import { FileStat, IWorkspace, IWorkspaceWithWatching as IWorkspaceWithFileWatching, statLinkToMarkdownFile } from '../workspace';
 import { InternalHref, LinkDefinitionSet, MdLink, MdLinkProvider, MdLinkSource } from './documentLinks';
 
 const localize = nls.loadMessageBundle();
@@ -102,25 +102,23 @@ export class DiagnosticComputer {
 	public async compute(
 		doc: ITextDocument,
 		options: DiagnosticOptions,
-		knownFileLinks: ResourceMap<{ readonly exists: boolean }>,
 		token: CancellationToken,
 	): Promise<{
 		readonly diagnostics: lsp.Diagnostic[];
 		readonly links: readonly MdLink[];
-		readonly invalidFiles: ResourceMap<void>;
+		readonly statCache: ResourceMap<{ readonly exists: boolean }>;
 	}> {
 		const { links, definitions } = await this.linkProvider.getLinks(doc);
-		const invalidFiles = new ResourceMap<void>();
-
+		const statCache = new ResourceMap<{ readonly exists: boolean }>();
 		if (token.isCancellationRequested) {
-			return { links, diagnostics: [], invalidFiles };
+			return { links, diagnostics: [], statCache };
 		}
 
 		return {
 			links: links,
-			invalidFiles,
+			statCache,
 			diagnostics: (await Promise.all([
-				this.validateFileLinks(options, links, knownFileLinks, invalidFiles, token),
+				this.validateFileLinks(options, links, statCache, token),
 				Array.from(this.validateReferenceLinks(options, links, definitions)),
 				this.validateFragmentLinks(doc, options, links, token),
 			])).flat()
@@ -187,8 +185,7 @@ export class DiagnosticComputer {
 	private async validateFileLinks(
 		options: DiagnosticOptions,
 		links: readonly MdLink[],
-		fileLinkCache: ResourceMap<{ readonly exists: boolean }>,
-		invalidFiles: ResourceMap<void>,
+		statCache: ResourceMap<{ readonly exists: boolean }>,
 		token: CancellationToken,
 	): Promise<lsp.Diagnostic[]> {
 		const pathErrorSeverity = toSeverity(options.validateFileLinks);
@@ -213,10 +210,9 @@ export class DiagnosticComputer {
 						return;
 					}
 
-					const resolvedHrefPath = await statLinkToMarkdownFile(this.workspace, path, fileLinkCache);
+					const resolvedHrefPath = await statLinkToMarkdownFile(this.workspace, path, statCache);
 					if (!resolvedHrefPath) {
 						for (const link of links) {
-							invalidFiles.set(path);
 							if (!this.isIgnoredLink(options, link.source.pathText)) {
 								diagnostics.push({
 									code: DiagnosticCode.link_noSuchFile,
@@ -270,15 +266,25 @@ export class DiagnosticComputer {
  * Stateful object that can more efficiently compute diagnostics for the workspace.
  */
 export interface IPullDiagnosticsManager extends IDisposable {
+
+	readonly onLinkedToFileChanged: Event<{
+		readonly changedResource: URI;
+		readonly linkingResources: readonly URI[];
+	}>;
+
 	/**
 	 * Compute the current diagnostics for a file.
 	 */
 	computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]>;
 }
 
-class LinkWatcher extends Disposable {
+class FileLinkState extends Disposable {
 
-	private readonly _onDidChangeLinkedToFile = this._register(new Emitter<{ linkingFiles: Iterable<URI>; exists: boolean }>);
+	private readonly _onDidChangeLinkedToFile = this._register(new Emitter<{
+		readonly changedResource: URI;
+		readonly linkingFiles: Iterable<URI>;
+		readonly exists: boolean;
+	}>);
 	/**
 	 * Event fired with a list of document uri when one of the links in the document changes
 	 */
@@ -316,11 +322,11 @@ class LinkWatcher extends Disposable {
 	/**
 	 * Set the known links in a markdown document, adding and removing file watchers as needed
 	 */
-	updateLinksForDocument(document: URI, links: readonly MdLink[], invalidFiles: ResourceMap<void>) {
+	updateLinksForDocument(document: URI, links: readonly MdLink[], statCache: ResourceMap<{ readonly exists: boolean }>) {
 		const linkedToResource = new Set<{ path: URI; exists: boolean }>(
 			links
 				.filter(link => link.href.kind === 'internal')
-				.map(link => ({ path: (link.href as InternalHref).path, exists: !invalidFiles.has((link.href as InternalHref).path) })));
+				.map(link => ({ path: (link.href as InternalHref).path, exists: !!(statCache.get((link.href as InternalHref).path)?.exists) })));
 
 		// First decrement watcher counter for previous document state
 		for (const entry of this._linkedToFile.values()) {
@@ -355,14 +361,12 @@ class LinkWatcher extends Disposable {
 		this.updateLinksForDocument(resource, [], new ResourceMap());
 	}
 
-	allKnownFileLinksInDoc(docUri: URI): ResourceMap<{ readonly exists: boolean }> {
-		const result = new ResourceMap<{ readonly exists: boolean }>();
-		for (const [link, data] of this._linkedToFile.entries()) {
-			if (data.documents.has(docUri)) {
-				result.set(link, { exists: data.exists });
-			}
+	public tryStatFileLink(link: URI): { exists: boolean } | undefined {
+		const entry = this._linkedToFile.get(link);
+		if (!entry) {
+			return undefined;
 		}
-		return result;
+		return { exists: entry.exists };
 	}
 
 	private startWatching(path: URI): IDisposable {
@@ -382,30 +386,74 @@ class LinkWatcher extends Disposable {
 		const entry = this._linkedToFile.get(resource);
 		if (entry) {
 			entry.exists = exists;
-			this._onDidChangeLinkedToFile.fire({ linkingFiles: entry.documents.values(), exists });
+			this._onDidChangeLinkedToFile.fire({
+				changedResource: resource,
+				linkingFiles: entry.documents.values(),
+				exists,
+			});
 		}
 	}
 }
 
 export class DiagnosticsManager extends Disposable implements IPullDiagnosticsManager {
 
-	private readonly _linkWatcher: LinkWatcher;
+	private readonly _computer: DiagnosticComputer;
+	private readonly _linkWatcher: FileLinkState;
+
+	private readonly _onLinkedToFileChanged = this._register(new Emitter<{
+		readonly changedResource: URI;
+		readonly linkingResources: readonly URI[];
+	}>());
+	public readonly onLinkedToFileChanged = this._onLinkedToFileChanged.event;
 
 	constructor(
-		_workspace: IWorkspaceWithFileWatching,
-		private readonly _computer: DiagnosticComputer,
+		configuration: LsConfiguration,
+		workspace: IWorkspaceWithFileWatching,
+		linkProvider: MdLinkProvider,
+		tocProvider: MdTableOfContentsProvider
 	) {
 		super();
+		const linkWatcher = new FileLinkState(workspace);
+		this._linkWatcher = this._register(linkWatcher);
 
-		this._linkWatcher = this._register(new LinkWatcher(_workspace));
+		this._linkWatcher.onDidChangeLinkedToFile(e => {
+			this._onLinkedToFileChanged.fire({
+				changedResource: e.changedResource,
+				linkingResources: Array.from(e.linkingFiles),
+			});
+		});
 
+		const stateCachedWorkspace = new Proxy(workspace, {
+			get(target, p, receiver) {
+				if (p !== 'stat') {
+					return (workspace as any)[p];
+				}
+
+				return async function (this: any, resource: URI): Promise<FileStat | undefined> {
+					const stat = linkWatcher.tryStatFileLink(resource);
+					if (stat) {
+						if (stat.exists) {
+							return { isDirectory: false };
+						} else {
+							return undefined;
+						}
+					}
+					return workspace.stat.call(this === receiver ? target : this, resource);
+				};
+			},
+		});
+		this._computer = new DiagnosticComputer(configuration, stateCachedWorkspace, linkProvider, tocProvider);
 	}
 
 	async computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]> {
 		const uri = URI.parse(doc.uri);
 
-		const results = await this._computer.compute(doc, options, this._linkWatcher.allKnownFileLinksInDoc(uri), token);
-		this._linkWatcher.updateLinksForDocument(uri, results.links, results.invalidFiles);
+		const results = await this._computer.compute(doc, options, token);
+		if (token.isCancellationRequested) {
+			return [];
+		}
+
+		this._linkWatcher.updateLinksForDocument(uri, results.links, results.statCache);
 		return results.diagnostics;
 	}
 }

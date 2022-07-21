@@ -435,4 +435,20 @@ suite('Diagnostic Manager', () => {
 			makeRange(0, 5, 0, 15),
 		]);
 	}));
+
+	test('Should support links both with and without .md file extension (with dot in file name, #153094)', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.test.md'), joinLines(
+			`# My header`,
+			`[good](#my-header)`,
+			`[good](/doc.test.md#my-header)`,
+			`[good](doc.test.md#my-header)`,
+			`[good](/doc.test#my-header)`,
+			`[good](doc.test#my-header)`,
+		));
+
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		assertDiagnosticsEqual(diagnostics, []);
+	}));
 });

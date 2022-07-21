@@ -7,6 +7,7 @@ import * as assert from 'assert';
 import * as ls from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
+import { getLsConfiguration } from '../config';
 import { MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdPathCompletionProvider } from '../languageFeatures/pathCompletions';
 import { MdTableOfContentsProvider } from '../tableOfContents';
@@ -27,7 +28,7 @@ async function getCompletionsAtCursor(store: DisposableStore, resource: URI, fil
 	const ws = workspace ?? store.add(new InMemoryWorkspace([doc]));
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, ws, nulLogger));
 	const linkProvider = store.add(new MdLinkProvider(engine, ws, tocProvider, nulLogger));
-	const provider = new MdPathCompletionProvider(ws, engine, linkProvider);
+	const provider = new MdPathCompletionProvider(getLsConfiguration({}), ws, engine, linkProvider);
 	const cursorPositions = getCursorPositions(fileContents, doc);
 	const completions = await provider.provideCompletionItems(doc, cursorPositions[0], {
 		triggerCharacter: undefined,

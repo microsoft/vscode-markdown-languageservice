@@ -210,7 +210,7 @@ export class DiagnosticComputer {
 						return;
 					}
 
-					const resolvedHrefPath = await statLinkToMarkdownFile(this.workspace, path, statCache);
+					const resolvedHrefPath = await statLinkToMarkdownFile(this.configuration, this.workspace, path, statCache);
 					if (!resolvedHrefPath) {
 						for (const link of links) {
 							if (!this.isIgnoredLink(options, link.source.pathText)) {

@@ -6,6 +6,7 @@ import * as path from 'path';
 import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { URI, Utils } from 'vscode-uri';
+import { LsConfiguration } from '../config';
 import { ISlugifier } from '../slugify';
 import { arePositionsEqual, translatePosition } from '../types/position';
 import { modifyRange, rangeContains } from '../types/range';
@@ -58,6 +59,7 @@ export class MdRenameProvider extends Disposable {
 	private readonly renameNotSupportedText = "Rename not supported at location";
 
 	public constructor(
+		private readonly configuration: LsConfiguration,
 		private readonly workspace: IWorkspace,
 		private readonly referencesProvider: MdReferencesProvider,
 		private readonly slugifier: ISlugifier,
@@ -153,7 +155,7 @@ export class MdRenameProvider extends Disposable {
 		const builder = new WorkspaceEditBuilder();
 		const fileRenames: MdFileRenameEdit[] = [];
 
-		const targetUri = await statLinkToMarkdownFile(this.workspace, triggerHref.path) ?? triggerHref.path;
+		const targetUri = await statLinkToMarkdownFile(this.configuration, this.workspace, triggerHref.path) ?? triggerHref.path;
 
 		const rawNewFilePath = resolveDocumentLink(triggerDocument, newName, this.workspace);
 		if (!rawNewFilePath) {

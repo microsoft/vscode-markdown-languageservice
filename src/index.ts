@@ -173,10 +173,10 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const foldingProvider = new MdFoldingProvider(init.parser, tocProvider, logger);
 	const workspaceSymbolProvider = new MdWorkspaceSymbolProvider(init.workspace, docSymbolProvider);
 	const linkProvider = new MdLinkProvider(init.parser, init.workspace, tocProvider, logger);
-	const pathCompletionProvider = new MdPathCompletionProvider(init.workspace, init.parser, linkProvider);
+	const pathCompletionProvider = new MdPathCompletionProvider(config, init.workspace, init.parser, linkProvider);
 	const referencesProvider = new MdReferencesProvider(config, init.parser, init.workspace, tocProvider, logger);
 	const definitionsProvider = new MdDefinitionProvider(referencesProvider);
-	const renameProvider = new MdRenameProvider(init.workspace, referencesProvider, init.parser.slugifier);
+	const renameProvider = new MdRenameProvider(config, init.workspace, referencesProvider, init.parser.slugifier);
 	const diagnosticsComputer = new DiagnosticComputer(config, init.workspace, linkProvider, tocProvider);
 
 	return Object.freeze<IMdLanguageService>({

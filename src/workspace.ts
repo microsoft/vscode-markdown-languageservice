@@ -5,6 +5,7 @@
 
 import { Event } from 'vscode-languageserver';
 import { URI, Utils } from 'vscode-uri';
+import { LsConfiguration } from './config';
 import { ITextDocument } from './types/textDocument';
 import { IDisposable } from './util/dispose';
 import { ResourceMap } from './util/resourceMap';
@@ -146,7 +147,7 @@ export function getWorkspaceFolder(workspace: IWorkspace, docUri: URI): URI | un
 	return workspace.workspaceFolders[0];
 }
 
-export async function openLinkToMarkdownFile(workspace: IWorkspace, resource: URI): Promise<ITextDocument | undefined> {
+export async function openLinkToMarkdownFile(config: LsConfiguration, workspace: IWorkspace, resource: URI): Promise<ITextDocument | undefined> {
 	try {
 		const doc = await workspace.openMarkdownDocument(resource);
 		if (doc) {
@@ -156,9 +157,9 @@ export async function openLinkToMarkdownFile(workspace: IWorkspace, resource: UR
 		// Noop
 	}
 
-	// If no extension, try with `.md` extension
-	if (Utils.extname(resource) === '') {
-		return workspace.openMarkdownDocument(resource.with({ path: resource.path + '.md' }));
+	const dotMdResource = tryAppendMarkdownFileExtension(config, resource);
+	if (dotMdResource) {
+		return workspace.openMarkdownDocument(dotMdResource);
 	}
 
 	return undefined;
@@ -169,7 +170,7 @@ export async function openLinkToMarkdownFile(workspace: IWorkspace, resource: UR
  *
  * @return The resolved URI or `undefined` if the file does not exist.
  */
-export async function statLinkToMarkdownFile(workspace: IWorkspace, linkUri: URI, out_statCache?: ResourceMap<{ readonly exists: boolean }>): Promise<URI | undefined> {
+export async function statLinkToMarkdownFile(config: LsConfiguration, workspace: IWorkspace, linkUri: URI, out_statCache?: ResourceMap<{ readonly exists: boolean }>): Promise<URI | undefined> {
 	const exists = async (uri: URI): Promise<boolean> => {
 		const result = await workspace.stat(uri);
 		out_statCache?.set(uri, { exists: !!result });
@@ -180,13 +181,19 @@ export async function statLinkToMarkdownFile(workspace: IWorkspace, linkUri: URI
 		return linkUri;
 	}
 
-	// We don't think the file exists. If it doesn't already have an extension, try tacking on a `.md` and using that instead
-	if (Utils.extname(linkUri) === '') {
-		const dotMdResource = linkUri.with({ path: linkUri.path + '.md' });
-		if (await exists(dotMdResource)) {
-			return dotMdResource;
-		}
+	// We don't think the file exists. See if we need to append `.md`
+	const dotMdResource = tryAppendMarkdownFileExtension(config, linkUri);
+	if (dotMdResource && await exists(dotMdResource)) {
+		return dotMdResource;
 	}
 
+	return undefined;
+}
+
+function tryAppendMarkdownFileExtension(config: LsConfiguration, linkUri: URI): URI | undefined {
+	const ext = Utils.extname(linkUri).toLowerCase().replace(/^\./, '');
+	if (ext === '' || !(config.markdownFileExtensions.includes(ext) || config.knownLinkedToFileExtensions.includes(ext))) {
+		return linkUri.with({ path: linkUri.path + '.md' });
+	}
 	return undefined;
 }

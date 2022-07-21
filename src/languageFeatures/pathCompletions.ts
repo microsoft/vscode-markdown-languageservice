@@ -16,6 +16,7 @@ import { makeRange } from '../types/range';
 import { URI, Utils } from 'vscode-uri';
 import { translatePosition } from '../types/position';
 import { r } from '../util/string';
+import { LsConfiguration } from '../config';
 
 enum CompletionContextKind {
 	/** `[...](|)` */
@@ -93,6 +94,7 @@ function tryDecodeUriComponent(str: string): string {
 export class MdPathCompletionProvider {
 
 	constructor(
+		private readonly configuration: LsConfiguration,
 		private readonly workspace: IWorkspace,
 		private readonly parser: IMdParser,
 		private readonly linkProvider: MdLinkProvider,
@@ -131,7 +133,7 @@ export class MdPathCompletionProvider {
 					if (context.anchorInfo) { // Anchor to a different document
 						const rawUri = this.resolveReference(document, context.anchorInfo.beforeAnchor);
 						if (rawUri) {
-							const otherDoc = await openLinkToMarkdownFile(this.workspace, rawUri);
+							const otherDoc = await openLinkToMarkdownFile(this.configuration, this.workspace, rawUri);
 							if (otherDoc) {
 								const anchorStartPosition = translatePosition(position, { characterDelta: -(context.anchorInfo.anchorPrefix.length + 1) });
 								const range = makeRange(anchorStartPosition, position);

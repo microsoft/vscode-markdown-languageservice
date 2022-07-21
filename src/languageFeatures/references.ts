@@ -73,7 +73,7 @@ export class MdReferencesProvider extends Disposable {
 	private readonly _linkCache: MdWorkspaceInfoCache<readonly MdLink[]>;
 
 	public constructor(
-		private readonly config: LsConfiguration,
+		private readonly configuration: LsConfiguration,
 		private readonly parser: IMdParser,
 		private readonly workspace: IWorkspace,
 		private readonly tocProvider: MdTableOfContentsProvider,
@@ -211,7 +211,7 @@ export class MdReferencesProvider extends Disposable {
 			return references;
 		}
 
-		const resolvedResource = await statLinkToMarkdownFile(this.workspace, sourceLink.href.path);
+		const resolvedResource = await statLinkToMarkdownFile(this.configuration, this.workspace, sourceLink.href.path);
 		if (token.isCancellationRequested) {
 			return [];
 		}
@@ -256,7 +256,7 @@ export class MdReferencesProvider extends Disposable {
 	}
 
 	private isMarkdownPath(resolvedHrefPath: URI) {
-		return this.workspace.hasMarkdownDocument(resolvedHrefPath) || looksLikeMarkdownPath(this.config, resolvedHrefPath);
+		return this.workspace.hasMarkdownDocument(resolvedHrefPath) || looksLikeMarkdownPath(this.configuration, resolvedHrefPath);
 	}
 
 	private looksLikeLinkToDoc(href: InternalHref, targetDoc: URI) {

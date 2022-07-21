@@ -26,10 +26,11 @@ import { assertRangeEqual, joinLines, withStore, workspacePath } from './util';
  * Get prepare rename info.
  */
 function prepareRename(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position, workspace: IWorkspace): Promise<undefined | { readonly range: lsp.Range; readonly placeholder: string }> {
+	const config = getLsConfiguration({});
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-	const referenceComputer = store.add(new MdReferencesProvider(getLsConfiguration({}), engine, workspace, tocProvider, nulLogger));
-	const renameProvider = store.add(new MdRenameProvider(workspace, referenceComputer, githubSlugifier));
+	const referenceComputer = store.add(new MdReferencesProvider(config, engine, workspace, tocProvider, nulLogger));
+	const renameProvider = store.add(new MdRenameProvider(config, workspace, referenceComputer, githubSlugifier));
 	return renameProvider.prepareRename(doc, pos, noopToken);
 }
 
@@ -37,10 +38,11 @@ function prepareRename(store: DisposableStore, doc: InMemoryDocument, pos: lsp.P
  * Get all the edits for the rename.
  */
 function getRenameEdits(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position, newName: string, workspace: IWorkspace): Promise<MdWorkspaceEdit | undefined> {
+	const config = getLsConfiguration({});
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-	const referencesProvider = store.add(new MdReferencesProvider(getLsConfiguration({}), engine, workspace, tocProvider, nulLogger));
-	const renameProvider = store.add(new MdRenameProvider(workspace, referencesProvider, githubSlugifier));
+	const referencesProvider = store.add(new MdReferencesProvider(config, engine, workspace, tocProvider, nulLogger));
+	const renameProvider = store.add(new MdRenameProvider(config, workspace, referencesProvider, githubSlugifier));
 	return renameProvider.provideRenameEditsImpl(doc, pos, newName, noopToken);
 }
 

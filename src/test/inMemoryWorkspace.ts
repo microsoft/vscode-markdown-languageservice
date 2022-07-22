@@ -32,7 +32,10 @@ export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatch
 	 */
 	public readonly statCallList: URI[] = [];
 
-	constructor(documents: ReadonlyArray<InMemoryDocument | URI>) {
+	constructor(
+		documents: ReadonlyArray<InMemoryDocument | URI>,
+		private readonly _workspaceRoots: readonly URI[] = [workspaceRoot]
+	) {
 		super();
 		for (const doc of documents) {
 			if (doc instanceof InMemoryDocument) {
@@ -44,9 +47,7 @@ export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatch
 	}
 
 	get workspaceFolders(): readonly URI[] {
-		return [
-			workspaceRoot,
-		];
+		return this._workspaceRoots;
 	}
 
 	async stat(resource: URI): Promise<FileStat | undefined> {

@@ -17,7 +17,7 @@ import { createNewMarkdownEngine } from './engine';
 import { InMemoryDocument } from './inMemoryDocument';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
-import { joinLines, withStore, workspacePath } from './util';
+import { joinLines, withStore, workspacePath, workspaceRoot } from './util';
 
 
 async function getReferences(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position, workspace: IWorkspace) {
@@ -632,6 +632,31 @@ suite('References', () => {
 
 			const refs = await getReferences(store, doc, { line: 0, character: 4 }, workspace);
 			assert.strictEqual(refs?.length, 0);
+		}));
+
+		test('Should resolve / relative to current workspace in multi-root workspace', withStore(async (store) => {
+			const docUri = workspacePath('doc.md');
+			const doc = new InMemoryDocument(docUri, joinLines(
+				`![img](/sub/img.png)`
+			));
+
+			const subDocUri = workspacePath('sub', 'doc.md');
+			const subDoc = new InMemoryDocument(subDocUri, joinLines(
+				`![img](/img.png)`
+			));
+			const workspace = store.add(new InMemoryWorkspace(
+				[doc, subDoc, workspacePath('sub', 'img.png')],
+				[workspaceRoot, workspacePath('sub')],
+			));
+
+			{
+				const refs = await getReferences(store, doc, { line: 0, character: 10 }, workspace);
+				assert.strictEqual(refs?.length, 2);
+			}
+			{
+				const refs = await getReferences(store, subDoc, { line: 0, character: 10 }, workspace);
+				assert.strictEqual(refs?.length, 2);
+			}
 		}));
 	});
 });

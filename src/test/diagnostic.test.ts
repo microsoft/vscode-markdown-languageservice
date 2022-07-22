@@ -18,7 +18,7 @@ import { createNewMarkdownEngine } from './engine';
 import { InMemoryDocument } from './inMemoryDocument';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
-import { assertRangeEqual, joinLines, withStore, workspacePath } from './util';
+import { assertRangeEqual, joinLines, withStore, workspacePath, workspaceRoot } from './util';
 
 const defaultDiagnosticsOptions = Object.freeze<DiagnosticOptions>({
 	validateFileLinks: DiagnosticLevel.warning,
@@ -450,5 +450,30 @@ suite('Diagnostic Manager', () => {
 
 		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
 		assertDiagnosticsEqual(diagnostics, []);
+	}));
+
+	test(`Should resolve '/' relative to longest workspace root in multiroot workspace`, withStore(async (store) => {
+		const docUri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(docUri, joinLines(
+			`![img](/sub/img.png)`
+		));
+
+		const subDocUri = workspacePath('sub', 'doc.md');
+		const subDoc = new InMemoryDocument(subDocUri, joinLines(
+			`![img](/img.png)`
+		));
+		const workspace = store.add(new InMemoryWorkspace(
+			[doc, subDoc, workspacePath('sub', 'img.png')],
+			[workspaceRoot, workspacePath('sub')],
+		));
+
+		{
+			const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+			assertDiagnosticsEqual(diagnostics, []);
+		}
+		{
+			const diagnostics = await getComputedDiagnostics(store, subDoc, workspace);
+			assertDiagnosticsEqual(diagnostics, []);
+		}
 	}));
 });

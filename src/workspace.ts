@@ -136,14 +136,24 @@ export interface IFileSystemWatcher extends IDisposable {
 }
 
 export function getWorkspaceFolder(workspace: IWorkspace, docUri: URI): URI | undefined {
-	for (const folder of workspace.workspaceFolders) {
-		if (folder.scheme === docUri.scheme
-			&& folder.authority === docUri.authority
-			&& (docUri.fsPath.startsWith(folder.fsPath + '/') || docUri.fsPath.startsWith(folder.path + '\\'))
-		) {
-			return folder;
-		}
+	if (workspace.workspaceFolders.length === 0) {
+		return undefined;
 	}
+
+	// Find the longest match
+	const possibleWorkspaces = workspace.workspaceFolders
+		.filter(folder =>
+			folder.scheme === docUri.scheme
+			&& folder.authority === docUri.authority
+			&& (docUri.fsPath.startsWith(folder.fsPath + '/') || docUri.fsPath.startsWith(folder.path + '\\')))
+		.sort((a, b) => b.fsPath.length - a.fsPath.length);
+
+	if (possibleWorkspaces.length) {
+		return possibleWorkspaces[0];
+	}
+
+	// Default to first workspace
+	// TODO: Does this make sense?
 	return workspace.workspaceFolders[0];
 }
 

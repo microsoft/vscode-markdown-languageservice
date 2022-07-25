@@ -1,0 +1,6 @@
+{
+	"git.branchProtection": [
+		"main"
+	],
+	"git.branchProtectionPrompt": "alwaysCommitToNewBranch"
+}

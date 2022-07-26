@@ -145,7 +145,7 @@ export function getWorkspaceFolder(workspace: IWorkspace, docUri: URI): URI | un
 		.filter(folder =>
 			folder.scheme === docUri.scheme
 			&& folder.authority === docUri.authority
-			&& (docUri.fsPath.startsWith(folder.fsPath + '/') || docUri.fsPath.startsWith(folder.path + '\\')))
+			&& (docUri.fsPath.startsWith(folder.fsPath + '/') || docUri.fsPath.startsWith(folder.fsPath + '\\')))
 		.sort((a, b) => b.fsPath.length - a.fsPath.length);
 
 	if (possibleWorkspaces.length) {

@@ -33,5 +33,12 @@
     "watch": "tsc -b tsconfig.json --watch",
     "lint": "eslint src/**/*.ts",
     "test": "mocha out/test/*.test.js --ui=tdd --timeout=2000 --exit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/vscode-markdown-languageservice.git"
+  },
+  "bugs": {
+    "url": "https://github.com/microsoft/vscode-markdown-languageservice/issues"
   }
 }

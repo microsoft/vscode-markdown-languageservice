@@ -646,7 +646,7 @@ suite('References', () => {
 			));
 			const workspace = store.add(new InMemoryWorkspace(
 				[doc, subDoc, workspacePath('sub', 'img.png')],
-				[workspaceRoot, workspacePath('sub')],
+				{ roots: [workspaceRoot, workspacePath('sub')] },
 			));
 
 			{

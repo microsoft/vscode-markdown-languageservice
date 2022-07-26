@@ -27,6 +27,8 @@ export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatch
 		readonly onDidDelete: Emitter<URI>;
 	}>();
 
+	private readonly _workspaceRoots: readonly URI[];
+
 	/**
 	 * List of calls to `stat`.
 	 */
@@ -34,9 +36,14 @@ export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatch
 
 	constructor(
 		documents: ReadonlyArray<InMemoryDocument | URI>,
-		private readonly _workspaceRoots: readonly URI[] = [workspaceRoot]
+		options?: {
+			readonly roots: readonly URI[]
+		}
 	) {
 		super();
+
+		this._workspaceRoots = options?.roots ?? [workspaceRoot];
+
 		for (const doc of documents) {
 			if (doc instanceof InMemoryDocument) {
 				this._documents.set(URI.parse(doc.uri), doc);

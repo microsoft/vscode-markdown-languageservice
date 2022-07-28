@@ -6,6 +6,7 @@
 import * as assert from 'assert';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration } from '../config';
+import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks';
 import { MdReference, MdReferencesProvider } from '../languageFeatures/references';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { noopToken } from '../util/cancellation';
@@ -21,7 +22,8 @@ import { joinLines, withStore, workspacePath } from './util';
 function getFileReferences(store: DisposableStore, resource: URI, workspace: IWorkspace) {
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-	const computer = store.add(new MdReferencesProvider(getLsConfiguration({}), engine, workspace, tocProvider, nulLogger));
+	const linkCache = store.add(createWorkspaceLinkCache(engine, workspace));
+	const computer = store.add(new MdReferencesProvider(getLsConfiguration({}), engine, workspace, tocProvider, linkCache, nulLogger));
 	return computer.getReferencesToFileInWorkspace(resource, noopToken);
 }
 

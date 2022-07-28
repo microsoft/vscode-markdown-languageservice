@@ -17,7 +17,7 @@ import { noopToken } from '../util/cancellation';
 import { Disposable } from '../util/dispose';
 import { r } from '../util/string';
 import { getWorkspaceFolder, IWorkspace } from '../workspace';
-import { MdDocumentInfoCache } from '../workspaceCache';
+import { MdDocumentInfoCache, MdWorkspaceInfoCache } from '../workspaceCache';
 
 
 export interface ExternalHref {
@@ -679,9 +679,17 @@ export class MdLinkProvider extends Disposable {
 	}
 }
 
-export interface VsCodeIRange {
+interface VsCodeIRange {
 	readonly startLineNumber: number;
 	readonly startColumn: number;
 	readonly endLineNumber: number;
 	readonly endColumn: number;
+}
+
+export function createWorkspaceLinkCache(
+	parser: IMdParser,
+	workspace: IWorkspace,
+) {
+	const linkComputer = new MdLinkComputer(parser, workspace);
+	return new MdWorkspaceInfoCache(workspace, doc => linkComputer.getAllLinks(doc, noopToken));
 }

@@ -8,7 +8,7 @@ import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration } from '../config';
 import { MdDefinitionProvider } from '../languageFeatures/definitions';
-import { MdReferencesProvider } from '../languageFeatures/references';
+import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { noopToken } from '../util/cancellation';
 import { DisposableStore } from '../util/dispose';
@@ -23,8 +23,8 @@ import { joinLines, withStore, workspacePath } from './util';
 function getDefinition(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position, workspace: IWorkspace) {
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-	const referencesProvider = store.add(new MdReferencesProvider(getLsConfiguration({}), engine, workspace, tocProvider, nulLogger));
-	const provider = new MdDefinitionProvider(referencesProvider);
+	const linkCache = store.add(createWorkspaceLinkCache(engine, workspace));
+	const provider = new MdDefinitionProvider(getLsConfiguration({}), workspace, tocProvider, linkCache);
 	return provider.provideDefinition(doc, pos, noopToken);
 }
 
@@ -164,5 +164,46 @@ suite('Definitions', () => {
 				{ uri: docUri, line: 0 },
 			);
 		}
+	}));
+
+	test('Should support going to header across files', withStore(async (store) => {
+		const doc1Uri = workspacePath('doc.md');
+		const doc1 = new InMemoryDocument(doc1Uri, joinLines(
+			`# Header`,
+		));
+		const doc2Uri = workspacePath('doc2.md');
+		const doc2 = new InMemoryDocument(doc2Uri, joinLines(
+			`[text](doc#header)`,
+			`[ref]: doc.md#header`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc1, doc2]));
+
+		{
+			const def = await getDefinition(store, doc2, { line: 0, character: 15 }, workspace);
+			assertDefinitionsEqual(def!,
+				{ uri: doc1Uri, line: 0 },
+			);
+		}
+		{
+			const def = await getDefinition(store, doc2, { line: 1, character: 15 }, workspace);
+			assertDefinitionsEqual(def!,
+				{ uri: doc1Uri, line: 0 },
+			);
+		}
+	}));
+
+	test('Should not find link definitions across files', withStore(async (store) => {
+		const doc1Uri = workspacePath('doc.md');
+		const doc1 = new InMemoryDocument(doc1Uri, joinLines(
+			`[ref]`,
+		));
+		const doc2Uri = workspacePath('doc2.md');
+		const doc2 = new InMemoryDocument(doc2Uri, joinLines(
+			`[ref]: http://example.com`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc1, doc2]));
+
+		const def = await getDefinition(store, doc1, { line: 0, character: 2 }, workspace);
+		assert.strictEqual(def, undefined);
 	}));
 });

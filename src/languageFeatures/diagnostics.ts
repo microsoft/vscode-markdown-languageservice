@@ -357,7 +357,7 @@ class FileLinkState extends Disposable {
 		}
 	}
 
-	deleteDocument(resource: URI) {
+	public deleteDocument(resource: URI) {
 		this.updateLinksForDocument(resource, [], new ResourceMap());
 	}
 
@@ -413,15 +413,16 @@ export class DiagnosticsManager extends Disposable implements IPullDiagnosticsMa
 		tocProvider: MdTableOfContentsProvider
 	) {
 		super();
+
 		const linkWatcher = new FileLinkState(workspace);
 		this._linkWatcher = this._register(linkWatcher);
 
-		this._linkWatcher.onDidChangeLinkedToFile(e => {
+		this._register(this._linkWatcher.onDidChangeLinkedToFile(e => {
 			this._onLinkedToFileChanged.fire({
 				changedResource: e.changedResource,
 				linkingResources: Array.from(e.linkingFiles),
 			});
-		});
+		}));
 
 		const stateCachedWorkspace = new Proxy(workspace, {
 			get(target, p, receiver) {
@@ -442,7 +443,12 @@ export class DiagnosticsManager extends Disposable implements IPullDiagnosticsMa
 				};
 			},
 		});
+
 		this._computer = new DiagnosticComputer(configuration, stateCachedWorkspace, linkProvider, tocProvider);
+
+		this._register(workspace.onDidDeleteMarkdownDocument(uri => {
+			this._linkWatcher.deleteDocument(uri);
+		}));
 	}
 
 	async computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]> {

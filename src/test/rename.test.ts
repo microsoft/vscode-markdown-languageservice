@@ -7,6 +7,7 @@ import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration } from '../config';
+import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks';
 import { MdReferencesProvider } from '../languageFeatures/references';
 import { MdRenameProvider, MdWorkspaceEdit } from '../languageFeatures/rename';
 import { githubSlugifier } from '../slugify';
@@ -29,7 +30,8 @@ function prepareRename(store: DisposableStore, doc: InMemoryDocument, pos: lsp.P
 	const config = getLsConfiguration({});
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-	const referenceComputer = store.add(new MdReferencesProvider(config, engine, workspace, tocProvider, nulLogger));
+	const linkCache = store.add(createWorkspaceLinkCache(engine, workspace));
+	const referenceComputer = store.add(new MdReferencesProvider(config, engine, workspace, tocProvider, linkCache, nulLogger));
 	const renameProvider = store.add(new MdRenameProvider(config, workspace, referenceComputer, githubSlugifier));
 	return renameProvider.prepareRename(doc, pos, noopToken);
 }
@@ -41,7 +43,8 @@ function getRenameEdits(store: DisposableStore, doc: InMemoryDocument, pos: lsp.
 	const config = getLsConfiguration({});
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-	const referencesProvider = store.add(new MdReferencesProvider(config, engine, workspace, tocProvider, nulLogger));
+	const linkCache = store.add(createWorkspaceLinkCache(engine, workspace));
+	const referencesProvider = store.add(new MdReferencesProvider(config, engine, workspace, tocProvider, linkCache, nulLogger));
 	const renameProvider = store.add(new MdRenameProvider(config, workspace, referencesProvider, githubSlugifier));
 	return renameProvider.provideRenameEditsImpl(doc, pos, newName, noopToken);
 }

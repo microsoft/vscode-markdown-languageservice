@@ -9,7 +9,7 @@ import { URI } from 'vscode-uri';
 import { getLsConfiguration } from './config';
 import { MdDefinitionProvider } from './languageFeatures/definitions';
 import { DiagnosticComputer, DiagnosticOptions, DiagnosticsManager, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
-import { MdLinkProvider } from './languageFeatures/documentLinks';
+import { createWorkspaceLinkCache, MdLinkProvider } from './languageFeatures/documentLinks';
 import { MdDocumentSymbolProvider } from './languageFeatures/documentSymbols';
 import { MdFoldingProvider } from './languageFeatures/folding';
 import { MdPathCompletionProvider } from './languageFeatures/pathCompletions';
@@ -174,13 +174,15 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const workspaceSymbolProvider = new MdWorkspaceSymbolProvider(init.workspace, docSymbolProvider);
 	const linkProvider = new MdLinkProvider(init.parser, init.workspace, tocProvider, logger);
 	const pathCompletionProvider = new MdPathCompletionProvider(config, init.workspace, init.parser, linkProvider);
-	const referencesProvider = new MdReferencesProvider(config, init.parser, init.workspace, tocProvider, logger);
-	const definitionsProvider = new MdDefinitionProvider(referencesProvider);
+	const linkCache = createWorkspaceLinkCache(init.parser, init.workspace);
+	const referencesProvider = new MdReferencesProvider(config, init.parser, init.workspace, tocProvider, linkCache, logger);
+	const definitionsProvider = new MdDefinitionProvider(config, init.workspace, tocProvider, linkCache);
 	const renameProvider = new MdRenameProvider(config, init.workspace, referencesProvider, init.parser.slugifier);
 	const diagnosticsComputer = new DiagnosticComputer(config, init.workspace, linkProvider, tocProvider);
 
 	return Object.freeze<IMdLanguageService>({
 		dispose: () => {
+			linkCache.dispose();
 			tocProvider.dispose();
 			workspaceSymbolProvider.dispose();
 			linkProvider.dispose();

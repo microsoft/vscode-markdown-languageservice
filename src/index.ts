@@ -119,6 +119,13 @@ export interface IMdLanguageService {
 	 */
 	getRenameEdit(document: ITextDocument, position: lsp.Position, nameName: string, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined>;
 
+	/**
+	 * Get the edits for a file rename. This update links to the renamed files as well as links within the renamed files.
+	 *
+	 * This should be invoked after the rename has already happened.
+	 *
+	 * @return A workspace edit that performs the rename or undefined if the rename cannot be performed.
+	 */
 	getRenameFilesInWorkspaceEdit(edits: Iterable<{ readonly oldUri: URI; readonly newUri: URI }>, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined>;
 
 	/**

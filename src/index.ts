@@ -181,7 +181,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const referencesProvider = new MdReferencesProvider(config, init.parser, init.workspace, tocProvider, linkCache, logger);
 	const definitionsProvider = new MdDefinitionProvider(config, init.workspace, tocProvider, linkCache);
 	const renameProvider = new MdRenameProvider(config, init.workspace, referencesProvider, init.parser.slugifier);
-	const fileRenameProvider = new MdFileRenameProvider(init.workspace, referencesProvider);
+	const fileRenameProvider = new MdFileRenameProvider(config, init.workspace, linkCache, referencesProvider);
 	const diagnosticsComputer = new DiagnosticComputer(config, init.workspace, linkProvider, tocProvider);
 
 	return Object.freeze<IMdLanguageService>({

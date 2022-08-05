@@ -22,7 +22,7 @@ import { nulLogger } from './nulLogging';
 import { assertRangeEqual, joinLines, withStore, workspacePath } from './util';
 
 /**
- * Get all the edits for the rename.
+ * Get all the edits for a file rename.
  */
 function getFileRenameEdits(store: DisposableStore, edits: Iterable<{ oldUri: URI, newUri: URI }>, workspace: IWorkspace): Promise<lsp.WorkspaceEdit | undefined> {
 	const config = getLsConfiguration({});
@@ -30,7 +30,7 @@ function getFileRenameEdits(store: DisposableStore, edits: Iterable<{ oldUri: UR
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const linkCache = store.add(createWorkspaceLinkCache(engine, workspace));
 	const referencesProvider = store.add(new MdReferencesProvider(config, engine, workspace, tocProvider, linkCache, nulLogger));
-	const renameProvider = store.add(new MdFileRenameProvider(workspace, referencesProvider));
+	const renameProvider = store.add(new MdFileRenameProvider(getLsConfiguration({}), workspace, linkCache, referencesProvider));
 	return renameProvider.getRenameFilesInWorkspaceEdit(edits, noopToken);
 }
 
@@ -60,17 +60,14 @@ function assertEditsEqual(actualEdit: lsp.WorkspaceEdit, ...expectedTextEdits: R
 	}
 }
 
-suite.only('File Rename', () => {
+suite('File Rename', () => {
 
 	test('Rename file should update links', withStore(async (store) => {
 		const uri = workspacePath('doc.md');
 		const doc = new InMemoryDocument(uri, joinLines(
 			`[abc](/old.md)`,
-			``,
 			`[abc](old.md)`,
-			``,
 			`[abc](./old.md)`,
-			``,
 			`[xyz]: ./old.md`,
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
@@ -82,9 +79,56 @@ suite.only('File Rename', () => {
 		assertEditsEqual(edit!, {
 			uri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 6, 0, 13), '/new.md'),
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 12), 'new.md'),
-				lsp.TextEdit.replace(makeRange(4, 6, 4, 14), './new.md'),
-				lsp.TextEdit.replace(makeRange(6, 7, 6, 15), './new.md'),
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 12), 'new.md'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 14), './new.md'),
+				lsp.TextEdit.replace(makeRange(3, 7, 3, 15), './new.md'),
+			]
+		});
+	}));
+
+	test('Rename file should ignore fragments', withStore(async (store) => {
+		const uri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(uri, joinLines(
+			`[abc](/old.md#frag)`,
+			`[abc](old.md#frag)`,
+			`[abc](./old.md#frag)`,
+			`[xyz]: ./old.md#frag`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const oldUri = workspacePath('old.md');
+		const newUri = workspacePath('new.md');
+
+		const edit = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
+		assertEditsEqual(edit!, {
+			uri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 6, 0, 13), '/new.md'),
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 12), 'new.md'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 14), './new.md'),
+				lsp.TextEdit.replace(makeRange(3, 7, 3, 15), './new.md'),
+			]
+		});
+	}));
+
+	test('Move of markdown file should update links within that file', withStore(async (store) => {
+		const oldUri = workspacePath('doc.md');
+		const newUri = workspacePath('sub', 'new.md');
+
+		// Create the workspace in the state just after the file rename
+		const doc = new InMemoryDocument(newUri, joinLines(
+			`[abc](/other.md#frag)`,
+			`[abc](other.md#frag)`,
+			`[abc](./other.md#frag)`,
+			`[xyz]: ./other.md#frag`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const edit = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri }], workspace);
+		assertEditsEqual(edit!, {
+			uri: newUri, edits: [
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 14), '../other.md'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 16), '../other.md'),
+				lsp.TextEdit.replace(makeRange(3, 7, 3, 17), '../other.md'),
 			]
 		});
 	}));

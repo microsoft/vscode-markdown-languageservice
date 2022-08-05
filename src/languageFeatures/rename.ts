@@ -15,8 +15,8 @@ import { Disposable } from '../util/dispose';
 import { WorkspaceEditBuilder } from '../util/editBuilder';
 import { Schemes } from '../util/schemes';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
-import { InternalHref, resolveDocumentLink } from './documentLinks';
-import { MdHeaderReference, MdLinkReference, MdReference, MdReferencesProvider } from './references';
+import { InternalHref, MdLink, resolveDocumentLink } from './documentLinks';
+import { MdHeaderReference, MdReference, MdReferencesProvider } from './references';
 
 
 export interface MdReferencesResponse {
@@ -106,20 +106,13 @@ export class MdRenameProvider extends Disposable {
 					return { range: fragmentRange, placeholder: document.getText(fragmentRange) };
 				}
 
-				const range = this.getFilePathRange(triggerRef);
+				const range = getFilePathRange(triggerRef.link);
 				if (!range) {
 					throw new Error(this.renameNotSupportedText);
 				}
 				return { range, placeholder: tryDecodeUri(document.getText(range)) };
 			}
 		}
-	}
-
-	private getFilePathRange(ref: MdLinkReference): lsp.Range {
-		if (ref.link.source.fragmentRange) {
-			return modifyRange(ref.link.source.hrefRange, undefined, translatePosition(ref.link.source.fragmentRange.start, { characterDelta: -1 }));
-		}
-		return ref.link.source.hrefRange;
 	}
 
 	private findHeaderDeclaration(references: readonly MdReference[]): MdHeaderReference | undefined {
@@ -203,7 +196,7 @@ export class MdRenameProvider extends Disposable {
 						newPath = newName;
 					}
 				}
-				builder.replace(ref.link.source.resource, this.getFilePathRange(ref), encodeURI(newPath.replace(/\\/g, '/')));
+				builder.replace(ref.link.source.resource, getFilePathRange(ref.link), encodeURI(newPath.replace(/\\/g, '/')));
 			}
 		}
 
@@ -281,4 +274,11 @@ export class MdRenameProvider extends Disposable {
 		};
 		return this.cachedRefs;
 	}
+}
+
+export function getFilePathRange(link: MdLink): lsp.Range {
+	if (link.source.fragmentRange) {
+		return modifyRange(link.source.hrefRange, undefined, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 }));
+	}
+	return link.source.hrefRange;
 }

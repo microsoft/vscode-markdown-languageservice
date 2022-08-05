@@ -12,6 +12,8 @@ import { arePositionsEqual, translatePosition } from '../types/position';
 import { modifyRange, rangeContains } from '../types/range';
 import { ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
+import { WorkspaceEditBuilder } from '../util/editBuilder';
+import { Schemes } from '../util/schemes';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
 import { InternalHref, resolveDocumentLink } from './documentLinks';
 import { MdHeaderReference, MdLinkReference, MdReference, MdReferencesProvider } from './references';
@@ -192,7 +194,7 @@ export class MdRenameProvider extends Disposable {
 					newPath = '/' + path.relative(root.path.toString(true), rawNewFilePath.path.toString(true));
 				} else {
 					const rootDir = Utils.dirname(ref.link.source.resource);
-					if (rootDir.scheme === rawNewFilePath.path.scheme && rootDir.scheme !== 'untitled') {
+					if (rootDir.scheme === rawNewFilePath.path.scheme && rootDir.scheme !== Schemes.untitled) {
 						newPath = path.relative(rootDir.toString(true), rawNewFilePath.path.toString(true));
 						if (newName.startsWith('./') && !newPath.startsWith('../') || newName.startsWith('.\\') && !newPath.startsWith('..\\')) {
 							newPath = './' + newPath;
@@ -278,34 +280,5 @@ export class MdRenameProvider extends Disposable {
 			triggerRef
 		};
 		return this.cachedRefs;
-	}
-}
-
-class WorkspaceEditBuilder {
-
-	private edit: lsp.WorkspaceEdit = {
-		changes: {},
-	};
-
-	replace(resource: URI, range: lsp.Range, newText: string) {
-		const resourceKey = resource.toString();
-		let edits = this.edit.changes![resourceKey];
-		if (!edits) {
-			edits = [];
-			this.edit.changes![resourceKey] = edits;
-		}
-
-		edits.push(lsp.TextEdit.replace(range, newText));
-	}
-
-	getEdit(): lsp.WorkspaceEdit {
-		return this.edit;
-	}
-
-	renameFile(targetUri: URI, resolvedNewFilePath: URI) {
-		if (!this.edit.documentChanges) {
-			this.edit.documentChanges = [];
-		}
-		this.edit.documentChanges.push(lsp.RenameFile.create(targetUri.toString(), resolvedNewFilePath.toString()));
 	}
 }

@@ -632,7 +632,7 @@ export class MdLinkProvider extends Disposable {
 			case 'external': {
 				return {
 					range: link.source.hrefRange,
-					target: link.href.uri.toString(),
+					target: link.href.uri.toString(true),
 				};
 			}
 			case 'internal': {

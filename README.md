@@ -72,6 +72,8 @@ Currently supported language features:
 	- Files in the workspace.
 	- Headers in other files.
 
+- Update links on file rename (experimental)
+
 ## Usage
 
 To get started using this library, first install it into your workspace:

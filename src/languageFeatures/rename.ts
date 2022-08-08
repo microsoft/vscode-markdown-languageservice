@@ -12,9 +12,11 @@ import { arePositionsEqual, translatePosition } from '../types/position';
 import { modifyRange, rangeContains } from '../types/range';
 import { ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
+import { WorkspaceEditBuilder } from '../util/editBuilder';
+import { Schemes } from '../util/schemes';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
-import { InternalHref, resolveDocumentLink } from './documentLinks';
-import { MdHeaderReference, MdLinkReference, MdReference, MdReferencesProvider } from './references';
+import { InternalHref, MdLink, resolveDocumentLink } from './documentLinks';
+import { MdHeaderReference, MdReference, MdReferencesProvider } from './references';
 
 
 export interface MdReferencesResponse {
@@ -104,20 +106,13 @@ export class MdRenameProvider extends Disposable {
 					return { range: fragmentRange, placeholder: document.getText(fragmentRange) };
 				}
 
-				const range = this.getFilePathRange(triggerRef);
+				const range = getFilePathRange(triggerRef.link);
 				if (!range) {
 					throw new Error(this.renameNotSupportedText);
 				}
 				return { range, placeholder: tryDecodeUri(document.getText(range)) };
 			}
 		}
-	}
-
-	private getFilePathRange(ref: MdLinkReference): lsp.Range {
-		if (ref.link.source.fragmentRange) {
-			return modifyRange(ref.link.source.hrefRange, undefined, translatePosition(ref.link.source.fragmentRange.start, { characterDelta: -1 }));
-		}
-		return ref.link.source.hrefRange;
 	}
 
 	private findHeaderDeclaration(references: readonly MdReference[]): MdHeaderReference | undefined {
@@ -192,7 +187,7 @@ export class MdRenameProvider extends Disposable {
 					newPath = '/' + path.relative(root.path.toString(true), rawNewFilePath.path.toString(true));
 				} else {
 					const rootDir = Utils.dirname(ref.link.source.resource);
-					if (rootDir.scheme === rawNewFilePath.path.scheme && rootDir.scheme !== 'untitled') {
+					if (rootDir.scheme === rawNewFilePath.path.scheme && rootDir.scheme !== Schemes.untitled) {
 						newPath = path.relative(rootDir.toString(true), rawNewFilePath.path.toString(true));
 						if (newName.startsWith('./') && !newPath.startsWith('../') || newName.startsWith('.\\') && !newPath.startsWith('..\\')) {
 							newPath = './' + newPath;
@@ -201,7 +196,7 @@ export class MdRenameProvider extends Disposable {
 						newPath = newName;
 					}
 				}
-				builder.replace(ref.link.source.resource, this.getFilePathRange(ref), encodeURI(newPath.replace(/\\/g, '/')));
+				builder.replace(ref.link.source.resource, getFilePathRange(ref.link), encodeURI(newPath.replace(/\\/g, '/')));
 			}
 		}
 
@@ -281,31 +276,9 @@ export class MdRenameProvider extends Disposable {
 	}
 }
 
-class WorkspaceEditBuilder {
-
-	private edit: lsp.WorkspaceEdit = {
-		changes: {},
-	};
-
-	replace(resource: URI, range: lsp.Range, newText: string) {
-		const resourceKey = resource.toString();
-		let edits = this.edit.changes![resourceKey];
-		if (!edits) {
-			edits = [];
-			this.edit.changes![resourceKey] = edits;
-		}
-
-		edits.push(lsp.TextEdit.replace(range, newText));
+export function getFilePathRange(link: MdLink): lsp.Range {
+	if (link.source.fragmentRange) {
+		return modifyRange(link.source.hrefRange, undefined, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 }));
 	}
-
-	getEdit(): lsp.WorkspaceEdit {
-		return this.edit;
-	}
-
-	renameFile(targetUri: URI, resolvedNewFilePath: URI) {
-		if (!this.edit.documentChanges) {
-			this.edit.documentChanges = [];
-		}
-		this.edit.documentChanges.push(lsp.RenameFile.create(targetUri.toString(), resolvedNewFilePath.toString()));
-	}
+	return link.source.hrefRange;
 }

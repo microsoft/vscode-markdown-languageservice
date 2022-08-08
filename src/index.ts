@@ -11,6 +11,7 @@ import { MdDefinitionProvider } from './languageFeatures/definitions';
 import { DiagnosticComputer, DiagnosticOptions, DiagnosticsManager, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
 import { createWorkspaceLinkCache, MdLinkProvider } from './languageFeatures/documentLinks';
 import { MdDocumentSymbolProvider } from './languageFeatures/documentSymbols';
+import { MdFileRenameProvider } from './languageFeatures/fileRename';
 import { MdFoldingProvider } from './languageFeatures/folding';
 import { MdPathCompletionProvider } from './languageFeatures/pathCompletions';
 import { MdReferencesProvider } from './languageFeatures/references';
@@ -119,6 +120,15 @@ export interface IMdLanguageService {
 	getRenameEdit(document: ITextDocument, position: lsp.Position, nameName: string, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined>;
 
 	/**
+	 * Get the edits for a file rename. This update links to the renamed files as well as links within the renamed files.
+	 *
+	 * This should be invoked after the rename has already happened.
+	 *
+	 * @return A workspace edit that performs the rename or undefined if the rename cannot be performed.
+	 */
+	getRenameFilesInWorkspaceEdit(edits: Iterable<{ readonly oldUri: URI; readonly newUri: URI }>, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined>;
+
+	/**
 	 * Compute diagnostics for a given file.
 	 *
 	 * Note that this function is stateless and revalidated all links every time you make the request. Use {@link createPullDiagnosticsManager}
@@ -178,6 +188,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const referencesProvider = new MdReferencesProvider(config, init.parser, init.workspace, tocProvider, linkCache, logger);
 	const definitionsProvider = new MdDefinitionProvider(config, init.workspace, tocProvider, linkCache);
 	const renameProvider = new MdRenameProvider(config, init.workspace, referencesProvider, init.parser.slugifier);
+	const fileRenameProvider = new MdFileRenameProvider(config, init.workspace, linkCache, referencesProvider);
 	const diagnosticsComputer = new DiagnosticComputer(config, init.workspace, linkProvider, tocProvider);
 
 	return Object.freeze<IMdLanguageService>({
@@ -202,6 +213,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 		getDefinition: definitionsProvider.provideDefinition.bind(definitionsProvider),
 		prepareRename: renameProvider.prepareRename.bind(renameProvider),
 		getRenameEdit: renameProvider.provideRenameEdits.bind(renameProvider),
+		getRenameFilesInWorkspaceEdit: fileRenameProvider.getRenameFilesInWorkspaceEdit.bind(fileRenameProvider),
 		computeDiagnostics: async (doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]> => {
 			return (await diagnosticsComputer.compute(doc, options, token))?.diagnostics;
 		},

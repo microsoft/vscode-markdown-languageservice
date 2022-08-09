@@ -7,7 +7,7 @@ import * as assert from 'assert';
 import * as ls from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
-import { getLsConfiguration } from '../config';
+import { getLsConfiguration, LsConfiguration } from '../config';
 import { MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdPathCompletionProvider } from '../languageFeatures/pathCompletions';
 import { MdTableOfContentsProvider } from '../tableOfContents';
@@ -21,14 +21,15 @@ import { nulLogger } from './nulLogging';
 import { CURSOR, getCursorPositions, joinLines, withStore, workspacePath } from './util';
 
 
-async function getCompletionsAtCursor(store: DisposableStore, resource: URI, fileContents: string, workspace?: IWorkspace) {
+async function getCompletionsAtCursor(store: DisposableStore, resource: URI, fileContents: string, workspace?: IWorkspace, configOverrides: Partial<LsConfiguration> = {}) {
 	const doc = new InMemoryDocument(resource, fileContents);
 
 	const engine = createNewMarkdownEngine();
 	const ws = workspace ?? store.add(new InMemoryWorkspace([doc]));
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, ws, nulLogger));
 	const linkProvider = store.add(new MdLinkProvider(engine, ws, tocProvider, nulLogger));
-	const provider = new MdPathCompletionProvider(getLsConfiguration({}), ws, engine, linkProvider);
+	const config = getLsConfiguration(configOverrides);
+	const provider = new MdPathCompletionProvider(config, ws, engine, linkProvider);
 	const cursorPositions = getCursorPositions(fileContents, doc);
 	const completions = await provider.provideCompletionItems(doc, cursorPositions[0], {
 		triggerCharacter: undefined,
@@ -317,7 +318,7 @@ suite('Path completions', () => {
 		]);
 	}));
 
-	test('Should return completions for links with square brakets', withStore(async (store) => {
+	test('Should return completions for links with square brackets', withStore(async (store) => {
 		const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
 			`[x [y] z](#${CURSOR}`,
 			``,
@@ -326,6 +327,29 @@ suite('Path completions', () => {
 
 		assertCompletionsEqual(completions, [
 			{ label: '#a-b-c' },
+		]);
+	}));
+
+	test('Should exclude completions for excluded paths', withStore(async (store) => {
+		const workspace = new InMemoryWorkspace([
+			new InMemoryDocument(workspacePath('a.md'), ''),
+			new InMemoryDocument(workspacePath('.other.md'), ''),
+			new InMemoryDocument(workspacePath('sub', 'file.md'), ''),
+			new InMemoryDocument(workspacePath('b.md'), ''),
+		]);
+
+		const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+			`[def]: ./${CURSOR}`
+		), workspace, {
+			excludePaths: [
+				'**/sub/**',
+				'**/.*',
+			]
+		});
+
+		assertCompletionsEqual(completions, [
+			{ label: 'a.md', insertText: 'a.md' },
+			{ label: 'b.md', insertText: 'b.md' },
 		]);
 	}));
 });

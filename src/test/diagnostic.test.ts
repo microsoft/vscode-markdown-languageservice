@@ -43,7 +43,7 @@ function getDiagnosticsOptions(options: Partial<DiagnosticOptions>): DiagnosticO
 }
 
 function assertDiagnosticsEqual(actual: readonly lsp.Diagnostic[], expectedRanges: readonly lsp.Range[]) {
-	assert.strictEqual(actual.length, expectedRanges.length, "Diagnostic count equal");
+	assert.strictEqual(actual.length, expectedRanges.length, 'Diagnostic count equal');
 
 	for (let i = 0; i < actual.length; ++i) {
 		assertRangeEqual(actual[i].range, expectedRanges[i], `Range ${i} to be equal`);

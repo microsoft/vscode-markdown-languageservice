@@ -7,7 +7,7 @@ import { dirname, resolve } from 'path';
 import type { CancellationToken, CompletionContext } from 'vscode-languageserver-protocol';
 import * as lsp from 'vscode-languageserver-types';
 import { URI, Utils } from 'vscode-uri';
-import { LsConfiguration } from '../config';
+import { isExcludedPath, LsConfiguration } from '../config';
 import { IMdParser } from '../parser';
 import { TableOfContents } from '../tableOfContents';
 import { translatePosition } from '../types/position';
@@ -309,8 +309,8 @@ export class MdPathCompletionProvider {
 		}
 
 		for (const [name, type] of dirInfo) {
-			// Exclude paths that start with `.`
-			if (name.startsWith('.')) {
+			const uri = Utils.joinPath(parentDir, name);
+			if (isExcludedPath(this.configuration, uri)) {
 				continue;
 			}
 

@@ -24,7 +24,7 @@ import { assertRangeEqual, joinLines, withStore, workspacePath } from './util';
 /**
  * Get all the edits for a file rename.
  */
-function getFileRenameEdits(store: DisposableStore, edits: Iterable<{ oldUri: URI, newUri: URI }>, workspace: IWorkspace): Promise<lsp.WorkspaceEdit | undefined> {
+function getFileRenameEdits(store: DisposableStore, edits: ReadonlyArray<{ oldUri: URI, newUri: URI }>, workspace: IWorkspace): Promise<lsp.WorkspaceEdit | undefined> {
 	const config = getLsConfiguration({});
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
@@ -47,7 +47,7 @@ function assertEditsEqual(actualEdit: lsp.WorkspaceEdit, ...expectedTextEdits: R
 		const expected = expectedTextEdits[i];
 		const actual = actualTextEdits[i];
 
-		assert.strictEqual(actual[0].toString(), expected.uri.toString(), `Ref '${i}' has expected document`);
+		assert.strictEqual(actual[0].toString(), expected.uri.toString(), `Edit '${i}' has expected document`);
 
 		const actualEditForDoc = actual[1];
 		const expectedEditsForDoc = expected.edits;
@@ -162,6 +162,43 @@ suite('File Rename', () => {
 		});
 	}));
 
+	test('Should support multiple file renames', withStore(async (store) => {
+		const uri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(uri, joinLines(
+			`[cat](/cat.png)`,
+			`[dog](/dog.png)`,
+
+			`[cat](cat.png)`,
+			`[dog](dog.png)`,
+
+			`[cat](./cat.png)`,
+			`[dog](./dog.png)`,
+
+			`[cat]: ./cat.png`,
+			`[dog]: ./dog.png`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const edit = await getFileRenameEdits(store, [
+			{ oldUri: workspacePath('cat.png'), newUri: workspacePath('kitty.png') },
+			{ oldUri: workspacePath('dog.png'), newUri: workspacePath('hot', 'doggo.png') },
+		], workspace);
+
+		assertEditsEqual(edit!, {
+			uri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 6, 0, 14), '/kitty.png'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 13), 'kitty.png'),
+				lsp.TextEdit.replace(makeRange(4, 6, 4, 15), './kitty.png'),
+				lsp.TextEdit.replace(makeRange(6, 7, 6, 16), './kitty.png'),
+
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 14), '/hot/doggo.png'),
+				lsp.TextEdit.replace(makeRange(3, 6, 3, 13), 'hot/doggo.png'),
+				lsp.TextEdit.replace(makeRange(5, 6, 5, 15), './hot/doggo.png'),
+				lsp.TextEdit.replace(makeRange(7, 7, 7, 16), './hot/doggo.png'),
+			]
+		});
+	}));
+
 	test('Move of markdown file should update links within that file', withStore(async (store) => {
 		const oldUri = workspacePath('doc.md');
 		const newUri = workspacePath('sub', 'new.md');
@@ -169,9 +206,9 @@ suite('File Rename', () => {
 		// Create the workspace in the state just after the file rename
 		const doc = new InMemoryDocument(newUri, joinLines(
 			`[abc](/other.md#frag)`,
-			`[abc](other.md#frag)`,
-			`[abc](./other.md#frag)`,
-			`[xyz]: ./other.md#frag`,
+			`[abc](other.md#frag)`, // 1
+			`[abc](./other.md#frag)`, // 2
+			`[xyz]: ./other.md#frag`, // 3
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
@@ -192,9 +229,9 @@ suite('File Rename', () => {
 		// Create the workspace in the state just after the file rename
 		const doc = new InMemoryDocument(newUri, joinLines(
 			`[abc](/other#frag)`,
-			`[abc](other#frag)`,
-			`[abc](./other#frag)`,
-			`[xyz]: ./other#frag`,
+			`[abc](other#frag)`, // 1
+			`[abc](./other#frag)`, // 2
+			`[xyz]: ./other#frag`, // 3
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
@@ -208,4 +245,107 @@ suite('File Rename', () => {
 		});
 	}));
 
+	test('Rename directory should update links to md files in that dir', withStore(async (store) => {
+		const uri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(uri, joinLines(
+			`[abc](/old/a.md)`, // 1
+			`[abc](/old/b.md)`, // 2
+			`[abc](old/a.md)`, // 3
+			`[abc](old/b.md)`, // 4
+			`[abc](./old/a.md)`, // 5
+			`[abc](./old/b.md)`, // 6
+			`[xyz]: ./old/a.md`, // 7
+			`[xyz]: ./old/b.md`, // 8
+			`[abc](/other.md)`,
+			`[xyz1]: ./other.md`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([
+			doc,
+			workspacePath('new', 'a.md'),
+			workspacePath('new', 'b.md'),
+		]));
+
+		const oldUri = workspacePath('old');
+		const newUri = workspacePath('new');
+
+		const edit = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
+		assertEditsEqual(edit!, {
+			uri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 6, 0, 15), '/new/a.md'),
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 15), '/new/b.md'),
+
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 14), 'new/a.md'),
+				lsp.TextEdit.replace(makeRange(3, 6, 3, 14), 'new/b.md'),
+
+				lsp.TextEdit.replace(makeRange(4, 6, 4, 16), './new/a.md'),
+				lsp.TextEdit.replace(makeRange(5, 6, 5, 16), './new/b.md'),
+
+				lsp.TextEdit.replace(makeRange(6, 7, 6, 17), './new/a.md'),
+				lsp.TextEdit.replace(makeRange(7, 7, 7, 17), './new/b.md'),
+			]
+		});
+	}));
+
+	test('Rename within moved file on directory move should update links within dir', withStore(async (store) => {
+		const uri = workspacePath('new', 'doc.md');
+		const doc = new InMemoryDocument(uri, joinLines(
+			`[abc](/old/a.md)`, // 1
+			`[abc](/old/b.md)`, // 2
+			`[abc](a.md)`,
+			`[abc](b.md)`,
+			`[abc](./a.md)`,
+			`[abc](./b.md)`,
+			`[xyz]: ./a.md`,
+			`[xyz]: ./b.md`,
+			`[xyz]: ../old/a.md`, // 3
+			`[xyz]: ../old/b.md`, // 4
+			`[abc](/other.md)`,
+			`[xyz1]: ./other.md`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([
+			doc,
+			workspacePath('new', 'a.md'),
+			workspacePath('new', 'b.md'),
+		]));
+
+		const oldUri = workspacePath('old');
+		const newUri = workspacePath('new');
+
+		const edit = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri }], workspace);
+		assertEditsEqual(edit!, {
+			uri: uri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 6, 0, 15), '/new/a.md'),
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 15), '/new/b.md'),
+
+				lsp.TextEdit.replace(makeRange(8, 7, 8, 18), './a.md'),
+				lsp.TextEdit.replace(makeRange(9, 7, 9, 18), './b.md'),
+			]
+		});
+	}));
+
+	test('Rename within moved file on directory move should update links to files outside of dir', withStore(async (store) => {
+		const uri = workspacePath('new', 'sub', 'doc.md');
+		const doc = new InMemoryDocument(uri, joinLines(
+			`[abc](/a.md)`,
+			`[abc](/b.md)`,
+			`[abc](../a.md)`, // 1
+			`[abc](../b.md)`, // 2
+		));
+		const workspace = store.add(new InMemoryWorkspace([
+			doc,
+			workspacePath('a.md'),
+			workspacePath('b.md'),
+		]));
+
+		const oldUri = workspacePath('old');
+		const newUri = workspacePath('new', 'sub');
+
+		const edit = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri }], workspace);
+		assertEditsEqual(edit!, {
+			uri: uri, edits: [
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 13), '../../a.md'),
+				lsp.TextEdit.replace(makeRange(3, 6, 3, 13), '../../b.md'),
+			]
+		});
+	}));
 });

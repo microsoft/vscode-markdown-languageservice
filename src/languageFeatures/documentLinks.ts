@@ -19,20 +19,26 @@ import { r } from '../util/string';
 import { getWorkspaceFolder, IWorkspace } from '../workspace';
 import { MdDocumentInfoCache, MdWorkspaceInfoCache } from '../workspaceCache';
 
+export enum HrefKind {
+	External = 1,
+	Internal = 2,
+	Reference = 3,
+}
+
 
 export interface ExternalHref {
-	readonly kind: 'external';
+	readonly kind: HrefKind.External;
 	readonly uri: URI;
 }
 
 export interface InternalHref {
-	readonly kind: 'internal';
+	readonly kind: HrefKind.Internal;
 	readonly path: URI;
 	readonly fragment: string;
 }
 
 export interface ReferenceHref {
-	readonly kind: 'reference';
+	readonly kind: HrefKind.Reference;
 	readonly ref: string;
 }
 
@@ -46,7 +52,7 @@ function resolveLink(
 	const cleanLink = stripAngleBrackets(link);
 	if (/^[a-z\-][a-z\-]+:/i.test(cleanLink)) {
 		// Looks like a uri
-		return { kind: 'external', uri: URI.parse(cleanLink) };
+		return { kind: HrefKind.External, uri: URI.parse(cleanLink) };
 	}
 
 	const resolved = resolveDocumentLink(URI.parse(document.uri), link, workspace);
@@ -55,7 +61,7 @@ function resolveLink(
 	}
 
 	return {
-		kind: 'internal',
+		kind: HrefKind.Internal,
 		path: resolved.path,
 		fragment: resolved.fragment,
 	};
@@ -134,14 +140,19 @@ export interface MdLinkSource {
 	readonly fragmentRange: lsp.Range | undefined;
 }
 
+export enum MdLinkKind {
+	Link = 1,
+	Definition = 2,
+}
+
 export interface MdInlineLink {
-	readonly kind: 'link';
+	readonly kind: MdLinkKind.Link;
 	readonly source: MdLinkSource;
 	readonly href: LinkHref;
 }
 
 export interface MdLinkDefinition {
-	readonly kind: 'definition';
+	readonly kind: MdLinkKind.Definition;
 	readonly source: MdLinkSource;
 	readonly ref: {
 		readonly range: lsp.Range;
@@ -178,7 +189,7 @@ function extractDocumentLink(
 	const hrefStart = translatePosition(linkStart, { characterDelta: pre.length + (isAngleBracketLink ? 1 : 0) });
 	const hrefEnd = translatePosition(hrefStart, { characterDelta: link.length });
 	return {
-		kind: 'link',
+		kind: MdLinkKind.Link,
 		href: linkTarget,
 		source: {
 			hrefText: link,
@@ -379,7 +390,7 @@ export class MdLinkComputer {
 			const hrefStart = translatePosition(linkStart, { characterDelta: 1 });
 			const hrefEnd = translatePosition(hrefStart, { characterDelta: link.length });
 			yield {
-				kind: 'link',
+				kind: MdLinkKind.Link,
 				href: linkTarget,
 				source: {
 					hrefText: link,
@@ -431,7 +442,7 @@ export class MdLinkComputer {
 
 			const linkEnd = translatePosition(linkStart, { characterDelta: match[0].length - match[1].length });
 			yield {
-				kind: 'link',
+				kind: MdLinkKind.Link,
 				source: {
 					hrefText: reference,
 					pathText: reference,
@@ -441,7 +452,7 @@ export class MdLinkComputer {
 					fragmentRange: undefined,
 				},
 				href: {
-					kind: 'reference',
+					kind: HrefKind.Reference,
 					ref: reference,
 				}
 			};
@@ -475,7 +486,7 @@ export class MdLinkComputer {
 			const refRange: lsp.Range = { start: refStart, end: translatePosition(refStart, { characterDelta: reference.length }) };
 			const linkEnd = translatePosition(linkStart, { characterDelta: match[0].length });
 			yield {
-				kind: 'definition',
+				kind: MdLinkKind.Definition,
 				source: {
 					hrefText: linkText,
 					resource: URI.parse(document.uri),
@@ -500,7 +511,7 @@ export class LinkDefinitionSet implements Iterable<[string, MdLinkDefinition]> {
 
 	constructor(links: Iterable<MdLink>) {
 		for (const link of links) {
-			if (link.kind === 'definition') {
+			if (link.kind === MdLinkKind.Definition) {
 				this._map.set(link.ref.text, link);
 			}
 		}
@@ -562,7 +573,7 @@ export class MdLinkProvider extends Disposable {
 		}
 
 		const mdLink = link.data as MdLink;
-		if (mdLink.href.kind !== 'internal') {
+		if (mdLink.href.kind !== HrefKind.Internal) {
 			return undefined;
 		}
 
@@ -629,13 +640,13 @@ export class MdLinkProvider extends Disposable {
 
 	private toValidDocumentLink(link: MdLink, definitionSet: LinkDefinitionSet): lsp.DocumentLink | undefined {
 		switch (link.href.kind) {
-			case 'external': {
+			case HrefKind.External: {
 				return {
 					range: link.source.hrefRange,
 					target: link.href.uri.toString(true),
 				};
 			}
-			case 'internal': {
+			case HrefKind.Internal: {
 				return {
 					range: link.source.hrefRange,
 					target: undefined, // Needs to be resolved later
@@ -643,7 +654,7 @@ export class MdLinkProvider extends Disposable {
 					data: link,
 				};
 			}
-			case 'reference': {
+			case HrefKind.Reference: {
 				// We only render reference links in the editor if they are actually defined.
 				// This matches how reference links are rendered by markdown-it.
 				const def = definitionSet.lookup(link.href.ref);

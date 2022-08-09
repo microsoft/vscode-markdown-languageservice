@@ -12,8 +12,8 @@ import { WorkspaceEditBuilder } from '../util/editBuilder';
 import { looksLikeMarkdownPath } from '../util/file';
 import { IWorkspace } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
-import { MdLink, resolveDocumentLink } from './documentLinks';
-import { MdReferencesProvider } from './references';
+import { HrefKind, MdLink, resolveDocumentLink } from './documentLinks';
+import { MdReferenceKind, MdReferencesProvider } from './references';
 import { getFilePathRange, getLinkRenameText } from './rename';
 
 
@@ -64,7 +64,7 @@ export class MdFileRenameProvider extends Disposable {
 
 		const links = (await this.linkCache.getForDocs([doc]))[0];
 		for (const link of links) {
-			if (link.href.kind === 'internal') {
+			if (link.href.kind === HrefKind.Internal) {
 				if (link.source.hrefText.startsWith('/')) {
 					// We likely don't need to update anything since an absolute path is used
 				} else {
@@ -91,7 +91,7 @@ export class MdFileRenameProvider extends Disposable {
 
 		// TODO: this is very similar to the code in 'rename.ts'
 		for (const ref of refs) {
-			if (ref.kind !== 'link' || ref.link.href.kind !== 'internal') {
+			if (ref.kind !== MdReferenceKind.Link || ref.link.href.kind !== HrefKind.Internal) {
 				continue;
 			}
 

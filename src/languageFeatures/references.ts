@@ -17,13 +17,18 @@ import { Disposable } from '../util/dispose';
 import { looksLikeMarkdownPath } from '../util/file';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
-import { InternalHref, MdLink } from './documentLinks';
+import { HrefKind, InternalHref, MdLink, MdLinkKind } from './documentLinks';
+
+export enum MdReferenceKind {
+	Link = 1,
+	Header = 2,
+}
 
 /**
  * A link in a markdown file.
  */
 export interface MdLinkReference {
-	readonly kind: 'link';
+	readonly kind: MdReferenceKind.Link;
 	readonly isTriggerLocation: boolean;
 	readonly isDefinition: boolean;
 	readonly location: lsp.Location;
@@ -35,7 +40,7 @@ export interface MdLinkReference {
  * A header in a markdown file.
  */
 export interface MdHeaderReference {
-	readonly kind: 'header';
+	readonly kind: MdReferenceKind.Header;
 
 	readonly isTriggerLocation: boolean;
 	readonly isDefinition: boolean;
@@ -120,7 +125,7 @@ export class MdReferencesProvider extends Disposable {
 		const references: MdReference[] = [];
 
 		references.push({
-			kind: 'header',
+			kind: MdReferenceKind.Header,
 			isTriggerLocation: true,
 			isDefinition: true,
 			location: header.headerLocation,
@@ -129,12 +134,12 @@ export class MdReferencesProvider extends Disposable {
 		});
 
 		for (const link of links) {
-			if (link.href.kind === 'internal'
+			if (link.href.kind === HrefKind.Internal
 				&& this.looksLikeLinkToDoc(link.href, URI.parse(document.uri))
 				&& this.parser.slugifier.fromHeading(link.href.fragment).value === header.slug.value
 			) {
 				references.push({
-					kind: 'link',
+					kind: MdReferenceKind.Link,
 					isTriggerLocation: false,
 					isDefinition: false,
 					link,
@@ -150,7 +155,7 @@ export class MdReferencesProvider extends Disposable {
 		const docLinks = (await this.linkCache.getForDocs([document]))[0];
 
 		for (const link of docLinks) {
-			if (link.kind === 'definition') {
+			if (link.kind === MdLinkKind.Definition) {
 				// We could be in either the ref name or the definition
 				if (rangeContains(link.ref.range, position)) {
 					return Array.from(this.getReferencesToLinkReference(docLinks, link.ref.text, { resource: URI.parse(document.uri), range: link.ref.range }));
@@ -173,18 +178,18 @@ export class MdReferencesProvider extends Disposable {
 			return [];
 		}
 
-		if (sourceLink.href.kind === 'reference') {
+		if (sourceLink.href.kind === HrefKind.Reference) {
 			return Array.from(this.getReferencesToLinkReference(allLinksInWorkspace, sourceLink.href.ref, { resource: sourceLink.source.resource, range: sourceLink.source.hrefRange }));
 		}
 
-		if (sourceLink.href.kind === 'external') {
+		if (sourceLink.href.kind === HrefKind.External) {
 			const references: MdReference[] = [];
 
 			for (const link of allLinksInWorkspace) {
-				if (link.href.kind === 'external' && link.href.uri.toString() === sourceLink.href.uri.toString()) {
+				if (link.href.kind === HrefKind.External && link.href.uri.toString() === sourceLink.href.uri.toString()) {
 					const isTriggerLocation = sourceLink.source.resource.fsPath === link.source.resource.fsPath && areRangesEqual(sourceLink.source.hrefRange, link.source.hrefRange);
 					references.push({
-						kind: 'link',
+						kind: MdReferenceKind.Link,
 						isTriggerLocation,
 						isDefinition: false,
 						link,
@@ -207,7 +212,7 @@ export class MdReferencesProvider extends Disposable {
 			const entry = toc.lookup(sourceLink.href.fragment);
 			if (entry) {
 				references.push({
-					kind: 'header',
+					kind: MdReferenceKind.Header,
 					isTriggerLocation: false,
 					isDefinition: true,
 					location: entry.headerLocation,
@@ -217,14 +222,14 @@ export class MdReferencesProvider extends Disposable {
 			}
 
 			for (const link of allLinksInWorkspace) {
-				if (link.href.kind !== 'internal' || !this.looksLikeLinkToDoc(link.href, resolvedResource)) {
+				if (link.href.kind !== HrefKind.Internal || !this.looksLikeLinkToDoc(link.href, resolvedResource)) {
 					continue;
 				}
 
 				if (this.parser.slugifier.fromHeading(link.href.fragment).equals(this.parser.slugifier.fromHeading(sourceLink.href.fragment))) {
 					const isTriggerLocation = sourceLink.source.resource.fsPath === link.source.resource.fsPath && areRangesEqual(sourceLink.source.hrefRange, link.source.hrefRange);
 					references.push({
-						kind: 'link',
+						kind: MdReferenceKind.Link,
 						isTriggerLocation,
 						isDefinition: false,
 						link,
@@ -250,7 +255,7 @@ export class MdReferencesProvider extends Disposable {
 
 	private *findLinksToFile(resource: URI, links: readonly MdLink[], sourceLink: MdLink | undefined): Iterable<MdReference> {
 		for (const link of links) {
-			if (link.href.kind !== 'internal' || !this.looksLikeLinkToDoc(link.href, resource)) {
+			if (link.href.kind !== HrefKind.Internal || !this.looksLikeLinkToDoc(link.href, resource)) {
 				continue;
 			}
 
@@ -262,7 +267,7 @@ export class MdReferencesProvider extends Disposable {
 			const isTriggerLocation = !!sourceLink && sourceLink.source.resource.fsPath === link.source.resource.fsPath && areRangesEqual(sourceLink.source.hrefRange, link.source.hrefRange);
 			const pathRange = this.getPathRange(link);
 			yield {
-				kind: 'link',
+				kind: MdReferenceKind.Link,
 				isTriggerLocation,
 				isDefinition: false,
 				link,
@@ -274,9 +279,9 @@ export class MdReferencesProvider extends Disposable {
 	private *getReferencesToLinkReference(allLinks: Iterable<MdLink>, refToFind: string, from: { resource: URI; range: lsp.Range }): Iterable<MdReference> {
 		for (const link of allLinks) {
 			let ref: string;
-			if (link.kind === 'definition') {
+			if (link.kind === MdLinkKind.Definition) {
 				ref = link.ref.text;
-			} else if (link.href.kind === 'reference') {
+			} else if (link.href.kind === HrefKind.Reference) {
 				ref = link.href.ref;
 			} else {
 				continue;
@@ -284,13 +289,13 @@ export class MdReferencesProvider extends Disposable {
 
 			if (ref === refToFind && link.source.resource.fsPath === from.resource.fsPath) {
 				const isTriggerLocation = from.resource.fsPath === link.source.resource.fsPath && (
-					(link.href.kind === 'reference' && areRangesEqual(from.range, link.source.hrefRange)) || (link.kind === 'definition' && areRangesEqual(from.range, link.ref.range)));
+					(link.href.kind === HrefKind.Reference && areRangesEqual(from.range, link.source.hrefRange)) || (link.kind === MdLinkKind.Definition && areRangesEqual(from.range, link.ref.range)));
 
 				const pathRange = this.getPathRange(link);
 				yield {
-					kind: 'link',
+					kind: MdReferenceKind.Link,
 					isTriggerLocation,
-					isDefinition: link.kind === 'definition',
+					isDefinition: link.kind === MdLinkKind.Definition,
 					link,
 					location: { uri: from.resource.toString(), range: pathRange },
 				};

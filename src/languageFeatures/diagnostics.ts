@@ -18,7 +18,7 @@ import { looksLikeMarkdownPath } from '../util/file';
 import { Limiter } from '../util/limiter';
 import { ResourceMap } from '../util/resourceMap';
 import { FileStat, IWorkspace, IWorkspaceWithWatching as IWorkspaceWithFileWatching, statLinkToMarkdownFile } from '../workspace';
-import { InternalHref, LinkDefinitionSet, MdLink, MdLinkProvider, MdLinkSource } from './documentLinks';
+import { HrefKind, InternalHref, LinkDefinitionSet, MdLink, MdLinkProvider, MdLinkSource } from './documentLinks';
 
 const localize = nls.loadMessageBundle();
 
@@ -67,7 +67,7 @@ class FileLinkMap {
 
 	constructor(links: Iterable<MdLink>) {
 		for (const link of links) {
-			if (link.href.kind !== 'internal') {
+			if (link.href.kind !== HrefKind.Internal) {
 				continue;
 			}
 
@@ -138,7 +138,7 @@ export class DiagnosticComputer {
 
 		const diagnostics: lsp.Diagnostic[] = [];
 		for (const link of links) {
-			if (link.href.kind === 'internal'
+			if (link.href.kind === HrefKind.Internal
 				&& link.source.hrefText.startsWith('#')
 				&& link.href.path.toString() === doc.uri.toString()
 				&& link.href.fragment
@@ -168,7 +168,7 @@ export class DiagnosticComputer {
 		}
 
 		for (const link of links) {
-			if (link.href.kind === 'reference' && !definitions.lookup(link.href.ref)) {
+			if (link.href.kind === HrefKind.Reference && !definitions.lookup(link.href.ref)) {
 				yield {
 					code: DiagnosticCode.link_noSuchReferences,
 					message: localize('invalidReferenceLink', 'No link definition found: \'{0}\'', link.href.ref),
@@ -325,7 +325,7 @@ class FileLinkState extends Disposable {
 	updateLinksForDocument(document: URI, links: readonly MdLink[], statCache: ResourceMap<{ readonly exists: boolean }>) {
 		const linkedToResource = new Set<{ path: URI; exists: boolean }>(
 			links
-				.filter(link => link.href.kind === 'internal')
+				.filter(link => link.href.kind === HrefKind.Internal)
 				.map(link => ({ path: (link.href as InternalHref).path, exists: !!(statCache.get((link.href as InternalHref).path)?.exists) })));
 
 		// First decrement watcher counter for previous document state

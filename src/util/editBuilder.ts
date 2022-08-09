@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { URI } from "vscode-uri";
 import * as lsp from 'vscode-languageserver-types';
+import { URI } from 'vscode-uri';
 
 export class WorkspaceEditBuilder {
 

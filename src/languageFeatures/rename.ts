@@ -15,8 +15,8 @@ import { Disposable } from '../util/dispose';
 import { WorkspaceEditBuilder } from '../util/editBuilder';
 import { Schemes } from '../util/schemes';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
-import { InternalHref, MdLink, MdLinkSource, resolveDocumentLink } from './documentLinks';
-import { MdHeaderReference, MdReference, MdReferencesProvider } from './references';
+import { HrefKind, InternalHref, MdLink, MdLinkKind, MdLinkSource, resolveDocumentLink } from './documentLinks';
+import { MdHeaderReference, MdReference, MdReferenceKind, MdReferencesProvider } from './references';
 
 
 export interface MdReferencesResponse {
@@ -81,18 +81,18 @@ export class MdRenameProvider extends Disposable {
 
 		const triggerRef = allRefsInfo.triggerRef;
 		switch (triggerRef.kind) {
-			case 'header': {
+			case MdReferenceKind.Header: {
 				return { range: triggerRef.headerTextLocation.range, placeholder: triggerRef.headerText };
 			}
-			case 'link': {
-				if (triggerRef.link.kind === 'definition') {
+			case MdReferenceKind.Link: {
+				if (triggerRef.link.kind === MdLinkKind.Definition) {
 					// We may have been triggered on the ref or the definition itself
 					if (rangeContains(triggerRef.link.ref.range, position)) {
 						return { range: triggerRef.link.ref.range, placeholder: triggerRef.link.ref.text };
 					}
 				}
 
-				if (triggerRef.link.href.kind === 'external') {
+				if (triggerRef.link.href.kind === HrefKind.External) {
 					return { range: triggerRef.link.source.hrefRange, placeholder: document.getText(triggerRef.link.source.hrefRange) };
 				}
 
@@ -116,7 +116,7 @@ export class MdRenameProvider extends Disposable {
 	}
 
 	private findHeaderDeclaration(references: readonly MdReference[]): MdHeaderReference | undefined {
-		return references.find(ref => ref.isDefinition && ref.kind === 'header') as MdHeaderReference | undefined;
+		return references.find(ref => ref.isDefinition && ref.kind === MdReferenceKind.Header) as MdHeaderReference | undefined;
 	}
 
 	public async provideRenameEdits(document: ITextDocument, position: lsp.Position, newName: string, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined> {
@@ -131,15 +131,15 @@ export class MdRenameProvider extends Disposable {
 
 		const triggerRef = allRefsInfo.triggerRef;
 
-		if (triggerRef.kind === 'link' && (
-			(triggerRef.link.kind === 'definition' && rangeContains(triggerRef.link.ref.range, position)) || triggerRef.link.href.kind === 'reference'
+		if (triggerRef.kind === MdReferenceKind.Link && (
+			(triggerRef.link.kind === MdLinkKind.Definition && rangeContains(triggerRef.link.ref.range, position)) || triggerRef.link.href.kind === HrefKind.Reference
 		)) {
 			return this.renameReferenceLinks(allRefsInfo, newName);
-		} else if (triggerRef.kind === 'link' && triggerRef.link.href.kind === 'external') {
+		} else if (triggerRef.kind === MdReferenceKind.Link && triggerRef.link.href.kind === HrefKind.External) {
 			return this.renameExternalLink(allRefsInfo, newName);
-		} else if (triggerRef.kind === 'header' || (triggerRef.kind === 'link' && triggerRef.link.source.fragmentRange && rangeContains(triggerRef.link.source.fragmentRange, position) && (triggerRef.link.kind === 'definition' || triggerRef.link.kind === 'link' && triggerRef.link.href.kind === 'internal'))) {
+		} else if (triggerRef.kind === MdReferenceKind.Header || (triggerRef.kind === MdReferenceKind.Link && triggerRef.link.source.fragmentRange && rangeContains(triggerRef.link.source.fragmentRange, position) && (triggerRef.link.kind === MdLinkKind.Definition || triggerRef.link.kind === MdLinkKind.Link && triggerRef.link.href.kind === HrefKind.Internal))) {
 			return this.renameFragment(allRefsInfo, newName);
-		} else if (triggerRef.kind === 'link' && !(triggerRef.link.source.fragmentRange && rangeContains(triggerRef.link.source.fragmentRange, position)) && (triggerRef.link.kind === 'link' || triggerRef.link.kind === 'definition') && triggerRef.link.href.kind === 'internal') {
+		} else if (triggerRef.kind === MdReferenceKind.Link && !(triggerRef.link.source.fragmentRange && rangeContains(triggerRef.link.source.fragmentRange, position)) && (triggerRef.link.kind === MdLinkKind.Link || triggerRef.link.kind === MdLinkKind.Definition) && triggerRef.link.href.kind === HrefKind.Internal) {
 			return this.renameFilePath(triggerRef.link.source.resource, triggerRef.link.href, allRefsInfo, newName);
 		}
 
@@ -176,7 +176,7 @@ export class MdRenameProvider extends Disposable {
 
 		// Then update all refs to it
 		for (const ref of allRefsInfo.references) {
-			if (ref.kind === 'link') {
+			if (ref.kind === MdReferenceKind.Link) {
 				// Try to preserve style of existing links
 				const newLinkText = getLinkRenameText(this.workspace, ref.link.source, rawNewFilePath.path, newName.startsWith('./') || newName.startsWith('.\\'));
 				builder.replace(ref.link.source.resource, getFilePathRange(ref.link), encodeURI((newLinkText ?? newName).replace(/\\/g, '/')));
@@ -192,12 +192,12 @@ export class MdRenameProvider extends Disposable {
 		const builder = new WorkspaceEditBuilder();
 		for (const ref of allRefsInfo.references) {
 			switch (ref.kind) {
-				case 'header':
+				case MdReferenceKind.Header:
 					builder.replace(URI.parse(ref.location.uri), ref.headerTextLocation.range, newName);
 					break;
 
-				case 'link':
-					builder.replace(ref.link.source.resource, ref.link.source.fragmentRange ?? ref.location.range, !ref.link.source.fragmentRange || ref.link.href.kind === 'external' ? newName : slug);
+				case MdReferenceKind.Link:
+					builder.replace(ref.link.source.resource, ref.link.source.fragmentRange ?? ref.location.range, !ref.link.source.fragmentRange || ref.link.href.kind === HrefKind.External ? newName : slug);
 					break;
 			}
 		}
@@ -207,7 +207,7 @@ export class MdRenameProvider extends Disposable {
 	private renameExternalLink(allRefsInfo: MdReferencesResponse, newName: string): MdWorkspaceEdit {
 		const builder = new WorkspaceEditBuilder();
 		for (const ref of allRefsInfo.references) {
-			if (ref.kind === 'link') {
+			if (ref.kind === MdReferenceKind.Link) {
 				builder.replace(ref.link.source.resource, ref.location.range, newName);
 			}
 		}
@@ -219,8 +219,8 @@ export class MdRenameProvider extends Disposable {
 		const builder = new WorkspaceEditBuilder();
 
 		for (const ref of allRefsInfo.references) {
-			if (ref.kind === 'link') {
-				if (ref.link.kind === 'definition') {
+			if (ref.kind === MdReferenceKind.Link) {
+				if (ref.link.kind === MdLinkKind.Definition) {
 					builder.replace(ref.link.source.resource, ref.link.ref.range, newName);
 				} else {
 					builder.replace(ref.link.source.resource, ref.link.source.fragmentRange ?? ref.location.range, newName);

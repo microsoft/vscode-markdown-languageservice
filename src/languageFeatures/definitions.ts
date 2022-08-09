@@ -10,7 +10,7 @@ import { rangeContains } from '../types/range';
 import { ITextDocument } from '../types/textDocument';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
-import { LinkDefinitionSet, MdLink } from './documentLinks';
+import { HrefKind, LinkDefinitionSet, MdLink, MdLinkKind } from './documentLinks';
 
 export class MdDefinitionProvider {
 
@@ -39,7 +39,7 @@ export class MdDefinitionProvider {
 		const docLinks = (await this.linkCache.getForDocs([document]))[0];
 
 		for (const link of docLinks) {
-			if (link.kind === 'definition' && rangeContains(link.ref.range, position)) {
+			if (link.kind === MdLinkKind.Definition && rangeContains(link.ref.range, position)) {
 				return this.getDefinitionOfRef(link.ref.text, docLinks);
 			}
 			if (rangeContains(link.source.hrefRange, position)) {
@@ -51,11 +51,11 @@ export class MdDefinitionProvider {
 	}
 
 	private async getDefinitionOfLink(sourceLink: MdLink, allLinksInFile: readonly MdLink[], token: CancellationToken): Promise<lsp.Definition | undefined> {
-		if (sourceLink.href.kind === 'reference') {
+		if (sourceLink.href.kind === HrefKind.Reference) {
 			return this.getDefinitionOfRef(sourceLink.href.ref, allLinksInFile);
 		}
 
-		if (sourceLink.href.kind === 'external' || !sourceLink.href.fragment) {
+		if (sourceLink.href.kind === HrefKind.External || !sourceLink.href.fragment) {
 			return undefined;
 		}
 

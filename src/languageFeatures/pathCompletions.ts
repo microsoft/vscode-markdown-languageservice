@@ -4,19 +4,19 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { dirname, resolve } from 'path';
+import type { CancellationToken, CompletionContext } from 'vscode-languageserver-protocol';
+import * as lsp from 'vscode-languageserver-types';
+import { URI, Utils } from 'vscode-uri';
+import { LsConfiguration } from '../config';
+import { IMdParser } from '../parser';
 import { TableOfContents } from '../tableOfContents';
+import { translatePosition } from '../types/position';
+import { makeRange } from '../types/range';
 import { getLine, ITextDocument } from '../types/textDocument';
 import { Schemes } from '../util/schemes';
-import { MdLinkProvider } from './documentLinks';
-import * as lsp from 'vscode-languageserver-types';
-import { FileStat, getWorkspaceFolder, IWorkspace, openLinkToMarkdownFile } from '../workspace';
-import { IMdParser } from '../parser';
-import type { CancellationToken, CompletionContext } from 'vscode-languageserver-protocol';
-import { makeRange } from '../types/range';
-import { URI, Utils } from 'vscode-uri';
-import { translatePosition } from '../types/position';
 import { r } from '../util/string';
-import { LsConfiguration } from '../config';
+import { FileStat, getWorkspaceFolder, IWorkspace, openLinkToMarkdownFile } from '../workspace';
+import { MdLinkProvider } from './documentLinks';
 
 enum CompletionContextKind {
 	/** `[...](|)` */

@@ -10,12 +10,11 @@ import { LsConfiguration } from '../config';
 import { Disposable } from '../util/dispose';
 import { WorkspaceEditBuilder } from '../util/editBuilder';
 import { looksLikeMarkdownPath } from '../util/file';
-import { Schemes } from '../util/schemes';
 import { IWorkspace } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
 import { MdLink, resolveDocumentLink } from './documentLinks';
 import { MdReferencesProvider } from './references';
-import { getFilePathRange } from './rename';
+import { getFilePathRange, getLinkRenameText } from './rename';
 
 
 export class MdFileRenameProvider extends Disposable {
@@ -96,7 +95,7 @@ export class MdFileRenameProvider extends Disposable {
 				continue;
 			}
 
-			let newFilePath = edit.newUri.toString(true);
+			let newFilePath = edit.newUri;
 
 			// If the original markdown link did not use a file extension, remove ours too
 			if (!Utils.extname(ref.link.href.path)) {
@@ -104,33 +103,13 @@ export class MdFileRenameProvider extends Disposable {
 				if (this.config.markdownFileExtensions.includes(editExt.replace('.', ''))) {
 					newFilePath = edit.newUri.with({
 						path: edit.newUri.path.slice(0, edit.newUri.path.length - editExt.length)
-					}).toString(true);
+					});
 				}
 			}
 
-			let pathText: string | undefined;
-			if (ref.link.source.hrefText.startsWith('/')) {
-				const root = resolveDocumentLink(ref.link.source.resource, '/', this.workspace);
-				if (!root) {
-					continue;
-				}
-
-				pathText = '/' + path.relative(root.path.toString(true), newFilePath);
-			} else {
-				const rootDir = Utils.dirname(ref.link.source.resource);
-				if (rootDir.scheme === edit.newUri.scheme && rootDir.scheme !== Schemes.untitled) {
-					pathText = path.relative(rootDir.toString(true), newFilePath);
-
-					if (ref.link.source.hrefText.startsWith('./') && !pathText.startsWith('../') || ref.link.source.hrefText.startsWith('.\\') && !pathText.startsWith('..\\')) {
-						pathText = './' + pathText;
-					}
-				} else {
-					pathText = newFilePath;
-				}
-			}
-
-			if (typeof pathText === 'string') {
-				builder.replace(URI.parse(ref.location.uri), getFilePathRange(ref.link), encodeURI(pathText.replace(/\\/g, '/')));
+			const newLinkText = getLinkRenameText(this.workspace, ref.link.source, newFilePath, ref.link.source.pathText.startsWith('.'));
+			if (typeof newLinkText === 'string') {
+				builder.replace(URI.parse(ref.location.uri), getFilePathRange(ref.link), encodeURI(newLinkText.replace(/\\/g, '/')));
 			}
 		}
 	}

@@ -15,7 +15,7 @@ import { Disposable } from '../util/dispose';
 import { WorkspaceEditBuilder } from '../util/editBuilder';
 import { Schemes } from '../util/schemes';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
-import { InternalHref, MdLink, resolveDocumentLink } from './documentLinks';
+import { InternalHref, MdLink, MdLinkSource, resolveDocumentLink } from './documentLinks';
 import { MdHeaderReference, MdReference, MdReferencesProvider } from './references';
 
 
@@ -178,25 +178,8 @@ export class MdRenameProvider extends Disposable {
 		for (const ref of allRefsInfo.references) {
 			if (ref.kind === 'link') {
 				// Try to preserve style of existing links
-				let newPath: string;
-				if (ref.link.source.hrefText.startsWith('/')) {
-					const root = resolveDocumentLink(ref.link.source.resource, '/', this.workspace);
-					if (!root) {
-						continue;
-					}
-					newPath = '/' + path.relative(root.path.toString(true), rawNewFilePath.path.toString(true));
-				} else {
-					const rootDir = Utils.dirname(ref.link.source.resource);
-					if (rootDir.scheme === rawNewFilePath.path.scheme && rootDir.scheme !== Schemes.untitled) {
-						newPath = path.relative(rootDir.toString(true), rawNewFilePath.path.toString(true));
-						if (newName.startsWith('./') && !newPath.startsWith('../') || newName.startsWith('.\\') && !newPath.startsWith('..\\')) {
-							newPath = './' + newPath;
-						}
-					} else {
-						newPath = newName;
-					}
-				}
-				builder.replace(ref.link.source.resource, getFilePathRange(ref.link), encodeURI(newPath.replace(/\\/g, '/')));
+				const newLinkText = getLinkRenameText(this.workspace, ref.link.source, rawNewFilePath.path, newName.startsWith('./') || newName.startsWith('.\\'));
+				builder.replace(ref.link.source.resource, getFilePathRange(ref.link), encodeURI((newLinkText ?? newName).replace(/\\/g, '/')));
 			}
 		}
 
@@ -274,6 +257,28 @@ export class MdRenameProvider extends Disposable {
 		};
 		return this.cachedRefs;
 	}
+}
+
+export function getLinkRenameText(workspace: IWorkspace, source: MdLinkSource, newPath: URI, preferDotSlash = false): string | undefined {
+	if (source.hrefText.startsWith('/')) {
+		const root = resolveDocumentLink(source.resource, '/', workspace);
+		if (!root) {
+			return undefined;
+		}
+
+		return '/' + path.relative(root.path.toString(true), newPath.toString(true));
+	}
+
+	const rootDir = Utils.dirname(source.resource);
+	if (rootDir.scheme === newPath.scheme && rootDir.scheme !== Schemes.untitled) {
+		let newLink = path.relative(rootDir.toString(true), newPath.toString(true));
+		if (preferDotSlash && !newLink.startsWith('../') || preferDotSlash && !newLink.startsWith('..\\')) {
+			newLink = './' + newLink;
+		}
+		return newLink;
+	}
+
+	return undefined;
 }
 
 export function getFilePathRange(link: MdLink): lsp.Range {

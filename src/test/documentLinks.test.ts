@@ -538,4 +538,12 @@ suite('Link provider', () => {
 		const links = await getLinksForFile('[ref]');
 		assertLinksEqual(links, []);
 	});
+
+	test('Should not encode link', async () => {
+		const exampleUrl = 'http://example/%A5%C8';
+		const links = await getLinksForFile(joinLines(
+			`[link](${exampleUrl})`
+		));
+		assert.strictEqual(links[0].target, exampleUrl);
+	});
 });

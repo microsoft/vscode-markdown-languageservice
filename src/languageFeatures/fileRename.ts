@@ -92,31 +92,45 @@ export class MdFileRenameProvider extends Disposable {
 
 		// TODO: this is very similar to the code in 'rename.ts'
 		for (const ref of refs) {
-			if (ref.kind === 'link') {
-				let newPath: string | undefined;
-				if (ref.link.source.hrefText.startsWith('/')) {
-					const root = resolveDocumentLink(ref.link.source.resource, '/', this.workspace);
-					if (!root) {
-						continue;
-					}
+			if (ref.kind !== 'link' || ref.link.href.kind !== 'internal') {
+				continue;
+			}
 
-					newPath = '/' + path.relative(root.path.toString(true), edit.newUri.toString(true));
+			let newFilePath = edit.newUri.toString(true);
+
+			// If the original markdown link did not use a file extension, remove ours too
+			if (!Utils.extname(ref.link.href.path)) {
+				const editExt = Utils.extname(edit.newUri);
+				if (this.config.markdownFileExtensions.includes(editExt.replace('.', ''))) {
+					newFilePath = edit.newUri.with({
+						path: edit.newUri.path.slice(0, edit.newUri.path.length - editExt.length)
+					}).toString(true);
+				}
+			}
+
+			let pathText: string | undefined;
+			if (ref.link.source.hrefText.startsWith('/')) {
+				const root = resolveDocumentLink(ref.link.source.resource, '/', this.workspace);
+				if (!root) {
+					continue;
+				}
+
+				pathText = '/' + path.relative(root.path.toString(true), newFilePath);
+			} else {
+				const rootDir = Utils.dirname(ref.link.source.resource);
+				if (rootDir.scheme === edit.newUri.scheme && rootDir.scheme !== Schemes.untitled) {
+					pathText = path.relative(rootDir.toString(true), newFilePath);
+
+					if (ref.link.source.hrefText.startsWith('./') && !pathText.startsWith('../') || ref.link.source.hrefText.startsWith('.\\') && !pathText.startsWith('..\\')) {
+						pathText = './' + pathText;
+					}
 				} else {
-					const rootDir = Utils.dirname(ref.link.source.resource);
-					if (rootDir.scheme === edit.newUri.scheme && rootDir.scheme !== Schemes.untitled) {
-						newPath = path.relative(rootDir.toString(true), edit.newUri.toString(true));
-
-						if (ref.link.source.hrefText.startsWith('./') && !newPath.startsWith('../') || ref.link.source.hrefText.startsWith('.\\') && !newPath.startsWith('..\\')) {
-							newPath = './' + newPath;
-						}
-					} else {
-						newPath = edit.newUri.toString(true);
-					}
+					pathText = newFilePath;
 				}
+			}
 
-				if (typeof newPath === 'string') {
-					builder.replace(URI.parse(ref.location.uri), getFilePathRange(ref.link), encodeURI(newPath.replace(/\\/g, '/')));
-				}
+			if (typeof pathText === 'string') {
+				builder.replace(URI.parse(ref.location.uri), getFilePathRange(ref.link), encodeURI(pathText.replace(/\\/g, '/')));
 			}
 		}
 	}

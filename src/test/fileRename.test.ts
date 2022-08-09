@@ -69,6 +69,8 @@ suite('File Rename', () => {
 			`[abc](old.md)`,
 			`[abc](./old.md)`,
 			`[xyz]: ./old.md`,
+			`[abc](/other.md)`,
+			`[xyz1]: ./other.md`,
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
@@ -110,6 +112,56 @@ suite('File Rename', () => {
 		});
 	}));
 
+	test('Rename file should preserve usage of file extensions', withStore(async (store) => {
+		const docUri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(docUri, joinLines(
+			`[abc](/old#frag)`,
+			`[abc](old#frag)`,
+			`[abc](./old#frag)`,
+			`[xyz]: ./old#frag`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const oldUri = workspacePath('old.md');
+		const newUri = workspacePath('new.md');
+
+		const edit = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
+		assertEditsEqual(edit!, {
+			uri: docUri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 6, 0, 10), '/new'),
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 9), 'new'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 11), './new'),
+				lsp.TextEdit.replace(makeRange(3, 7, 3, 12), './new'),
+			]
+		});
+	}));
+
+	test('Rename file should encode links with spaces', withStore(async (store) => {
+		const docUri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(docUri, joinLines(
+			`[abc](/old.md)`,
+			`[abc](old.md)`,
+			`[abc](./old.md)`,
+			`[xyz]: ./old.md`,
+			`[abc](/other.md)`,
+			`[xyz1]: ./other.md`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const oldUri = workspacePath('old.md');
+		const newUri = workspacePath('new with space.md');
+
+		const edit = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
+		assertEditsEqual(edit!, {
+			uri: docUri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 6, 0, 13), '/new%20with%20space.md'),
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 12), 'new%20with%20space.md'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 14), './new%20with%20space.md'),
+				lsp.TextEdit.replace(makeRange(3, 7, 3, 15), './new%20with%20space.md'),
+			]
+		});
+	}));
+
 	test('Move of markdown file should update links within that file', withStore(async (store) => {
 		const oldUri = workspacePath('doc.md');
 		const newUri = workspacePath('sub', 'new.md');
@@ -132,4 +184,28 @@ suite('File Rename', () => {
 			]
 		});
 	}));
+
+	test('Rename within moved file should preserve file extensions', withStore(async (store) => {
+		const oldUri = workspacePath('doc.md');
+		const newUri = workspacePath('sub', 'new.md');
+
+		// Create the workspace in the state just after the file rename
+		const doc = new InMemoryDocument(newUri, joinLines(
+			`[abc](/other#frag)`,
+			`[abc](other#frag)`,
+			`[abc](./other#frag)`,
+			`[xyz]: ./other#frag`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const edit = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri }], workspace);
+		assertEditsEqual(edit!, {
+			uri: newUri, edits: [
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 11), '../other'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 13), '../other'),
+				lsp.TextEdit.replace(makeRange(3, 7, 3, 14), '../other'),
+			]
+		});
+	}));
+
 });

@@ -6,7 +6,7 @@ import * as path from 'path';
 import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { URI, Utils } from 'vscode-uri';
-import { LsConfiguration } from '../config';
+import { defaultMarkdownFileExtension, LsConfiguration } from '../config';
 import { ISlugifier } from '../slugify';
 import { arePositionsEqual, translatePosition } from '../types/position';
 import { modifyRange, rangeContains } from '../types/range';
@@ -159,11 +159,11 @@ export class MdRenameProvider extends Disposable {
 
 		let resolvedNewFilePath = rawNewFilePath.path;
 		if (!Utils.extname(resolvedNewFilePath)) {
-			// If the newly entered path doesn't have a file extension but the original file did
+			// If the newly entered path doesn't have a file extension but the original link did
 			// tack on a .md file extension
 			if (Utils.extname(targetUri)) {
 				resolvedNewFilePath = resolvedNewFilePath.with({
-					path: resolvedNewFilePath.path + '.md'
+					path: resolvedNewFilePath.path + '.' + (this.configuration.markdownFileExtensions[0] ?? defaultMarkdownFileExtension)
 				});
 			}
 		}

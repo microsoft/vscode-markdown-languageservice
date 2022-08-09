@@ -8,6 +8,8 @@ export interface LsConfiguration {
 	 * List of file extensions should be considered markdown.
 	 *
 	 * These should not include the leading `.`.
+	 *
+	 * The first entry is treated as the default file extension.
 	 */
 	readonly markdownFileExtensions: readonly string[];
 
@@ -22,8 +24,10 @@ export interface LsConfiguration {
 	readonly knownLinkedToFileExtensions: readonly string[];
 }
 
+export const defaultMarkdownFileExtension = 'md';
+
 const defaultConfig: LsConfiguration = {
-	markdownFileExtensions: ['md'],
+	markdownFileExtensions: [defaultMarkdownFileExtension],
 	knownLinkedToFileExtensions: [
 		'jpg',
 		'jpeg',

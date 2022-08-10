@@ -58,6 +58,7 @@ export class MdRenameProvider extends Disposable {
 		readonly references: MdReference[];
 	} | undefined;
 
+	// eslint-disable-next-line quotes
 	private readonly renameNotSupportedText = "Rename not supported at location";
 
 	public constructor(

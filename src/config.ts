@@ -3,6 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as picomatch from 'picomatch';
+import { URI } from 'vscode-uri';
+
 export interface LsConfiguration {
 	/**
 	 * List of file extensions should be considered markdown.
@@ -22,6 +25,11 @@ export interface LsConfiguration {
 	 * a file extension.
 	 */
 	readonly knownLinkedToFileExtensions: readonly string[];
+
+	/**
+	 * List of path globs that should be excluded from cross-file operations.
+	 */
+	readonly excludePaths: readonly string[];
 }
 
 export const defaultMarkdownFileExtension = 'md';
@@ -36,6 +44,10 @@ const defaultConfig: LsConfiguration = {
 		'webp',
 		'bmp',
 		'tiff',
+	],
+	excludePaths: [
+		'**/.*',
+		'**/node_modules/**',
 	]
 };
 
@@ -44,4 +56,8 @@ export function getLsConfiguration(overrides: Partial<LsConfiguration>): LsConfi
 		...defaultConfig,
 		...overrides,
 	};
+}
+
+export function isExcludedPath(configuration: LsConfiguration, uri: URI): boolean {
+	return configuration.excludePaths.some(excludePath => picomatch.isMatch(uri.path, excludePath));
 }

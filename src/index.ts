@@ -122,16 +122,18 @@ export interface IMdLanguageService {
 	/**
 	 * Get the edits for a file rename. This update links to the renamed files as well as links within the renamed files.
 	 *
-	 * This should be invoked after the rename has already happened.
+	 * This should be invoked after the rename has already happened (i.e. the workspace should reflect the file system state post rename).
+	 *
+	 * You can pass in uris to resources or directories. However if you pass in multiple edits, these edits must not overlap/conflict.
 	 *
 	 * @return A workspace edit that performs the rename or undefined if the rename cannot be performed.
 	 */
-	getRenameFilesInWorkspaceEdit(edits: Iterable<{ readonly oldUri: URI; readonly newUri: URI }>, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined>;
+	getRenameFilesInWorkspaceEdit(edits: ReadonlyArray<{ readonly oldUri: URI; readonly newUri: URI }>, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined>;
 
 	/**
 	 * Compute diagnostics for a given file.
 	 *
-	 * Note that this function is stateless and revalidated all links every time you make the request. Use {@link createPullDiagnosticsManager}
+	 * Note that this function is stateless and re-validates all links every time you make the request. Use {@link createPullDiagnosticsManager}
 	 * to more efficiently get diagnostics.
 	 */
 	computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]>;
@@ -168,6 +170,13 @@ export interface LanguageServiceInitialization {
 	 * @default ['md']
 	 */
 	readonly markdownFileExtensions?: readonly string[];
+
+	/**
+	 * List of path globs that should be excluded from cross-file operations.
+	 *
+	 * Note that this does not prevent explicit requests for those files.
+	 */
+	readonly excludePaths?: readonly string[];
 }
 
 /**

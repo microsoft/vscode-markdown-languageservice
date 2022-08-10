@@ -650,7 +650,7 @@ export class MdLinkProvider extends Disposable {
 				return {
 					range: link.source.hrefRange,
 					target: undefined, // Needs to be resolved later
-					tooltip: "Follow link",
+					tooltip: 'Follow link',
 					data: link,
 				};
 			}
@@ -665,6 +665,7 @@ export class MdLinkProvider extends Disposable {
 				const target = this.createOpenAtPosCommand(link.source.resource, def.source.hrefRange.start);
 				return {
 					range: link.source.hrefRange,
+					// eslint-disable-next-line quotes
 					tooltip: "Go to link definition",
 					target: target,
 					data: link

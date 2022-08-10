@@ -106,7 +106,7 @@ suite('Rename', () => {
 		const info = await prepareRename(store, doc, { line: 0, character: 0 }, workspace);
 		assertRangeEqual(info!.range, makeRange(0, 2, 0, 5));
 
-		const edit = await getRenameEdits(store, doc, { line: 0, character: 0 }, "New Header", workspace);
+		const edit = await getRenameEdits(store, doc, { line: 0, character: 0 }, 'New Header', workspace);
 		assertEditsEqual(edit!, {
 			uri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 2, 0, 5), 'New Header')
@@ -125,7 +125,7 @@ suite('Rename', () => {
 		const info = await prepareRename(store, doc, { line: 0, character: 0 }, workspace);
 		assertRangeEqual(info!.range, makeRange(0, 4, 0, 7));
 
-		const edit = await getRenameEdits(store, doc, { line: 0, character: 0 }, "New Header", workspace);
+		const edit = await getRenameEdits(store, doc, { line: 0, character: 0 }, 'New Header', workspace);
 		assertEditsEqual(edit!, {
 			uri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 4, 0, 7), 'New Header')
@@ -141,7 +141,7 @@ suite('Rename', () => {
 		));
 
 		const workspace = store.add(new InMemoryWorkspace([doc]));
-		const edit = await getRenameEdits(store, doc, { line: 0, character: 0 }, "New Header", workspace);
+		const edit = await getRenameEdits(store, doc, { line: 0, character: 0 }, 'New Header', workspace);
 		assertEditsEqual(edit!, {
 			uri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 4, 0, 9), 'New Header'),
@@ -158,7 +158,7 @@ suite('Rename', () => {
 		));
 
 		const workspace = store.add(new InMemoryWorkspace([doc]));
-		const edit = await getRenameEdits(store, doc, { line: 1, character: 10 }, "New Header", workspace);
+		const edit = await getRenameEdits(store, doc, { line: 1, character: 10 }, 'New Header', workspace);
 		assertEditsEqual(edit!, {
 			uri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 4, 0, 9), 'New Header'),
@@ -176,7 +176,7 @@ suite('Rename', () => {
 		));
 
 		const workspace = store.add(new InMemoryWorkspace([doc]));
-		const edit = await getRenameEdits(store, doc, { line: 2, character: 10 }, "New Header", workspace);
+		const edit = await getRenameEdits(store, doc, { line: 2, character: 10 }, 'New Header', workspace);
 		assertEditsEqual(edit!, {
 			uri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 4, 0, 9), 'New Header'),
@@ -194,7 +194,7 @@ suite('Rename', () => {
 			`[text](#a-b-c)`,
 		));
 
-		const edit = await getRenameEdits(store, doc, { line: 0, character: 0 }, "New Header", new InMemoryWorkspace([
+		const edit = await getRenameEdits(store, doc, { line: 0, character: 0 }, 'New Header', new InMemoryWorkspace([
 			doc,
 			new InMemoryDocument(otherUri, joinLines(
 				`[text](#a-b-c)`, // Should not find this
@@ -223,7 +223,7 @@ suite('Rename', () => {
 			`[text](#a-b-c)`,  // rename here
 		));
 
-		const edit = await getRenameEdits(store, doc, { line: 1, character: 10 }, "New Header", new InMemoryWorkspace([
+		const edit = await getRenameEdits(store, doc, { line: 1, character: 10 }, 'New Header', new InMemoryWorkspace([
 			doc,
 			new InMemoryDocument(otherUri, joinLines(
 				`[text](#a-b-c)`, // Should not find this
@@ -274,7 +274,7 @@ suite('Rename', () => {
 
 		{
 			// Rename on header with file extension
-			const edit = await getRenameEdits(store, otherDoc, { line: 1, character: 17 }, "New Header", new InMemoryWorkspace([
+			const edit = await getRenameEdits(store, otherDoc, { line: 1, character: 17 }, 'New Header', new InMemoryWorkspace([
 				doc,
 				otherDoc
 			]));
@@ -282,7 +282,7 @@ suite('Rename', () => {
 		}
 		{
 			// Rename on header without extension
-			const edit = await getRenameEdits(store, otherDoc, { line: 2, character: 15 }, "New Header", new InMemoryWorkspace([
+			const edit = await getRenameEdits(store, otherDoc, { line: 2, character: 15 }, 'New Header', new InMemoryWorkspace([
 				doc,
 				otherDoc
 			]));
@@ -300,7 +300,7 @@ suite('Rename', () => {
 		));
 
 		const workspace = store.add(new InMemoryWorkspace([doc]));
-		const edit = await getRenameEdits(store, doc, { line: 0, character: 8 }, "new ref", workspace);
+		const edit = await getRenameEdits(store, doc, { line: 0, character: 8 }, 'new ref', workspace);
 		assertEditsEqual(edit!, {
 			uri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 7, 0, 10), 'new ref'),
@@ -320,7 +320,7 @@ suite('Rename', () => {
 		));
 
 		const workspace = store.add(new InMemoryWorkspace([doc]));
-		const edit = await getRenameEdits(store, doc, { line: 3, character: 3 }, "new ref", workspace);
+		const edit = await getRenameEdits(store, doc, { line: 3, character: 3 }, 'new ref', workspace);
 		assertEditsEqual(edit!, {
 			uri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 7, 0, 10), 'new ref'),
@@ -344,7 +344,7 @@ suite('Rename', () => {
 		assert.strictEqual(preparedInfo!.placeholder, 'a B c');
 		assertRangeEqual(preparedInfo!.range, makeRange(3, 8, 3, 13));
 
-		const edit = await getRenameEdits(store, doc, { line: 3, character: 10 }, "x Y z", workspace);
+		const edit = await getRenameEdits(store, doc, { line: 3, character: 10 }, 'x Y z', workspace);
 		assertEditsEqual(edit!, {
 			uri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 2, 0, 7), 'x Y z'),
@@ -631,7 +631,7 @@ suite('Rename', () => {
 			))
 		]));
 
-		const edit = await getRenameEdits(store, doc, { line: 1, character: 10 }, "https://example.com/sub", workspace);
+		const edit = await getRenameEdits(store, doc, { line: 1, character: 10 }, 'https://example.com/sub', workspace);
 		assertEditsEqual(edit!, {
 			uri: uri1, edits: [
 				lsp.TextEdit.replace(makeRange(0, 4, 0, 22), 'https://example.com/sub'),
@@ -659,7 +659,7 @@ suite('Rename', () => {
 		assert.strictEqual(preparedInfo!.placeholder, '/file');
 		assertRangeEqual(preparedInfo!.range, makeRange(2, 7, 2, 12));
 
-		const edit = await getRenameEdits(store, doc, { line: 2, character: 10 }, "/newFile", workspace);
+		const edit = await getRenameEdits(store, doc, { line: 2, character: 10 }, '/newFile', workspace);
 		assertEditsEqual(edit!, {
 			uri, edits: [
 				lsp.TextEdit.replace(makeRange(1, 9, 1, 14), '/newFile'),
@@ -685,7 +685,7 @@ suite('Rename', () => {
 		assert.strictEqual(preparedInfo!.placeholder, '/doc2');
 		assertRangeEqual(preparedInfo!.range, makeRange(2, 7, 2, 12));
 
-		const edit = await getRenameEdits(store, doc1, { line: 2, character: 10 }, "/new-doc", workspace);
+		const edit = await getRenameEdits(store, doc1, { line: 2, character: 10 }, '/new-doc', workspace);
 		assertEditsEqual(edit!, {
 			uri: uri1, edits: [
 				lsp.TextEdit.replace(makeRange(1, 9, 1, 14), '/new-doc'),
@@ -711,7 +711,7 @@ suite('Rename', () => {
 		assert.strictEqual(preparedInfo!.placeholder, 'header');
 		assertRangeEqual(preparedInfo!.range, makeRange(2, 13, 2, 19));
 
-		const edit = await getRenameEdits(store, doc, { line: 2, character: 16 }, "New Header", workspace);
+		const edit = await getRenameEdits(store, doc, { line: 2, character: 16 }, 'New Header', workspace);
 		assertEditsEqual(edit!, {
 			uri, edits: [
 				lsp.TextEdit.replace(makeRange(1, 15, 1, 21), 'new-header'),

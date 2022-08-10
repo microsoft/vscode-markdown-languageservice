@@ -2,5 +2,6 @@
 	"git.branchProtection": [
 		"main"
 	],
-	"git.branchProtectionPrompt": "alwaysCommitToNewBranch"
+	"git.branchProtectionPrompt": "alwaysCommitToNewBranch",
+	"typescript.preferences.quoteStyle": "single"
 }

@@ -41,21 +41,23 @@ interface ExpectedTextEdit {
 
 
 function assertEditsEqual(actualEdit: lsp.WorkspaceEdit, ...expectedTextEdits: ReadonlyArray<ExpectedTextEdit>) {
-	const actualTextEdits = Object.entries(actualEdit.changes!);
+	const actualTextEdits = actualEdit.documentChanges?.filter(edit => lsp.TextDocumentEdit.is(edit)) as lsp.TextDocumentEdit[] ?? [];
 	assert.strictEqual(actualTextEdits.length, expectedTextEdits.length, `Edit counts should match`);
 	for (let i = 0; i < actualTextEdits.length; ++i) {
 		const expected = expectedTextEdits[i];
 		const actual = actualTextEdits[i];
 
-		assert.strictEqual(actual[0].toString(), expected.uri.toString(), `Edit '${i}' has expected document`);
+		const actualDoc = actual.textDocument.uri;
 
-		const actualEditForDoc = actual[1];
+		assert.strictEqual(actualDoc, expected.uri.toString(), `Edit '${i}' has expected document`);
+
+		const actualEditForDoc = actual.edits;
 		const expectedEditsForDoc = expected.edits;
-		assert.strictEqual(actualEditForDoc.length, expectedEditsForDoc.length, `Edit counts for '${actual[0]}' should match`);
+		assert.strictEqual(actualEditForDoc.length, expectedEditsForDoc.length, `Edit counts for '${actualDoc}' should match`);
 
 		for (let g = 0; g < actualEditForDoc.length; ++g) {
-			assertRangeEqual(actualEditForDoc[g].range, expectedEditsForDoc[g].range, `Edit '${g}' of '${actual[0]}' has expected expected range. Expected range: ${JSON.stringify(actualEditForDoc[g].range)}. Actual range: ${JSON.stringify(expectedEditsForDoc[g].range)}`);
-			assert.strictEqual(actualEditForDoc[g].newText, expectedEditsForDoc[g].newText, `Edit '${g}' of '${actual[0]}' has expected edits`);
+			assertRangeEqual(actualEditForDoc[g].range, expectedEditsForDoc[g].range, `Edit '${g}' of '${actualDoc}' has expected expected range. Expected range: ${JSON.stringify(actualEditForDoc[g].range)}. Actual range: ${JSON.stringify(expectedEditsForDoc[g].range)}`);
+			assert.strictEqual(actualEditForDoc[g].newText, expectedEditsForDoc[g].newText, `Edit '${g}' of '${actualDoc}' has expected edits`);
 		}
 	}
 }

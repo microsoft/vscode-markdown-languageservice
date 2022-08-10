@@ -5,6 +5,7 @@
 
 import type { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
+import * as nls from 'vscode-nls';
 import { URI, Utils } from 'vscode-uri';
 import { ILogger, LogLevel } from '../logging';
 import { IMdParser } from '../parser';
@@ -18,6 +19,8 @@ import { Disposable } from '../util/dispose';
 import { r } from '../util/string';
 import { getWorkspaceFolder, IWorkspace } from '../workspace';
 import { MdDocumentInfoCache, MdWorkspaceInfoCache } from '../workspaceCache';
+
+const localize = nls.loadMessageBundle();
 
 export enum HrefKind {
 	External = 1,
@@ -665,8 +668,7 @@ export class MdLinkProvider extends Disposable {
 				const target = this.createOpenAtPosCommand(link.source.resource, def.source.hrefRange.start);
 				return {
 					range: link.source.hrefRange,
-					// eslint-disable-next-line quotes
-					tooltip: "Go to link definition",
+					tooltip: localize('definition.tooltip', 'Go to link definition'),
 					target: target,
 					data: link
 				};

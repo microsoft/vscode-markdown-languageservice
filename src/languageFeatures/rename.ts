@@ -5,6 +5,7 @@
 import * as path from 'path';
 import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
+import * as nls from 'vscode-nls';
 import { URI, Utils } from 'vscode-uri';
 import { defaultMarkdownFileExtension, LsConfiguration } from '../config';
 import { ISlugifier } from '../slugify';
@@ -18,6 +19,7 @@ import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
 import { HrefKind, InternalHref, MdLink, MdLinkKind, MdLinkSource, resolveDocumentLink } from './documentLinks';
 import { MdHeaderReference, MdReference, MdReferenceKind, MdReferencesProvider } from './references';
 
+const localize = nls.loadMessageBundle();
 
 export interface MdReferencesResponse {
 	references: MdReference[];
@@ -58,8 +60,7 @@ export class MdRenameProvider extends Disposable {
 		readonly references: MdReference[];
 	} | undefined;
 
-	// eslint-disable-next-line quotes
-	private readonly renameNotSupportedText = "Rename not supported at location";
+	private readonly renameNotSupportedText = localize('rename.notSupported', 'Rename not supported at location');
 
 	public constructor(
 		private readonly configuration: LsConfiguration,

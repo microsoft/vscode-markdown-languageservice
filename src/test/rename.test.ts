@@ -9,7 +9,7 @@ import { URI } from 'vscode-uri';
 import { getLsConfiguration } from '../config';
 import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks';
 import { MdReferencesProvider } from '../languageFeatures/references';
-import { MdRenameProvider, MdWorkspaceEdit } from '../languageFeatures/rename';
+import { MdRenameProvider } from '../languageFeatures/rename';
 import { githubSlugifier } from '../slugify';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { makeRange } from '../types/range';
@@ -39,7 +39,7 @@ function prepareRename(store: DisposableStore, doc: InMemoryDocument, pos: lsp.P
 /**
  * Get all the edits for the rename.
  */
-function getRenameEdits(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position, newName: string, workspace: IWorkspace): Promise<MdWorkspaceEdit | undefined> {
+function getRenameEdits(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position, newName: string, workspace: IWorkspace): Promise<lsp.WorkspaceEdit | undefined> {
 	const config = getLsConfiguration({});
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
@@ -59,20 +59,20 @@ interface ExpectedFileRename {
 	readonly newUri: URI;
 }
 
-function assertEditsEqual(actualEdit: MdWorkspaceEdit, ...expectedEdits: ReadonlyArray<ExpectedTextEdit | ExpectedFileRename>) {
+function assertEditsEqual(actualEdit: lsp.WorkspaceEdit, ...expectedEdits: ReadonlyArray<ExpectedTextEdit | ExpectedFileRename>) {
 	// Check file renames
 	const expectedFileRenames = expectedEdits.filter(expected => 'originalUri' in expected) as ExpectedFileRename[];
-	const actualFileRenames = actualEdit.fileRenames ?? [];
+	const actualFileRenames = actualEdit.documentChanges?.filter(edit => lsp.RenameFile.is(edit)) as lsp.RenameFile[] ?? [];
 	assert.strictEqual(actualFileRenames.length, expectedFileRenames.length, `File rename count should match`);
 	for (let i = 0; i < actualFileRenames.length; ++i) {
 		const expected = expectedFileRenames[i];
 		const actual = actualFileRenames[i];
-		assert.strictEqual(actual.from.toString(), expected.originalUri.toString(), `File rename '${i}' should have expected 'from' resource`);
-		assert.strictEqual(actual.to.toString(), expected.newUri.toString(), `File rename '${i}' should have expected 'to' resource`);
+		assert.strictEqual(actual.oldUri.toString(), expected.originalUri.toString(), `File rename '${i}' should have expected 'from' resource`);
+		assert.strictEqual(actual.newUri.toString(), expected.newUri.toString(), `File rename '${i}' should have expected 'to' resource`);
 	}
 
 	// Check text edits
-	const actualTextEdits = Object.entries(actualEdit.edit.changes!);
+	const actualTextEdits = actualEdit.documentChanges?.filter(edit => lsp.TextDocumentEdit.is(edit)) as lsp.TextDocumentEdit[] ?? [];
 	const expectedTextEdits = expectedEdits.filter(expected => 'edits' in expected) as ExpectedTextEdit[];
 	assert.strictEqual(actualTextEdits.length, expectedTextEdits.length, `Reference counts should match`);
 	for (let i = 0; i < actualTextEdits.length; ++i) {
@@ -80,15 +80,16 @@ function assertEditsEqual(actualEdit: MdWorkspaceEdit, ...expectedEdits: Readonl
 		const actual = actualTextEdits[i];
 
 		if ('edits' in expected) {
-			assert.strictEqual(actual[0].toString(), expected.uri.toString(), `Ref '${i}' has expected document`);
+			const actualDoc = actual.textDocument.uri;
+			assert.strictEqual(actualDoc, expected.uri.toString(), `Ref '${i}' has expected document`);
 
-			const actualEditForDoc = actual[1];
+			const actualEditForDoc = actual.edits;
 			const expectedEditsForDoc = expected.edits;
-			assert.strictEqual(actualEditForDoc.length, expectedEditsForDoc.length, `Edit counts for '${actual[0]}' should match`);
+			assert.strictEqual(actualEditForDoc.length, expectedEditsForDoc.length, `Edit counts for '${actualDoc}' should match`);
 
 			for (let g = 0; g < actualEditForDoc.length; ++g) {
-				assertRangeEqual(actualEditForDoc[g].range, expectedEditsForDoc[g].range, `Edit '${g}' of '${actual[0]}' has expected expected range. Expected range: ${JSON.stringify(actualEditForDoc[g].range)}. Actual range: ${JSON.stringify(expectedEditsForDoc[g].range)}`);
-				assert.strictEqual(actualEditForDoc[g].newText, expectedEditsForDoc[g].newText, `Edit '${g}' of '${actual[0]}' has expected edits`);
+				assertRangeEqual(actualEditForDoc[g].range, expectedEditsForDoc[g].range, `Edit '${g}' of '${actualDoc}' has expected expected range. Expected range: ${JSON.stringify(actualEditForDoc[g].range)}. Actual range: ${JSON.stringify(expectedEditsForDoc[g].range)}`);
+				assert.strictEqual(actualEditForDoc[g].newText, expectedEditsForDoc[g].newText, `Edit '${g}' of '${actualDoc}' has expected edits`);
 			}
 		}
 	}

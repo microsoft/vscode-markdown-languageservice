@@ -22,24 +22,8 @@ import { MdHeaderReference, MdReference, MdReferenceKind, MdReferencesProvider }
 const localize = nls.loadMessageBundle();
 
 export interface MdReferencesResponse {
-	references: MdReference[];
-	triggerRef: MdReference;
-}
-
-interface MdFileRenameEdit {
-	readonly from: URI;
-	readonly to: URI;
-}
-
-/**
- * Type with additional metadata about the edits for testing
- *
- * This is needed since `lsp.WorkspaceEdit` does not expose info on file renames.
- */
-export interface MdWorkspaceEdit {
-	readonly edit: lsp.WorkspaceEdit;
-
-	readonly fileRenames?: ReadonlyArray<MdFileRenameEdit>;
+	readonly references: readonly MdReference[];
+	readonly triggerRef: MdReference;
 }
 
 function tryDecodeUri(str: string): string {
@@ -122,10 +106,10 @@ export class MdRenameProvider extends Disposable {
 	}
 
 	public async provideRenameEdits(document: ITextDocument, position: lsp.Position, newName: string, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined> {
-		return (await this.provideRenameEditsImpl(document, position, newName, token))?.edit;
+		return (await this.provideRenameEditsImpl(document, position, newName, token));
 	}
 
-	public async provideRenameEditsImpl(document: ITextDocument, position: lsp.Position, newName: string, token: CancellationToken): Promise<MdWorkspaceEdit | undefined> {
+	public async provideRenameEditsImpl(document: ITextDocument, position: lsp.Position, newName: string, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined> {
 		const allRefsInfo = await this.getAllReferences(document, position, token);
 		if (token.isCancellationRequested || !allRefsInfo || !allRefsInfo.references.length) {
 			return undefined;
@@ -148,15 +132,14 @@ export class MdRenameProvider extends Disposable {
 		return undefined;
 	}
 
-	private async renameFilePath(triggerDocument: URI, triggerHref: InternalHref, allRefsInfo: MdReferencesResponse, newName: string): Promise<MdWorkspaceEdit> {
+	private async renameFilePath(triggerDocument: URI, triggerHref: InternalHref, allRefsInfo: MdReferencesResponse, newName: string): Promise<lsp.WorkspaceEdit> {
 		const builder = new WorkspaceEditBuilder();
-		const fileRenames: MdFileRenameEdit[] = [];
 
 		const targetUri = await statLinkToMarkdownFile(this.configuration, this.workspace, triggerHref.path) ?? triggerHref.path;
 
 		const rawNewFilePath = resolveDocumentLink(triggerDocument, newName, this.workspace);
 		if (!rawNewFilePath) {
-			return { edit: builder.getEdit() };
+			return builder.getEdit();
 		}
 
 		let resolvedNewFilePath = rawNewFilePath.path;
@@ -172,7 +155,6 @@ export class MdRenameProvider extends Disposable {
 
 		// First rename the file
 		if (await this.workspace.stat(targetUri)) {
-			fileRenames.push({ from: targetUri, to: resolvedNewFilePath });
 			builder.renameFile(targetUri, resolvedNewFilePath);
 		}
 
@@ -185,10 +167,10 @@ export class MdRenameProvider extends Disposable {
 			}
 		}
 
-		return { edit: builder.getEdit(), fileRenames };
+		return builder.getEdit();
 	}
 
-	private renameFragment(allRefsInfo: MdReferencesResponse, newName: string): MdWorkspaceEdit {
+	private renameFragment(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
 		const slug = this.slugifier.fromHeading(newName).value;
 
 		const builder = new WorkspaceEditBuilder();
@@ -203,20 +185,20 @@ export class MdRenameProvider extends Disposable {
 					break;
 			}
 		}
-		return { edit: builder.getEdit() };
+		return builder.getEdit();
 	}
 
-	private renameExternalLink(allRefsInfo: MdReferencesResponse, newName: string): MdWorkspaceEdit {
+	private renameExternalLink(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
 		const builder = new WorkspaceEditBuilder();
 		for (const ref of allRefsInfo.references) {
 			if (ref.kind === MdReferenceKind.Link) {
 				builder.replace(ref.link.source.resource, ref.location.range, newName);
 			}
 		}
-		return { edit: builder.getEdit() };
+		return builder.getEdit();
 	}
 
-	private renameReferenceLinks(allRefsInfo: MdReferencesResponse, newName: string): MdWorkspaceEdit {
+	private renameReferenceLinks(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
 
 		const builder = new WorkspaceEditBuilder();
 
@@ -230,7 +212,7 @@ export class MdRenameProvider extends Disposable {
 			}
 		}
 
-		return { edit: builder.getEdit() };
+		return builder.getEdit();
 	}
 
 	private async getAllReferences(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<MdReferencesResponse | undefined> {

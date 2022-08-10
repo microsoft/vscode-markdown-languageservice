@@ -8,29 +8,32 @@ import { URI } from 'vscode-uri';
 
 export class WorkspaceEditBuilder {
 
-	private edit: lsp.WorkspaceEdit = {
-		changes: {},
-	};
+	private readonly changes: { [uri: lsp.DocumentUri]: lsp.TextEdit[]; } = {};
+	private readonly documentChanges: Array<lsp.CreateFile | lsp.RenameFile | lsp.DeleteFile> = [];
 
 	replace(resource: URI, range: lsp.Range, newText: string) {
 		const resourceKey = resource.toString();
-		let edits = this.edit.changes![resourceKey];
+		let edits = this.changes![resourceKey];
 		if (!edits) {
 			edits = [];
-			this.edit.changes![resourceKey] = edits;
+			this.changes![resourceKey] = edits;
 		}
 
 		edits.push(lsp.TextEdit.replace(range, newText));
 	}
 
 	getEdit(): lsp.WorkspaceEdit {
-		return this.edit;
+		// We need to convert changes into `documentChanges` or else they get dropped
+		const textualChanges = Object.entries(this.changes).map(([uri, edits]): lsp.TextDocumentEdit => {
+			return lsp.TextDocumentEdit.create({ uri, version: null }, edits);
+		});
+
+		return {
+			documentChanges: [...textualChanges, ...this.documentChanges],
+		};
 	}
 
 	renameFile(targetUri: URI, resolvedNewFilePath: URI) {
-		if (!this.edit.documentChanges) {
-			this.edit.documentChanges = [];
-		}
-		this.edit.documentChanges.push(lsp.RenameFile.create(targetUri.toString(), resolvedNewFilePath.toString()));
+		this.documentChanges.push(lsp.RenameFile.create(targetUri.toString(), resolvedNewFilePath.toString()));
 	}
 }

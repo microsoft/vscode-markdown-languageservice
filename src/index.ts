@@ -56,9 +56,9 @@ export interface IMdLanguageService {
 	/**
 	 * Get the symbols of a markdown file.
 	 *
-	 * This currently returns the headers in the file.
+	 * Returns the headers and optionally also the link definitions in the file
 	 */
-	getDocumentSymbols(document: ITextDocument, token: CancellationToken): Promise<lsp.DocumentSymbol[]>;
+	getDocumentSymbols(document: ITextDocument, options: { readonly includeLinkDefinitions?: boolean }, token: CancellationToken): Promise<lsp.DocumentSymbol[]>;
 
 	/**
 	 * Get the folding ranges of a markdown file.
@@ -78,6 +78,8 @@ export interface IMdLanguageService {
 
 	/**
 	 * Get the symbols for all markdown files in the current workspace.
+	 *
+	 * Returns all headers in the workspace.
 	 */
 	getWorkspaceSymbols(query: string, token: CancellationToken): Promise<lsp.WorkspaceSymbol[]>;
 
@@ -187,10 +189,8 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const logger = init.logger;
 
 	const tocProvider = new MdTableOfContentsProvider(init.parser, init.workspace, logger);
-	const docSymbolProvider = new MdDocumentSymbolProvider(tocProvider, logger);
 	const smartSelectProvider = new MdSelectionRangeProvider(init.parser, tocProvider, logger);
 	const foldingProvider = new MdFoldingProvider(init.parser, tocProvider, logger);
-	const workspaceSymbolProvider = new MdWorkspaceSymbolProvider(init.workspace, docSymbolProvider);
 	const linkProvider = new MdLinkProvider(init.parser, init.workspace, tocProvider, logger);
 	const pathCompletionProvider = new MdPathCompletionProvider(config, init.workspace, init.parser, linkProvider);
 	const linkCache = createWorkspaceLinkCache(init.parser, init.workspace);
@@ -199,6 +199,8 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const renameProvider = new MdRenameProvider(config, init.workspace, referencesProvider, init.parser.slugifier);
 	const fileRenameProvider = new MdFileRenameProvider(config, init.workspace, linkCache, referencesProvider);
 	const diagnosticsComputer = new DiagnosticComputer(config, init.workspace, linkProvider, tocProvider);
+	const docSymbolProvider = new MdDocumentSymbolProvider(tocProvider, linkProvider, logger);
+	const workspaceSymbolProvider = new MdWorkspaceSymbolProvider(init.workspace, docSymbolProvider);
 
 	return Object.freeze<IMdLanguageService>({
 		dispose: () => {

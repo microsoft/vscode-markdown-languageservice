@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { Position, Range } from 'vscode-languageserver-types';
+import { Position, Range, TextEdit } from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { ITextDocument } from '../types/textDocument';
 
@@ -39,5 +39,9 @@ export class InMemoryDocument implements ITextDocument {
 	updateContent(newContent: string) {
 		++this.version;
 		this._doc = TextDocument.create(this.uri.toString(), 'markdown', this.version, newContent);
+	}
+
+	applyEdits(textEdits: TextEdit[]): string {
+		return TextDocument.applyEdits(this._doc, textEdits);
 	}
 }

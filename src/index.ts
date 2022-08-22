@@ -13,6 +13,7 @@ import { createWorkspaceLinkCache, MdLinkProvider } from './languageFeatures/doc
 import { MdDocumentSymbolProvider } from './languageFeatures/documentSymbols';
 import { MdFileRenameProvider } from './languageFeatures/fileRename';
 import { MdFoldingProvider } from './languageFeatures/folding';
+import { MdOrganizeLinkDefinitionProvider } from './languageFeatures/organizeLinkDefs';
 import { MdPathCompletionProvider } from './languageFeatures/pathCompletions';
 import { MdReferencesProvider } from './languageFeatures/references';
 import { MdRenameProvider } from './languageFeatures/rename';
@@ -108,6 +109,15 @@ export interface IMdLanguageService {
 	getDefinition(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<lsp.Definition | undefined>;
 
 	/**
+	 * Organizes all link definitions in the file by grouping them to the bottom of the file, sorting them, and optionally
+	 * removing any unused definitions.
+	 *
+	 * @returns A set of text edits. May be empty if no edits are required (e.g. the definitions are already sorted at
+	 * the bottom of the file).
+	 */
+	organizeLinkDefinitions(document: ITextDocument, options: { readonly removeUnused?: boolean }, token: CancellationToken): Promise<lsp.TextEdit[]>;
+
+	/**
 	 * Prepare for showing rename UI.
 	 *
 	 * Indicates if rename is supported. If it is, returns the range of symbol being renamed as well as the placeholder to show to the user for the rename.
@@ -201,6 +211,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const diagnosticsComputer = new DiagnosticComputer(config, init.workspace, linkProvider, tocProvider);
 	const docSymbolProvider = new MdDocumentSymbolProvider(tocProvider, linkProvider, logger);
 	const workspaceSymbolProvider = new MdWorkspaceSymbolProvider(init.workspace, docSymbolProvider);
+	const organizeLinkDefinitions = new MdOrganizeLinkDefinitionProvider(linkProvider);
 
 	return Object.freeze<IMdLanguageService>({
 		dispose: () => {
@@ -222,6 +233,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 			return (await referencesProvider.getReferencesToFileInWorkspace(resource, token)).map(x => x.location);
 		},
 		getDefinition: definitionsProvider.provideDefinition.bind(definitionsProvider),
+		organizeLinkDefinitions: organizeLinkDefinitions.getOrganizeLinkDefinitionEdits.bind(organizeLinkDefinitions),
 		prepareRename: renameProvider.prepareRename.bind(renameProvider),
 		getRenameEdit: renameProvider.provideRenameEdits.bind(renameProvider),
 		getRenameFilesInWorkspaceEdit: fileRenameProvider.getRenameFilesInWorkspaceEdit.bind(fileRenameProvider),

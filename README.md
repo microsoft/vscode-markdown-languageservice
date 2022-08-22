@@ -63,6 +63,10 @@ Currently supported language features:
 
 	Supports renaming of headers and links.
 
+- Organize link definitions.
+
+	Groups and sorts link definitions in a file, optionally also removing unused definitions.
+
 - Diagnostics (experimental)
 
 	Supports generating diagnostics for invalid links to:

@@ -69,7 +69,7 @@ Currently supported language features:
 
 -  Code actions
 
-	Code action to extract all occurances
+	- Extract all occurrences of a link in a file to a link definition at the bottom of the file.
 
 - Diagnostics (experimental)
 

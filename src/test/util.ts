@@ -10,8 +10,7 @@ import * as URI from 'vscode-uri';
 import { DisposableStore } from '../util/dispose';
 import { InMemoryDocument } from './inMemoryDocument';
 
-export const joinLines = (...args: string[]) =>
-	args.join(os.platform() === 'win32' ? '\r\n' : '\n');
+export const joinLines = (...args: string[]) => args.join('\n');
 
 export const workspaceRoot = URI.URI.file(os.platform() === 'win32' ? 'c:\\workspace' : '/workspace');
 

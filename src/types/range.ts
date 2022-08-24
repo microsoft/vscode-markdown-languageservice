@@ -43,3 +43,11 @@ export function rangeContains(range: Range, other: Position | Range): boolean {
 	}
 	return !isBefore(other, range.start) && !isBefore(range.end, other);
 }
+
+export function rangeIntersects(a: Range, b: Range): boolean {
+	if (rangeContains(a, b.start) || rangeContains(a, b.end)) {
+		return true;
+	}
+	// Check case where `a` is entirely contained in `b`
+	return rangeContains(b, a.start) || rangeContains(b, a.end);
+}

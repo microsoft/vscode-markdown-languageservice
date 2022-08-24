@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { Position, Range, TextEdit } from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { ITextDocument } from '../types/textDocument';
 
@@ -28,11 +28,11 @@ export class InMemoryDocument implements ITextDocument {
 		return this._doc.lineCount;
 	}
 
-	positionAt(offset: number): Position {
+	positionAt(offset: number): lsp.Position {
 		return this._doc.positionAt(offset);
 	}
 
-	getText(range?: Range): string {
+	getText(range?: lsp.Range): string {
 		return this._doc.getText(range);
 	}
 
@@ -41,7 +41,7 @@ export class InMemoryDocument implements ITextDocument {
 		this._doc = TextDocument.create(this.uri.toString(), 'markdown', this.version, newContent);
 	}
 
-	applyEdits(textEdits: TextEdit[]): string {
+	applyEdits(textEdits: lsp.TextEdit[]): string {
 		return TextDocument.applyEdits(this._doc, textEdits);
 	}
 }

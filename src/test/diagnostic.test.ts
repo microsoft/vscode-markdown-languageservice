@@ -365,6 +365,25 @@ suite('Diagnostic Computer', () => {
 			makeRange(3, 14, 3, 22),
 		]);
 	}));
+
+	test('Should use filename without brackets for bracketed link', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc1.md'), joinLines(
+			`[link](<no such.md>)`,
+			``,
+			`[def]: <no such.md>`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		assertDiagnosticsEqual(diagnostics, [
+			makeRange(0, 8, 0, 18),
+			makeRange(2, 8, 2, 18),
+		]);
+
+		const [diag1, diag2] = diagnostics;
+		assert.strictEqual(diag1.data.fsPath, workspacePath('no such.md').fsPath);
+		assert.strictEqual(diag2.data.fsPath, workspacePath('no such.md').fsPath);
+	}));
 });
 
 

@@ -7,6 +7,7 @@ import type { CancellationToken, CompletionContext } from 'vscode-languageserver
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration } from './config';
+import { MdExtractLinkDefinitionCodeActionProvider } from './languageFeatures/codeActions/extractLinkDef';
 import { MdDefinitionProvider } from './languageFeatures/definitions';
 import { DiagnosticComputer, DiagnosticOptions, DiagnosticsManager, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
 import { createWorkspaceLinkCache, MdLinkProvider } from './languageFeatures/documentLinks';
@@ -143,6 +144,13 @@ export interface IMdLanguageService {
 	getRenameFilesInWorkspaceEdit(edits: ReadonlyArray<{ readonly oldUri: URI; readonly newUri: URI }>, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined>;
 
 	/**
+	 * Get code actions for a selection in a file.
+	 *
+	 * Returned code actions may be disabled.
+	 */
+	getCodeActions(document: ITextDocument, range: lsp.Range, context: lsp.CodeActionContext, token: CancellationToken): Promise<lsp.CodeAction[]>;
+
+	/**
 	 * Compute diagnostics for a given file.
 	 *
 	 * Note that this function is stateless and re-validates all links every time you make the request. Use {@link createPullDiagnosticsManager}
@@ -213,6 +221,8 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const workspaceSymbolProvider = new MdWorkspaceSymbolProvider(init.workspace, docSymbolProvider);
 	const organizeLinkDefinitions = new MdOrganizeLinkDefinitionProvider(linkProvider);
 
+	const extractCodeActionProvider = new MdExtractLinkDefinitionCodeActionProvider(linkProvider);
+
 	return Object.freeze<IMdLanguageService>({
 		dispose: () => {
 			linkCache.dispose();
@@ -237,6 +247,9 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 		prepareRename: renameProvider.prepareRename.bind(renameProvider),
 		getRenameEdit: renameProvider.provideRenameEdits.bind(renameProvider),
 		getRenameFilesInWorkspaceEdit: fileRenameProvider.getRenameFilesInWorkspaceEdit.bind(fileRenameProvider),
+		getCodeActions: async (doc: ITextDocument, range: lsp.Range, context: lsp.CodeActionContext, token: CancellationToken): Promise<lsp.CodeAction[]> => {
+			return extractCodeActionProvider.getActions(doc, range, context, token);
+		},
 		computeDiagnostics: async (doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]> => {
 			return (await diagnosticsComputer.compute(doc, options, token))?.diagnostics;
 		},

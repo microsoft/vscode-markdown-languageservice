@@ -27,8 +27,7 @@ export class MdOrganizeLinkDefinitionProvider {
 			return [];
 		}
 
-
-		const existingDefBlockRange = this.getTargetDefinitionBlockRanges(doc, definitions);
+		const existingDefBlockRange = getExistingDefinitionBlock(doc, definitions);
 		const edits: lsp.TextEdit[] = [];
 
 		// First replace all inline definitions that are not the definition block
@@ -106,28 +105,6 @@ export class MdOrganizeLinkDefinitionProvider {
 		yield* this.getDefinitionBlockGroups(doc, definitions.slice(i + 1));
 	}
 
-	private getTargetDefinitionBlockRanges(doc: ITextDocument, orderedDefinitions: readonly MdLinkDefinition[]): { startLine: number, endLine: number } | undefined {
-		const lastDef = orderedDefinitions[orderedDefinitions.length - 1];
-
-		const textAfter = doc.getText(makeRange(lastDef.source.range.end.line + 1, 0, Infinity, 0));
-		if (isEmptyOrWhitespace(textAfter)) {
-			let prevDef = lastDef;
-			for (let i = orderedDefinitions.length - 1; i >= 0; --i) {
-				const def = orderedDefinitions[i];
-				if (def.source.range.start.line < prevDef.source.range.start.line - 1) {
-					break;
-				}
-				prevDef = def;
-			}
-			return {
-				startLine: prevDef.source.range.start.line,
-				endLine: lastDef.source.range.start.line
-			};
-		}
-
-		return undefined;
-	}
-
 	private getLastNonWhitespaceLine(doc: ITextDocument, orderedDefinitions: readonly MdLinkDefinition[]): number {
 		const lastDef = orderedDefinitions[orderedDefinitions.length - 1];
 		const textAfter = doc.getText(makeRange(lastDef.source.range.end.line + 1, 0, Infinity, 0));
@@ -140,4 +117,30 @@ export class MdOrganizeLinkDefinitionProvider {
 
 		return lastDef.source.range.start.line;
 	}
+}
+
+export function getExistingDefinitionBlock(doc: ITextDocument, orderedDefinitions: readonly MdLinkDefinition[]): { startLine: number, endLine: number } | undefined {
+	if (!orderedDefinitions.length) {
+		return undefined;
+	}
+
+	const lastDef = orderedDefinitions[orderedDefinitions.length - 1];
+
+	const textAfter = doc.getText(makeRange(lastDef.source.range.end.line + 1, 0, Infinity, 0));
+	if (isEmptyOrWhitespace(textAfter)) {
+		let prevDef = lastDef;
+		for (let i = orderedDefinitions.length - 1; i >= 0; --i) {
+			const def = orderedDefinitions[i];
+			if (def.source.range.start.line < prevDef.source.range.start.line - 1) {
+				break;
+			}
+			prevDef = def;
+		}
+		return {
+			startLine: prevDef.source.range.start.line,
+			endLine: lastDef.source.range.start.line
+		};
+	}
+
+	return undefined;
 }

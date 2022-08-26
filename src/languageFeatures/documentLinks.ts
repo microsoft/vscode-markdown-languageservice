@@ -682,7 +682,7 @@ export class MdLinkProvider extends Disposable {
 
 	private createOpenAtPosCommand(resource: URI, pos: lsp.Position): string {
 		// Workaround https://github.com/microsoft/vscode/issues/154993
-		return this.createCommandUri('_workbench.open', resource, [undefined, {
+		return this.createCommandUri('_workbench.open', resource, [-1 /* active group*/, {
 			selection: <VsCodeIRange>{
 				startLineNumber: pos.line + 1,
 				startColumn: pos.character + 1,

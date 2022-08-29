@@ -11,7 +11,15 @@ export class WorkspaceEditBuilder {
 	private readonly changes: { [uri: lsp.DocumentUri]: lsp.TextEdit[]; } = {};
 	private readonly documentChanges: Array<lsp.CreateFile | lsp.RenameFile | lsp.DeleteFile> = [];
 
-	replace(resource: URI, range: lsp.Range, newText: string) {
+	replace(resource: URI, range: lsp.Range, newText: string): void {
+		this.addEdit(resource, lsp.TextEdit.replace(range, newText));
+	}
+
+	insert(resource: URI, position: lsp.Position, newText: string): void {
+		this.addEdit(resource, lsp.TextEdit.insert(position, newText));
+	}
+
+	private addEdit(resource: URI, edit: lsp.TextEdit): void {
 		const resourceKey = resource.toString();
 		let edits = this.changes![resourceKey];
 		if (!edits) {
@@ -19,7 +27,7 @@ export class WorkspaceEditBuilder {
 			this.changes![resourceKey] = edits;
 		}
 
-		edits.push(lsp.TextEdit.replace(range, newText));
+		edits.push(edit);
 	}
 
 	getEdit(): lsp.WorkspaceEdit {

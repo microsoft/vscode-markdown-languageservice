@@ -61,6 +61,14 @@ Currently supported language features:
 
 	Supports renaming of headers and links.
 
+- Organize link definitions.
+
+	Groups and sorts link definitions in a file, optionally also removing unused definitions.
+
+-  Code actions
+
+	- Extract all occurrences of a link in a file to a link definition at the bottom of the file.
+
 - Diagnostics (experimental)
 
 	Supports generating diagnostics for invalid links to:
@@ -123,7 +131,7 @@ const myDocument = TextDocument.create(
 	].join('\n')
 );
 
-const symbols = await languageService.getDocumentSymbols(myDocument, cts.token);
+const symbols = await languageService.getDocumentSymbols(myDocument, { includeLinkDefinitions: true }, cts.token);
 ```
 
 See [example.cjs](./example.cjs) for complete, minimal example of using the language service. You can run in using `node example.cjs`.

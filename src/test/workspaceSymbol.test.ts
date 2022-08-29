@@ -5,6 +5,7 @@
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-types';
 import { IWorkspace } from '..';
+import { MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdDocumentSymbolProvider } from '../languageFeatures/documentSymbols';
 import { MdWorkspaceSymbolProvider } from '../languageFeatures/workspaceSymbols';
 import { MdTableOfContentsProvider } from '../tableOfContents';
@@ -14,12 +15,13 @@ import { createNewMarkdownEngine } from './engine';
 import { InMemoryDocument } from './inMemoryDocument';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
-import { withStore, workspacePath } from './util';
+import { joinLines, withStore, workspacePath } from './util';
 
 function getWorkspaceSymbols(store: DisposableStore, workspace: IWorkspace, query = ''): Promise<lsp.WorkspaceSymbol[]> {
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-	const symbolProvider = new MdDocumentSymbolProvider(tocProvider, nulLogger);
+	const linkProvider = store.add(new MdLinkProvider(engine, workspace, tocProvider, nulLogger));
+	const symbolProvider = new MdDocumentSymbolProvider(tocProvider, linkProvider, nulLogger);
 	const workspaceSymbolProvider = store.add(new MdWorkspaceSymbolProvider(workspace, symbolProvider));
 	return workspaceSymbolProvider.provideWorkspaceSymbols(query, noopToken);
 }
@@ -41,7 +43,7 @@ suite('Workspace symbols', () => {
 		assert.strictEqual(symbols[1].name, '## header2');
 	}));
 
-	test('Should return all content  basic workspace', withStore(async (store) => {
+	test('Should return all content basic workspace', withStore(async (store) => {
 		const fileNameCount = 10;
 		const files: InMemoryDocument[] = [];
 		for (let i = 0; i < fileNameCount; ++i) {
@@ -99,5 +101,18 @@ suite('Workspace symbols', () => {
 		workspace.createDocument(new InMemoryDocument(workspacePath('test2.md'), `# new header\nabc\n## header2`));
 		const newSymbols = await getWorkspaceSymbols(store, workspace, '');
 		assert.strictEqual(newSymbols.length, 3);
+	}));
+
+	test('Should not include link definitions', withStore(async (store) => {
+		const workspace = store.add(new InMemoryWorkspace([
+			new InMemoryDocument(workspacePath('test.md'), joinLines(
+				`# header1`,
+				`[def]: http://example.com`
+			))
+		]));
+
+		const symbols = await getWorkspaceSymbols(store, workspace, '');
+		assert.strictEqual(symbols.length, 1);
+		assert.strictEqual(symbols[0].name, '# header1');
 	}));
 });

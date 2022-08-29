@@ -123,22 +123,43 @@ export interface MdLinkSource {
 	readonly resource: URI;
 
 	/**
+	 * The range of the entire link target.
+	 *
+	 * This includes the opening `(`/`[` and closing `)`/`]`.
+	 *
+	 * For `[boris](/cat.md#siberian "title")` this would be the range of `(/cat.md#siberian "title")`
+	 */
+	readonly targetRange: lsp.Range;
+
+	/**
 	 * The original text of the link destination in code.
+	 *
+	 * For `[boris](/cat.md#siberian "title")` this would be `/cat.md#siberian`
+	 *
 	 */
 	readonly hrefText: string;
 
 	/**
 	 * The original text of just the link's path in code.
+	 *
+	 * For `[boris](/cat.md#siberian "title")` this would be `/cat.md`
 	 */
 	readonly pathText: string;
 
 	/**
-	 * The range of the path.
+	 * The range of the path in this link.
+	 *
+	 * Does not include whitespace or the link title.
+	 *
+	 * For `[boris](/cat.md#siberian "title")` this would be the range of `/cat.md#siberian`
 	 */
 	readonly hrefRange: lsp.Range;
 
 	/**
 	 * The range of the fragment within the path.
+	 *
+	 * For `[boris](/cat.md#siberian "title")` this would be the range of `#siberian`
+	 *
 	 */
 	readonly fragmentRange: lsp.Range | undefined;
 }
@@ -148,10 +169,10 @@ export enum MdLinkKind {
 	Definition = 2,
 }
 
-export interface MdInlineLink {
+export interface MdInlineLink<HrefType = LinkHref> {
 	readonly kind: MdLinkKind.Link;
 	readonly source: MdLinkSource;
-	readonly href: LinkHref;
+	readonly href: HrefType;
 }
 
 export interface MdLinkDefinition {
@@ -168,7 +189,8 @@ export type MdLink = MdInlineLink | MdLinkDefinition;
 
 function extractDocumentLink(
 	document: ITextDocument,
-	pre: string,
+	targetText: string,
+	preHrefText: string,
 	rawLink: string,
 	matchIndex: number,
 	fullMatch: string,
@@ -187,10 +209,17 @@ function extractDocumentLink(
 		return undefined;
 	}
 
+	const pre = targetText + preHrefText;
 	const linkStart = document.positionAt(matchIndex);
 	const linkEnd = translatePosition(linkStart, { characterDelta: fullMatch.length });
+
+	const targetStart = translatePosition(linkStart, { characterDelta: targetText.length });
+	const targetRange: lsp.Range = { start: targetStart, end: linkEnd };
+
 	const hrefStart = translatePosition(linkStart, { characterDelta: pre.length + (isAngleBracketLink ? 1 : 0) });
 	const hrefEnd = translatePosition(hrefStart, { characterDelta: link.length });
+	const hrefRange: lsp.Range = { start: hrefStart, end: hrefEnd };
+
 	return {
 		kind: MdLinkKind.Link,
 		href: linkTarget,
@@ -198,7 +227,8 @@ function extractDocumentLink(
 			hrefText: link,
 			resource: URI.parse(document.uri),
 			range: { start: linkStart, end: linkEnd },
-			hrefRange: { start: hrefStart, end: hrefEnd },
+			targetRange,
+			hrefRange,
 			...getLinkSourceFragmentInfo(document, link, hrefStart, hrefEnd),
 		}
 	};
@@ -242,10 +272,10 @@ const linkPattern = new RegExp(
 	/*****/r`\\.|` + // Escaped char, or...
 	/*****/r`\[[^\[\]]*\]` + // Matched bracket pair
 	/**/r`)*` +
-	r`\]` +
+	r`\])` + // <-- close prefix match
 
 	// Destination
-	r`\(\s*)` + // <-- close prefix match
+	r`(\(\s*)` + // Pre href
 	/**/r`(` +
 	/*****/r`[^\s\(\)\<](?:[^\s\(\)]|\([^\s\(\)]*?\))*|` + // Link without whitespace, or...
 	/*****/r`<[^<>]+>` + // In angle brackets
@@ -359,13 +389,13 @@ export class MdLinkComputer {
 	private *getInlineLinks(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
 		const text = document.getText();
 		for (const match of text.matchAll(linkPattern)) {
-			const matchLinkData = extractDocumentLink(document, match[1], match[2], match.index ?? 0, match[0], this.workspace);
+			const matchLinkData = extractDocumentLink(document, match[1], match[2], match[3], match.index ?? 0, match[0], this.workspace);
 			if (matchLinkData && !noLinkRanges.contains(matchLinkData.source.hrefRange.start)) {
 				yield matchLinkData;
 
 				// Also check link destination for links
 				for (const innerMatch of match[1].matchAll(linkPattern)) {
-					const innerData = extractDocumentLink(document, innerMatch[1], innerMatch[2], (match.index ?? 0) + (innerMatch.index ?? 0), innerMatch[0], this.workspace);
+					const innerData = extractDocumentLink(document, innerMatch[1], innerMatch[2], innerMatch[3], (match.index ?? 0) + (innerMatch.index ?? 0), innerMatch[0], this.workspace);
 					if (innerData) {
 						yield innerData;
 					}
@@ -392,13 +422,15 @@ export class MdLinkComputer {
 			const linkEnd = translatePosition(linkStart, { characterDelta: match[0].length });
 			const hrefStart = translatePosition(linkStart, { characterDelta: 1 });
 			const hrefEnd = translatePosition(hrefStart, { characterDelta: link.length });
+			const hrefRange = { start: hrefStart, end: hrefEnd };
 			yield {
 				kind: MdLinkKind.Link,
 				href: linkTarget,
 				source: {
 					hrefText: link,
 					resource: URI.parse(document.uri),
-					hrefRange: { start: hrefStart, end: hrefEnd },
+					targetRange: hrefRange,
+					hrefRange: hrefRange,
 					range: { start: linkStart, end: linkEnd },
 					...getLinkSourceFragmentInfo(document, link, hrefStart, hrefEnd),
 				}
@@ -444,6 +476,7 @@ export class MdLinkComputer {
 			}
 
 			const linkEnd = translatePosition(linkStart, { characterDelta: match[0].length - match[1].length });
+			const hrefRange = { start: hrefStart, end: hrefEnd };
 			yield {
 				kind: MdLinkKind.Link,
 				source: {
@@ -451,7 +484,8 @@ export class MdLinkComputer {
 					pathText: reference,
 					resource: URI.parse(document.uri),
 					range: { start: linkStart, end: linkEnd },
-					hrefRange: { start: hrefStart, end: hrefEnd },
+					targetRange: hrefRange,
+					hrefRange: hrefRange,
 					fragmentRange: undefined,
 				},
 				href: {
@@ -474,13 +508,14 @@ export class MdLinkComputer {
 			const pre = match[1];
 			const reference = match[2];
 			const rawLinkText = match[3].trim();
-			const target = resolveLink(document, rawLinkText, this.workspace);
+			const isAngleBracketLink = angleBracketLinkRe.test(rawLinkText);
+			const linkText = stripAngleBrackets(rawLinkText);
+
+			const target = resolveLink(document, linkText, this.workspace);
 			if (!target) {
 				continue;
 			}
 
-			const isAngleBracketLink = angleBracketLinkRe.test(rawLinkText);
-			const linkText = stripAngleBrackets(rawLinkText);
 			const hrefStart = translatePosition(linkStart, { characterDelta: pre.length + (isAngleBracketLink ? 1 : 0) });
 			const hrefEnd = translatePosition(hrefStart, { characterDelta: linkText.length });
 			const hrefRange = { start: hrefStart, end: hrefEnd };
@@ -494,6 +529,7 @@ export class MdLinkComputer {
 					hrefText: linkText,
 					resource: URI.parse(document.uri),
 					range: { start: linkStart, end: linkEnd },
+					targetRange: hrefRange,
 					hrefRange,
 					...getLinkSourceFragmentInfo(document, rawLinkText, hrefStart, hrefEnd),
 				},
@@ -504,7 +540,7 @@ export class MdLinkComputer {
 	}
 }
 
-interface MdDocumentLinks {
+export interface MdDocumentLinksInfo {
 	readonly links: readonly MdLink[];
 	readonly definitions: LinkDefinitionSet;
 }
@@ -534,7 +570,7 @@ export class LinkDefinitionSet implements Iterable<[string, MdLinkDefinition]> {
  */
 export class MdLinkProvider extends Disposable {
 
-	private readonly _linkCache: MdDocumentInfoCache<MdDocumentLinks>;
+	private readonly _linkCache: MdDocumentInfoCache<MdDocumentLinksInfo>;
 
 	private readonly _linkComputer: MdLinkComputer;
 
@@ -557,7 +593,7 @@ export class MdLinkProvider extends Disposable {
 		}));
 	}
 
-	public getLinks(document: ITextDocument): Promise<MdDocumentLinks> {
+	public getLinks(document: ITextDocument): Promise<MdDocumentLinksInfo> {
 		return this._linkCache.getForDocument(document);
 	}
 

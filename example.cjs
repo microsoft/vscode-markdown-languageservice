@@ -105,7 +105,7 @@ async function main() {
 	// Request document symbols from the language service
 	const cts = new CancellationTokenSource();
 	try {
-		const symbols = await languageService.getDocumentSymbols(myDocument, cts.token);
+		const symbols = await languageService.getDocumentSymbols(myDocument, { includeLinkDefinitions: true }, cts.token);
 		console.log(JSON.stringify(symbols, null, 2))
 	} finally {
 		cts.dispose();

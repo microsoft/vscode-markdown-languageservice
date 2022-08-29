@@ -3,75 +3,117 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { ILogger, LogLevel } from '../logging';
-import { MdTableOfContentsProvider, TocEntry } from '../tableOfContents';
+import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOfContents';
+import { isBefore } from '../types/position';
+import { makeRange } from '../types/range';
 import { ITextDocument } from '../types/textDocument';
+import { MdLinkDefinition, MdLinkKind, MdLinkProvider } from './documentLinks';
 
 interface MarkdownSymbol {
 	readonly level: number;
 	readonly parent: MarkdownSymbol | undefined;
 	readonly children: lsp.DocumentSymbol[];
+	readonly range: lsp.Range;
+}
+
+export interface ProvideDocumentSymbolOptions {
+	readonly includeLinkDefinitions?: boolean;
 }
 
 export class MdDocumentSymbolProvider {
 
 	constructor(
 		private readonly tocProvider: MdTableOfContentsProvider,
+		private readonly linkProvider: MdLinkProvider,
 		private readonly logger: ILogger,
 	) { }
 
-	public async provideDocumentSymbolInformation(document: ITextDocument): Promise<lsp.SymbolInformation[]> {
-		this.logger.log(LogLevel.Debug, 'DocumentSymbolProvider', `provideDocumentSymbolInformation - ${document.uri}`);
+	public async provideDocumentSymbols(document: ITextDocument, options: ProvideDocumentSymbolOptions, token: CancellationToken): Promise<lsp.DocumentSymbol[]> {
+		this.logger.log(LogLevel.Trace, 'DocumentSymbolProvider', `provideDocumentSymbols - ${document.uri}`);
+
+		const linkSymbols = await (options.includeLinkDefinitions ? this.provideLinkDefinitionSymbols(document, token) : []);
+		if (token.isCancellationRequested) {
+			return [];
+		}
+
 		const toc = await this.tocProvider.getForDocument(document);
-		return toc.entries.map(entry => this.toSymbolInformation(entry));
+		if (token.isCancellationRequested) {
+			return [];
+		}
+
+		return this.toSymbolTree(document, linkSymbols, toc);
 	}
 
-	public async provideDocumentSymbols(document: ITextDocument): Promise<lsp.DocumentSymbol[]> {
-		const toc = await this.tocProvider.getForDocument(document);
+	private toSymbolTree(document: ITextDocument, linkSymbols: readonly lsp.DocumentSymbol[], toc: TableOfContents): lsp.DocumentSymbol[] {
 		const root: MarkdownSymbol = {
 			level: -Infinity,
 			children: [],
-			parent: undefined
+			parent: undefined,
+			range: makeRange(0, 0, document.lineCount + 1, 0),
 		};
-		this.buildTree(root, toc.entries);
+		const additionalSymbols = [...linkSymbols];
+		this.buildTocSymbolTree(root, toc.entries, additionalSymbols);
+		// Put remaining link definitions into top level document instead of last header
+		root.children.push(...additionalSymbols);
 		return root.children;
 	}
 
-	private buildTree(parent: MarkdownSymbol, entries: readonly TocEntry[]) {
+	private async provideLinkDefinitionSymbols(document: ITextDocument, token: CancellationToken): Promise<lsp.DocumentSymbol[]> {
+		const { links } = await this.linkProvider.getLinks(document);
+		if (token.isCancellationRequested) {
+			return [];
+		}
+
+		return links
+			.filter(link => link.kind === MdLinkKind.Definition)
+			.map((link): lsp.DocumentSymbol => this.definitionToDocumentSymbol(link as MdLinkDefinition));
+	}
+
+	private definitionToDocumentSymbol(def: MdLinkDefinition): lsp.DocumentSymbol {
+		return {
+			kind: lsp.SymbolKind.Constant,
+			name: `[${def.ref.text}]`,
+			selectionRange: def.ref.range,
+			range: def.source.range,
+		};
+	}
+
+	private buildTocSymbolTree(parent: MarkdownSymbol, entries: readonly TocEntry[], additionalSymbols: lsp.DocumentSymbol[]): void {
+		if (entries.length) {
+			while (additionalSymbols.length && isBefore(additionalSymbols[0].range.end, entries[0].sectionLocation.range.start)) {
+				parent.children.push(additionalSymbols.shift()!);
+			}
+		}
+
 		if (!entries.length) {
 			return;
 		}
 
 		const entry = entries[0];
-		const symbol = this.toDocumentSymbol(entry);
+		const symbol = this.tocToDocumentSymbol(entry);
 		symbol.children = [];
 
 		while (entry.level <= parent.level) {
 			parent = parent.parent!;
 		}
 		parent.children.push(symbol);
-		this.buildTree({ level: entry.level, children: symbol.children, parent }, entries.slice(1));
+
+		this.buildTocSymbolTree({ level: entry.level, children: symbol.children, parent, range: entry.sectionLocation.range }, entries.slice(1), additionalSymbols);
 	}
 
-	private toSymbolInformation(entry: TocEntry): lsp.SymbolInformation {
+	private tocToDocumentSymbol(entry: TocEntry): lsp.DocumentSymbol {
 		return {
-			name: this.getSymbolName(entry),
-			kind: lsp.SymbolKind.String,
-			location: entry.sectionLocation
-		};
-	}
-
-	private toDocumentSymbol(entry: TocEntry): lsp.DocumentSymbol {
-		return {
-			name: this.getSymbolName(entry),
+			name: this.getTocSymbolName(entry),
 			kind: lsp.SymbolKind.String,
 			range: entry.sectionLocation.range,
 			selectionRange: entry.sectionLocation.range
 		};
 	}
 
-	private getSymbolName(entry: TocEntry): string {
+	private getTocSymbolName(entry: TocEntry): string {
 		return '#'.repeat(entry.level) + ' ' + entry.text;
 	}
 }

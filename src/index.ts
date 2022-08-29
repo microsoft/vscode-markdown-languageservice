@@ -7,12 +7,14 @@ import type { CancellationToken, CompletionContext } from 'vscode-languageserver
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration } from './config';
+import { MdExtractLinkDefinitionCodeActionProvider } from './languageFeatures/codeActions/extractLinkDef';
 import { MdDefinitionProvider } from './languageFeatures/definitions';
 import { DiagnosticComputer, DiagnosticOptions, DiagnosticsManager, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
 import { createWorkspaceLinkCache, MdLinkProvider } from './languageFeatures/documentLinks';
 import { MdDocumentSymbolProvider } from './languageFeatures/documentSymbols';
 import { MdFileRenameProvider } from './languageFeatures/fileRename';
 import { MdFoldingProvider } from './languageFeatures/folding';
+import { MdOrganizeLinkDefinitionProvider } from './languageFeatures/organizeLinkDefs';
 import { MdPathCompletionProvider } from './languageFeatures/pathCompletions';
 import { MdReferencesProvider } from './languageFeatures/references';
 import { MdRenameProvider } from './languageFeatures/rename';
@@ -56,9 +58,9 @@ export interface IMdLanguageService {
 	/**
 	 * Get the symbols of a markdown file.
 	 *
-	 * This currently returns the headers in the file.
+	 * Returns the headers and optionally also the link definitions in the file
 	 */
-	getDocumentSymbols(document: ITextDocument, token: CancellationToken): Promise<lsp.DocumentSymbol[]>;
+	getDocumentSymbols(document: ITextDocument, options: { readonly includeLinkDefinitions?: boolean }, token: CancellationToken): Promise<lsp.DocumentSymbol[]>;
 
 	/**
 	 * Get the folding ranges of a markdown file.
@@ -78,6 +80,8 @@ export interface IMdLanguageService {
 
 	/**
 	 * Get the symbols for all markdown files in the current workspace.
+	 *
+	 * Returns all headers in the workspace.
 	 */
 	getWorkspaceSymbols(query: string, token: CancellationToken): Promise<lsp.WorkspaceSymbol[]>;
 
@@ -106,6 +110,15 @@ export interface IMdLanguageService {
 	getDefinition(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<lsp.Definition | undefined>;
 
 	/**
+	 * Organizes all link definitions in the file by grouping them to the bottom of the file, sorting them, and optionally
+	 * removing any unused definitions.
+	 *
+	 * @returns A set of text edits. May be empty if no edits are required (e.g. the definitions are already sorted at
+	 * the bottom of the file).
+	 */
+	organizeLinkDefinitions(document: ITextDocument, options: { readonly removeUnused?: boolean }, token: CancellationToken): Promise<lsp.TextEdit[]>;
+
+	/**
 	 * Prepare for showing rename UI.
 	 *
 	 * Indicates if rename is supported. If it is, returns the range of symbol being renamed as well as the placeholder to show to the user for the rename.
@@ -129,6 +142,13 @@ export interface IMdLanguageService {
 	 * @return A workspace edit that performs the rename or undefined if the rename cannot be performed.
 	 */
 	getRenameFilesInWorkspaceEdit(edits: ReadonlyArray<{ readonly oldUri: URI; readonly newUri: URI }>, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined>;
+
+	/**
+	 * Get code actions for a selection in a file.
+	 *
+	 * Returned code actions may be disabled.
+	 */
+	getCodeActions(document: ITextDocument, range: lsp.Range, context: lsp.CodeActionContext, token: CancellationToken): Promise<lsp.CodeAction[]>;
 
 	/**
 	 * Compute diagnostics for a given file.
@@ -187,10 +207,8 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const logger = init.logger;
 
 	const tocProvider = new MdTableOfContentsProvider(init.parser, init.workspace, logger);
-	const docSymbolProvider = new MdDocumentSymbolProvider(tocProvider, logger);
 	const smartSelectProvider = new MdSelectionRangeProvider(init.parser, tocProvider, logger);
 	const foldingProvider = new MdFoldingProvider(init.parser, tocProvider, logger);
-	const workspaceSymbolProvider = new MdWorkspaceSymbolProvider(init.workspace, docSymbolProvider);
 	const linkProvider = new MdLinkProvider(init.parser, init.workspace, tocProvider, logger);
 	const pathCompletionProvider = new MdPathCompletionProvider(config, init.workspace, init.parser, linkProvider);
 	const linkCache = createWorkspaceLinkCache(init.parser, init.workspace);
@@ -199,6 +217,11 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const renameProvider = new MdRenameProvider(config, init.workspace, referencesProvider, init.parser.slugifier);
 	const fileRenameProvider = new MdFileRenameProvider(config, init.workspace, linkCache, referencesProvider);
 	const diagnosticsComputer = new DiagnosticComputer(config, init.workspace, linkProvider, tocProvider);
+	const docSymbolProvider = new MdDocumentSymbolProvider(tocProvider, linkProvider, logger);
+	const workspaceSymbolProvider = new MdWorkspaceSymbolProvider(init.workspace, docSymbolProvider);
+	const organizeLinkDefinitions = new MdOrganizeLinkDefinitionProvider(linkProvider);
+
+	const extractCodeActionProvider = new MdExtractLinkDefinitionCodeActionProvider(linkProvider);
 
 	return Object.freeze<IMdLanguageService>({
 		dispose: () => {
@@ -220,9 +243,13 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 			return (await referencesProvider.getReferencesToFileInWorkspace(resource, token)).map(x => x.location);
 		},
 		getDefinition: definitionsProvider.provideDefinition.bind(definitionsProvider),
+		organizeLinkDefinitions: organizeLinkDefinitions.getOrganizeLinkDefinitionEdits.bind(organizeLinkDefinitions),
 		prepareRename: renameProvider.prepareRename.bind(renameProvider),
 		getRenameEdit: renameProvider.provideRenameEdits.bind(renameProvider),
 		getRenameFilesInWorkspaceEdit: fileRenameProvider.getRenameFilesInWorkspaceEdit.bind(fileRenameProvider),
+		getCodeActions: async (doc: ITextDocument, range: lsp.Range, context: lsp.CodeActionContext, token: CancellationToken): Promise<lsp.CodeAction[]> => {
+			return extractCodeActionProvider.getActions(doc, range, context, token);
+		},
 		computeDiagnostics: async (doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]> => {
 			return (await diagnosticsComputer.compute(doc, options, token))?.diagnostics;
 		},

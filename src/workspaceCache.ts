@@ -132,6 +132,10 @@ export class MdWorkspaceInfoCache<T> extends Disposable {
 		private readonly getValue: (document: ITextDocument) => Promise<T>,
 	) {
 		super();
+
+		this._register(this.workspace.onDidChangeMarkdownDocument(this.onDidChangeDocument, this));
+		this._register(this.workspace.onDidCreateMarkdownDocument(this.onDidChangeDocument, this));
+		this._register(this.workspace.onDidDeleteMarkdownDocument(this.onDidDeleteDocument, this));
 	}
 
 	public async entries(): Promise<Array<[URI, T]>> {
@@ -157,17 +161,13 @@ export class MdWorkspaceInfoCache<T> extends Disposable {
 	private async ensureInit(): Promise<void> {
 		if (!this._init) {
 			this._init = this.populateCache();
-
-			this._register(this.workspace.onDidChangeMarkdownDocument(this.onDidChangeDocument, this));
-			this._register(this.workspace.onDidCreateMarkdownDocument(this.onDidChangeDocument, this));
-			this._register(this.workspace.onDidDeleteMarkdownDocument(this.onDidDeleteDocument, this));
 		}
 		await this._init;
 	}
 
 	private async populateCache(): Promise<void> {
-		const markdownDocumentUris = await this.workspace.getAllMarkdownDocuments();
-		for (const document of markdownDocumentUris) {
+		const markdownDocuments = await this.workspace.getAllMarkdownDocuments();
+		for (const document of markdownDocuments) {
 			if (!this._cache.has(URI.parse(document.uri))) {
 				this.update(document);
 			}

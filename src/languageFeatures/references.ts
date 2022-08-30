@@ -93,7 +93,7 @@ export class MdReferencesProvider extends Disposable {
 	}
 
 	public async getReferencesAtPosition(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<MdReference[]> {
-		this.logger.log(LogLevel.Trace, 'ReferencesProvider', `getReferencesAtPosition: ${document.uri}`);
+		this.logger.log(LogLevel.Trace, 'ReferencesProvider', `getReferencesAtPosition — ${document.uri} ${document.version}`);
 
 		const toc = await this.tocProvider.getForDocument(document);
 		if (token.isCancellationRequested) {
@@ -109,7 +109,7 @@ export class MdReferencesProvider extends Disposable {
 	}
 
 	public async getReferencesToFileInWorkspace(resource: URI, token: CancellationToken): Promise<MdReference[]> {
-		this.logger.log(LogLevel.Trace, 'ReferencesProvider', `getAllReferencesToFileInWorkspace: ${resource}`);
+		this.logger.log(LogLevel.Trace, 'ReferencesProvider', `getAllReferencesToFileInWorkspace — ${resource}`);
 
 		const allLinksInWorkspace = (await this.linkCache.values()).flat();
 		if (token.isCancellationRequested) {
@@ -160,11 +160,11 @@ export class MdReferencesProvider extends Disposable {
 				if (rangeContains(link.ref.range, position)) {
 					return Array.from(this.getReferencesToLinkReference(docLinks, link.ref.text, { resource: URI.parse(document.uri), range: link.ref.range }));
 				} else if (rangeContains(link.source.hrefRange, position)) {
-					return this.getReferencesToLink(link, position, token);
+					return this.getReferencesToLink(docLinks, link, position, token);
 				}
 			} else {
 				if (rangeContains(link.source.hrefRange, position)) {
-					return this.getReferencesToLink(link, position, token);
+					return this.getReferencesToLink(docLinks, link, position, token);
 				}
 			}
 		}
@@ -172,14 +172,15 @@ export class MdReferencesProvider extends Disposable {
 		return [];
 	}
 
-	private async getReferencesToLink(sourceLink: MdLink, triggerPosition: lsp.Position, token: CancellationToken): Promise<MdReference[]> {
+	private async getReferencesToLink(docLinks: Iterable<MdLink>, sourceLink: MdLink, triggerPosition: lsp.Position, token: CancellationToken): Promise<MdReference[]> {
+		if (sourceLink.href.kind === HrefKind.Reference) {
+			return Array.from(this.getReferencesToLinkReference(docLinks, sourceLink.href.ref, { resource: sourceLink.source.resource, range: sourceLink.source.hrefRange }));
+		}
+		
+		// Otherwise find all occurrences of the link in the workspace
 		const allLinksInWorkspace = (await this.linkCache.values()).flat();
 		if (token.isCancellationRequested) {
 			return [];
-		}
-
-		if (sourceLink.href.kind === HrefKind.Reference) {
-			return Array.from(this.getReferencesToLinkReference(allLinksInWorkspace, sourceLink.href.ref, { resource: sourceLink.source.resource, range: sourceLink.source.hrefRange }));
 		}
 
 		if (sourceLink.href.kind === HrefKind.External) {

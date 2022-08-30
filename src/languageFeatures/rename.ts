@@ -8,6 +8,7 @@ import * as lsp from 'vscode-languageserver-types';
 import * as nls from 'vscode-nls';
 import { URI, Utils } from 'vscode-uri';
 import { defaultMarkdownFileExtension, LsConfiguration } from '../config';
+import { ILogger, LogLevel } from '../logging';
 import { ISlugifier } from '../slugify';
 import { arePositionsEqual, translatePosition } from '../types/position';
 import { modifyRange, rangeContains } from '../types/range';
@@ -51,11 +52,14 @@ export class MdRenameProvider extends Disposable {
 		private readonly workspace: IWorkspace,
 		private readonly referencesProvider: MdReferencesProvider,
 		private readonly slugifier: ISlugifier,
+		private readonly logger: ILogger,
 	) {
 		super();
 	}
 
 	public async prepareRename(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<undefined | { range: lsp.Range; placeholder: string }> {
+		this.logger.log(LogLevel.Trace, 'RenameProvider', `prepareRename — ${document.uri} ${document.version}`);
+
 		const allRefsInfo = await this.getAllReferences(document, position, token);
 		if (token.isCancellationRequested) {
 			return undefined;
@@ -106,10 +110,8 @@ export class MdRenameProvider extends Disposable {
 	}
 
 	public async provideRenameEdits(document: ITextDocument, position: lsp.Position, newName: string, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined> {
-		return (await this.provideRenameEditsImpl(document, position, newName, token));
-	}
+		this.logger.log(LogLevel.Trace, 'RenameProvider', `provideRenameEdits — ${document.uri} ${document.version}`);
 
-	public async provideRenameEditsImpl(document: ITextDocument, position: lsp.Position, newName: string, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined> {
 		const allRefsInfo = await this.getAllReferences(document, position, token);
 		if (token.isCancellationRequested || !allRefsInfo || !allRefsInfo.references.length) {
 			return undefined;
@@ -199,7 +201,6 @@ export class MdRenameProvider extends Disposable {
 	}
 
 	private renameReferenceLinks(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
-
 		const builder = new WorkspaceEditBuilder();
 
 		for (const ref of allRefsInfo.references) {
@@ -227,6 +228,10 @@ export class MdRenameProvider extends Disposable {
 		}
 
 		const references = await this.referencesProvider.getReferencesAtPosition(document, position, token);
+		if (token.isCancellationRequested) {
+			return;
+		}
+
 		const triggerRef = references.find(ref => ref.isTriggerLocation);
 		if (!triggerRef) {
 			return undefined;

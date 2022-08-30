@@ -98,10 +98,16 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 			builder.insert(resource, { line: defBlock.endLine, character: line.length }, `\n[${placeholder}]: ${definitionText}`);
 		}
 
+		const renamePosition = translatePosition(targetLink.source.targetRange.start, { characterDelta: 2 });
 		return {
 			title: MdExtractLinkDefinitionCodeActionProvider.genericTitle,
 			kind: MdExtractLinkDefinitionCodeActionProvider.kind,
 			edit: builder.getEdit(),
+			command: {
+				command: 'editor.action.rename',
+				title: 'Rename',
+				arguments: [doc.uri, renamePosition],
+			}
 		};
 	}
 

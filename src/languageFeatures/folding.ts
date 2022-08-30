@@ -25,7 +25,7 @@ export class MdFoldingProvider {
 		document: ITextDocument,
 		_token: CancellationToken
 	): Promise<lsp.FoldingRange[]> {
-		this.logger.log(LogLevel.Debug, 'MdFoldingProvider', `provideFoldingRanges - ${document.uri}`);
+		this.logger.log(LogLevel.Debug, 'MdFoldingProvider', `provideFoldingRanges — ${document.uri} ${document.version}`);
 
 		const foldables = await Promise.all([
 			this.getRegions(document),

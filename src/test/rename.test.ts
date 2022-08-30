@@ -32,7 +32,7 @@ function prepareRename(store: DisposableStore, doc: InMemoryDocument, pos: lsp.P
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const linkCache = store.add(createWorkspaceLinkCache(engine, workspace));
 	const referenceComputer = store.add(new MdReferencesProvider(config, engine, workspace, tocProvider, linkCache, nulLogger));
-	const renameProvider = store.add(new MdRenameProvider(config, workspace, referenceComputer, githubSlugifier));
+	const renameProvider = store.add(new MdRenameProvider(config, workspace, referenceComputer, githubSlugifier, nulLogger));
 	return renameProvider.prepareRename(doc, pos, noopToken);
 }
 
@@ -45,8 +45,8 @@ function getRenameEdits(store: DisposableStore, doc: InMemoryDocument, pos: lsp.
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const linkCache = store.add(createWorkspaceLinkCache(engine, workspace));
 	const referencesProvider = store.add(new MdReferencesProvider(config, engine, workspace, tocProvider, linkCache, nulLogger));
-	const renameProvider = store.add(new MdRenameProvider(config, workspace, referencesProvider, githubSlugifier));
-	return renameProvider.provideRenameEditsImpl(doc, pos, newName, noopToken);
+	const renameProvider = store.add(new MdRenameProvider(config, workspace, referencesProvider, githubSlugifier, nulLogger));
+	return renameProvider.provideRenameEdits(doc, pos, newName, noopToken);
 }
 
 interface ExpectedTextEdit {

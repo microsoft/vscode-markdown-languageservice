@@ -209,7 +209,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const tocProvider = new MdTableOfContentsProvider(init.parser, init.workspace, logger);
 	const smartSelectProvider = new MdSelectionRangeProvider(init.parser, tocProvider, logger);
 	const foldingProvider = new MdFoldingProvider(init.parser, tocProvider, logger);
-	const linkProvider = new MdLinkProvider(init.parser, init.workspace, tocProvider, logger);
+	const linkProvider = new MdLinkProvider(config, init.parser, init.workspace, tocProvider, logger);
 	const pathCompletionProvider = new MdPathCompletionProvider(config, init.workspace, init.parser, linkProvider);
 	const linkCache = createWorkspaceLinkCache(init.parser, init.workspace);
 	const referencesProvider = new MdReferencesProvider(config, init.parser, init.workspace, tocProvider, linkCache, logger);

@@ -30,9 +30,10 @@ const defaultDiagnosticsOptions = Object.freeze<DiagnosticOptions>({
 
 async function getComputedDiagnostics(store: DisposableStore, doc: InMemoryDocument, workspace: IWorkspace, options: Partial<DiagnosticOptions> = {}): Promise<lsp.Diagnostic[]> {
 	const engine = createNewMarkdownEngine();
+	const config = getLsConfiguration({});
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-	const linkProvider = store.add(new MdLinkProvider(engine, workspace, tocProvider, nulLogger));
-	const computer = new DiagnosticComputer(getLsConfiguration({}), workspace, linkProvider, tocProvider);
+	const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
+	const computer = new DiagnosticComputer(config, workspace, linkProvider, tocProvider);
 	return (
 		await computer.compute(doc, getDiagnosticsOptions(options), noopToken)
 	).diagnostics;
@@ -390,9 +391,10 @@ suite('Diagnostic Computer', () => {
 suite('Diagnostic Manager', () => {
 	function createManager(store: DisposableStore, workspace: InMemoryWorkspace) {
 		const engine = createNewMarkdownEngine();
+		const config = getLsConfiguration({});
 		const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-		const linkProvider = store.add(new MdLinkProvider(engine, workspace, tocProvider, nulLogger));
-		return store.add(new DiagnosticsManager(getLsConfiguration({}), workspace, linkProvider, tocProvider));
+		const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
+		return store.add(new DiagnosticsManager(config, workspace, linkProvider, tocProvider));
 	}
 
 	test('Should not re-stat files on simple edits', withStore(async (store) => {

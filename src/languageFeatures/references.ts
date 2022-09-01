@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
-import * as uri from 'vscode-uri';
 import { URI } from 'vscode-uri';
 import { LsConfiguration } from '../config';
 import { ILogger, LogLevel } from '../logging';
@@ -249,9 +248,13 @@ export class MdReferencesProvider extends Disposable {
 		return this.workspace.hasMarkdownDocument(resolvedHrefPath) || looksLikeMarkdownPath(this.configuration, resolvedHrefPath);
 	}
 
-	private looksLikeLinkToDoc(href: InternalHref, targetDoc: URI) {
-		return href.path.fsPath === targetDoc.fsPath
-			|| uri.Utils.extname(href.path) === '' && href.path.with({ path: href.path.path + '.md' }).fsPath === targetDoc.fsPath;
+	private looksLikeLinkToDoc(href: InternalHref, targetDoc: URI): boolean {
+		if (href.path.fsPath === targetDoc.fsPath) {
+			return true;
+		}
+
+		return this.configuration.markdownFileExtensions.some(ext => 
+			href.path.with({ path: href.path.path + '.' + ext }).fsPath === targetDoc.fsPath);
 	}
 
 	private *findLinksToFile(resource: URI, links: readonly MdLink[], sourceLink: MdLink | undefined): Iterable<MdReference> {

@@ -7,6 +7,7 @@ import type { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import * as nls from 'vscode-nls';
 import { URI, Utils } from 'vscode-uri';
+import { LsConfiguration } from '../config';
 import { ILogger, LogLevel } from '../logging';
 import { IMdParser } from '../parser';
 import { MdTableOfContentsProvider } from '../tableOfContents';
@@ -17,7 +18,7 @@ import { coalesce } from '../util/arrays';
 import { noopToken } from '../util/cancellation';
 import { Disposable } from '../util/dispose';
 import { r } from '../util/string';
-import { getWorkspaceFolder, IWorkspace } from '../workspace';
+import { getWorkspaceFolder, IWorkspace, tryAppendMarkdownFileExtension } from '../workspace';
 import { MdDocumentInfoCache, MdWorkspaceInfoCache } from '../workspaceCache';
 
 const localize = nls.loadMessageBundle();
@@ -575,6 +576,7 @@ export class MdLinkProvider extends Disposable {
 	private readonly _linkComputer: MdLinkComputer;
 
 	constructor(
+		private readonly _config: LsConfiguration,
 		tokenizer: IMdParser,
 		private readonly _workspace: IWorkspace,
 		private readonly _tocProvider: MdTableOfContentsProvider,
@@ -630,8 +632,8 @@ export class MdLinkProvider extends Disposable {
 		if (!stat) {
 			// We don't think the file exists. If it doesn't already have an extension, try tacking on a `.md` and using that instead
 			let found = false;
-			if (Utils.extname(target) === '') {
-				const dotMdResource = target.with({ path: target.path + '.md' });
+			const dotMdResource = tryAppendMarkdownFileExtension(this._config, target);
+			if (dotMdResource) {
 				if (await this._workspace.stat(dotMdResource)) {
 					target = dotMdResource;
 					found = true;

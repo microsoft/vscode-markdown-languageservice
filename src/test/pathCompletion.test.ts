@@ -23,12 +23,12 @@ import { CURSOR, getCursorPositions, joinLines, withStore, workspacePath } from 
 
 async function getCompletionsAtCursor(store: DisposableStore, resource: URI, fileContents: string, workspace?: IWorkspace, configOverrides: Partial<LsConfiguration> = {}) {
 	const doc = new InMemoryDocument(resource, fileContents);
+	const config = getLsConfiguration(configOverrides);
 
 	const engine = createNewMarkdownEngine();
 	const ws = workspace ?? store.add(new InMemoryWorkspace([doc]));
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, ws, nulLogger));
-	const linkProvider = store.add(new MdLinkProvider(engine, ws, tocProvider, nulLogger));
-	const config = getLsConfiguration(configOverrides);
+	const linkProvider = store.add(new MdLinkProvider(config, engine, ws, tocProvider, nulLogger));
 	const provider = new MdPathCompletionProvider(config, ws, engine, linkProvider);
 	const cursorPositions = getCursorPositions(fileContents, doc);
 	const completions = await provider.provideCompletionItems(doc, cursorPositions[0], {

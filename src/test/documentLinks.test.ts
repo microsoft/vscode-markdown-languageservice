@@ -5,6 +5,7 @@
 
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-types';
+import { getLsConfiguration } from '../config';
 import { MdLink, MdLinkComputer, MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { makeRange } from '../types/range';
@@ -534,7 +535,7 @@ suite('Link provider', () => {
 
 		const engine = createNewMarkdownEngine();
 		const tocProvider = new MdTableOfContentsProvider(engine, workspace, nulLogger);
-		const provider = new MdLinkProvider(engine, workspace, tocProvider, nulLogger);
+		const provider = new MdLinkProvider(getLsConfiguration({}), engine, workspace, tocProvider, nulLogger);
 		return provider.provideDocumentLinks(doc, noopToken);
 	}
 

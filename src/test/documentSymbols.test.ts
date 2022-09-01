@@ -5,6 +5,7 @@
 
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-types';
+import { getLsConfiguration } from '../config';
 import { MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdDocumentSymbolProvider, ProvideDocumentSymbolOptions } from '../languageFeatures/documentSymbols';
 import { MdTableOfContentsProvider } from '../tableOfContents';
@@ -22,8 +23,10 @@ function getSymbolsForFile(store: DisposableStore, fileContents: string, options
 	const doc = new InMemoryDocument(workspacePath('test.md'), fileContents);
 	const workspace = store.add(new InMemoryWorkspace([doc]));
 	const engine = createNewMarkdownEngine();
+	const config = getLsConfiguration({});
+
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-	const linkProvider = store.add(new MdLinkProvider(engine, workspace, tocProvider, nulLogger));
+	const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
 	const provider = new MdDocumentSymbolProvider(tocProvider, linkProvider, nulLogger);
 	return provider.provideDocumentSymbols(doc, options, noopToken);
 }

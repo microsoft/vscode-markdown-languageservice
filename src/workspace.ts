@@ -5,7 +5,7 @@
 
 import { Event } from 'vscode-languageserver';
 import { URI, Utils } from 'vscode-uri';
-import { LsConfiguration } from './config';
+import { defaultMarkdownFileExtension, LsConfiguration } from './config';
 import { ITextDocument } from './types/textDocument';
 import { IDisposable } from './util/dispose';
 import { ResourceMap } from './util/resourceMap';
@@ -200,10 +200,10 @@ export async function statLinkToMarkdownFile(config: LsConfiguration, workspace:
 	return undefined;
 }
 
-function tryAppendMarkdownFileExtension(config: LsConfiguration, linkUri: URI): URI | undefined {
+export function tryAppendMarkdownFileExtension(config: LsConfiguration, linkUri: URI): URI | undefined {
 	const ext = Utils.extname(linkUri).toLowerCase().replace(/^\./, '');
 	if (ext === '' || !(config.markdownFileExtensions.includes(ext) || config.knownLinkedToFileExtensions.includes(ext))) {
-		return linkUri.with({ path: linkUri.path + '.md' });
+		return linkUri.with({ path: linkUri.path + '.' + (config.markdownFileExtensions[0] ?? defaultMarkdownFileExtension) });
 	}
 	return undefined;
 }

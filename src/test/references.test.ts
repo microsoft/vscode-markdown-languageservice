@@ -296,8 +296,8 @@ suite('References', () => {
 		const other1Uri = workspacePath('sub', 'other.md');
 
 		const doc = new InMemoryDocument(docUri, joinLines(
-			`[with ext](./sub/other#header)`,
-			`[without ext](./sub/other.md#header)`,
+			`[without ext](./sub/other#header)`,
+			`[with ext](./sub/other.md#header)`,
 		));
 
 		const workspace = store.add(new InMemoryWorkspace([
@@ -309,11 +309,35 @@ suite('References', () => {
 			)),
 		]));
 
-		const refs = await getReferences(store, doc, { line: 0, character: 23 }, workspace);
+		const refs = await getReferences(store, doc, { line: 0, character: 29 }, workspace);
 		assertReferencesEqual(refs!,
 			{ uri: docUri, line: 0 },
 			{ uri: docUri, line: 1 },
 			{ uri: other1Uri, line: 1 }, // Header definition
+		);
+	}));
+
+	test('Should find references from link across files when triggered on link without file extension that contains period', withStore(async (store) => {
+		const docUri = workspacePath('doc.md');
+		const other1Uri = workspacePath('sub', 'other.test.md');
+
+		const doc = new InMemoryDocument(docUri, joinLines(
+			`[without ext](./sub/other.test#header)`,
+			`[with ext](./sub/other.test.md#header)`,
+		));
+
+		const workspace = store.add(new InMemoryWorkspace([
+			doc,
+			new InMemoryDocument(other1Uri, joinLines(
+				`# header`,
+			)),
+		]));
+
+		const refs = await getReferences(store, doc, { line: 0, character: 33 }, workspace);
+		assertReferencesEqual(refs!,
+			{ uri: docUri, line: 0 },
+			{ uri: docUri, line: 1 },
+			{ uri: other1Uri, line: 0 }, // Header definition
 		);
 	}));
 

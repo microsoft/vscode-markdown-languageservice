@@ -15,12 +15,15 @@ import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
 import { joinLines, withStore, workspacePath } from './util';
 import { makeRange } from '../types/range';
+import { getLsConfiguration } from '../config';
 
 async function getExtractActions(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position): Promise<lsp.CodeAction[]> {
 	const workspace = store.add(new InMemoryWorkspace([doc]));
 	const engine = createNewMarkdownEngine();
+	const config = getLsConfiguration({});
+	
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-	const linkProvider = store.add(new MdLinkProvider(engine, workspace, tocProvider, nulLogger));
+	const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
 	const provider = new MdExtractLinkDefinitionCodeActionProvider(linkProvider);
 	return provider.getActions(doc, makeRange(pos, pos), lsp.CodeActionContext.create([], undefined, undefined), noopToken);
 }

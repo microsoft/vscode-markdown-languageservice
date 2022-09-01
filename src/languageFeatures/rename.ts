@@ -16,6 +16,7 @@ import { ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
 import { WorkspaceEditBuilder } from '../util/editBuilder';
 import { Schemes } from '../util/schemes';
+import { tryDecodeUri } from '../util/uri';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
 import { HrefKind, InternalHref, MdLink, MdLinkKind, MdLinkSource, resolveDocumentLink } from './documentLinks';
 import { MdHeaderReference, MdReference, MdReferenceKind, MdReferencesProvider } from './references';
@@ -25,14 +26,6 @@ const localize = nls.loadMessageBundle();
 export interface MdReferencesResponse {
 	readonly references: readonly MdReference[];
 	readonly triggerRef: MdReference;
-}
-
-function tryDecodeUri(str: string): string {
-	try {
-		return decodeURI(str);
-	} catch {
-		return str;
-	}
 }
 
 export class MdRenameProvider extends Disposable {

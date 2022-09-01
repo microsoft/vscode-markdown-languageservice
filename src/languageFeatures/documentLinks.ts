@@ -18,6 +18,7 @@ import { coalesce } from '../util/arrays';
 import { noopToken } from '../util/cancellation';
 import { Disposable } from '../util/dispose';
 import { r } from '../util/string';
+import { tryDecodeUri } from '../util/uri';
 import { getWorkspaceFolder, IWorkspace, tryAppendMarkdownFileExtension } from '../workspace';
 import { MdDocumentInfoCache, MdWorkspaceInfoCache } from '../workspaceCache';
 
@@ -171,10 +172,10 @@ function createHref(
 	const cleanLink = stripAngleBrackets(link);
 	if (/^[a-z\-][a-z\-]+:/i.test(cleanLink)) {
 		// Looks like a uri
-		return { kind: HrefKind.External, uri: URI.parse(cleanLink) };
+		return { kind: HrefKind.External, uri: URI.parse(tryDecodeUri(cleanLink)) };
 	}
 
-	const resolved = resolveDocumentLink(URI.parse(document.uri), link, workspace);
+	const resolved = resolveDocumentLink(URI.parse(document.uri), cleanLink, workspace);
 	if (!resolved) {
 		return undefined;
 	}

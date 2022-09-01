@@ -289,7 +289,7 @@ const linkPattern = new RegExp(
 /**
 * Matches `[text][ref]` or `[shorthand]`
 */
-const referenceLinkPattern = /(^|[^\]\\])(?:(?:(\[((?:\\\]|[^\]])+)\]\[\s*?)([^\s\]]*?)\]|\[\s*?([^\s\\\]]*?)\])(?![\:\(]))/gm;
+const referenceLinkPattern = /(^|[^\]\\])(?:(?:(\[((?:\\\]|[^\]])+)\]\[\s*?)([^\]]*?)\]|\[\s*?([^\s\\\]]*?)\])(?![\:\(]))/gm;
 
 /**
  * Matches `<http://example.com>`

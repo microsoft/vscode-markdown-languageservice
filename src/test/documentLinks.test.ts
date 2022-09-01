@@ -192,13 +192,23 @@ suite('Link computer', () => {
 		]);
 	});
 
-	test('Should only find one link for reference sources [a]: source (#141285)', async () => {
+	test('Should only find one link for definition (#141285)', async () => {
 		const links = await getLinksForFile(joinLines(
 			'[Works]: https://example.com',
 		));
 
 		assertLinksEqual(links, [
 			{ range: makeRange(0, 9, 0, 28), sourceText: 'https://example.com' },
+		]);
+	});
+
+	test('Should find link with space in definition name', async () => {
+		const links = await getLinksForFile(joinLines(
+			'[my ref]: https://example.com',
+		));
+
+		assertLinksEqual(links, [
+			{ range: makeRange(0, 10, 0, 29), sourceText: 'https://example.com' },
 		]);
 	});
 
@@ -213,12 +223,30 @@ suite('Link computer', () => {
 		]);
 	});
 
+	test('Should find reference link with space in reference name', async () => {
+		const links = await getLinksForFile(joinLines(
+			'[text][my ref]',
+		));
+		assertLinksEqual(links, [
+			makeRange(0, 7, 0, 13),
+		]);
+	});
+
 	test('Should find reference link shorthand using empty closing brackets (#141285)', async () => {
 		const links = await getLinksForFile(joinLines(
 			'[ref][]',
 		));
 		assertLinksEqual(links, [
 			makeRange(0, 1, 0, 4),
+		]);
+	});
+
+	test('Should find reference link shorthand using space in reference name', async () => {
+		const links = await getLinksForFile(joinLines(
+			'[my ref][]',
+		));
+		assertLinksEqual(links, [
+			makeRange(0, 1, 0, 7),
 		]);
 	});
 

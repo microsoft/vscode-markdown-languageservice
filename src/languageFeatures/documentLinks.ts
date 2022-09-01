@@ -24,11 +24,10 @@ import { MdDocumentInfoCache, MdWorkspaceInfoCache } from '../workspaceCache';
 const localize = nls.loadMessageBundle();
 
 export enum HrefKind {
-	External = 1,
-	Internal = 2,
-	Reference = 3,
+	External,
+	Internal,
+	Reference,
 }
-
 
 export interface ExternalHref {
 	readonly kind: HrefKind.External;
@@ -47,30 +46,6 @@ export interface ReferenceHref {
 }
 
 export type LinkHref = ExternalHref | InternalHref | ReferenceHref;
-
-function resolveLink(
-	document: ITextDocument,
-	link: string,
-	workspace: IWorkspace,
-): ExternalHref | InternalHref | undefined {
-	const cleanLink = stripAngleBrackets(link);
-	if (/^[a-z\-][a-z\-]+:/i.test(cleanLink)) {
-		// Looks like a uri
-		return { kind: HrefKind.External, uri: URI.parse(cleanLink) };
-	}
-
-	const resolved = resolveDocumentLink(URI.parse(document.uri), link, workspace);
-	if (!resolved) {
-		return undefined;
-	}
-
-	return {
-		kind: HrefKind.Internal,
-		path: resolved.path,
-		fragment: resolved.fragment,
-	};
-}
-
 
 export function resolveDocumentLink(
 	inputDocument: URI,
@@ -188,7 +163,30 @@ export interface MdLinkDefinition {
 
 export type MdLink = MdInlineLink | MdLinkDefinition;
 
-function extractDocumentLink(
+function createHref(
+	document: ITextDocument,
+	link: string,
+	workspace: IWorkspace,
+): ExternalHref | InternalHref | undefined {
+	const cleanLink = stripAngleBrackets(link);
+	if (/^[a-z\-][a-z\-]+:/i.test(cleanLink)) {
+		// Looks like a uri
+		return { kind: HrefKind.External, uri: URI.parse(cleanLink) };
+	}
+
+	const resolved = resolveDocumentLink(URI.parse(document.uri), link, workspace);
+	if (!resolved) {
+		return undefined;
+	}
+
+	return {
+		kind: HrefKind.Internal,
+		path: resolved.path,
+		fragment: resolved.fragment,
+	};
+}
+
+function createMdLink(
 	document: ITextDocument,
 	targetText: string,
 	preHrefText: string,
@@ -202,7 +200,7 @@ function extractDocumentLink(
 
 	let linkTarget: ExternalHref | InternalHref | undefined;
 	try {
-		linkTarget = resolveLink(document, link, workspace);
+		linkTarget = createHref(document, link, workspace);
 	} catch {
 		return undefined;
 	}
@@ -390,13 +388,13 @@ export class MdLinkComputer {
 	private *getInlineLinks(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
 		const text = document.getText();
 		for (const match of text.matchAll(linkPattern)) {
-			const matchLinkData = extractDocumentLink(document, match[1], match[2], match[3], match.index ?? 0, match[0], this.workspace);
+			const matchLinkData = createMdLink(document, match[1], match[2], match[3], match.index ?? 0, match[0], this.workspace);
 			if (matchLinkData && !noLinkRanges.contains(matchLinkData.source.hrefRange.start)) {
 				yield matchLinkData;
 
 				// Also check link destination for links
 				for (const innerMatch of match[1].matchAll(linkPattern)) {
-					const innerData = extractDocumentLink(document, innerMatch[1], innerMatch[2], innerMatch[3], (match.index ?? 0) + (innerMatch.index ?? 0), innerMatch[0], this.workspace);
+					const innerData = createMdLink(document, innerMatch[1], innerMatch[2], innerMatch[3], (match.index ?? 0) + (innerMatch.index ?? 0), innerMatch[0], this.workspace);
 					if (innerData) {
 						yield innerData;
 					}
@@ -415,7 +413,7 @@ export class MdLinkComputer {
 			}
 
 			const link = match[1];
-			const linkTarget = resolveLink(document, link, this.workspace);
+			const linkTarget = createHref(document, link, this.workspace);
 			if (!linkTarget) {
 				continue;
 			}
@@ -512,7 +510,7 @@ export class MdLinkComputer {
 			const isAngleBracketLink = angleBracketLinkRe.test(rawLinkText);
 			const linkText = stripAngleBrackets(rawLinkText);
 
-			const target = resolveLink(document, linkText, this.workspace);
+			const target = createHref(document, linkText, this.workspace);
 			if (!target) {
 				continue;
 			}
@@ -720,6 +718,13 @@ export class MdLinkProvider extends Disposable {
 
 	private createOpenAtPosCommand(resource: URI, pos: lsp.Position): string {
 		// Workaround https://github.com/microsoft/vscode/issues/154993
+		interface VsCodeIRange {
+			readonly startLineNumber: number;
+			readonly startColumn: number;
+			readonly endLineNumber: number;
+			readonly endColumn: number;
+		}
+		
 		return this.createCommandUri('_workbench.open', resource, [-1 /* active group*/, {
 			selection: <VsCodeIRange>{
 				startLineNumber: pos.line + 1,
@@ -729,13 +734,6 @@ export class MdLinkProvider extends Disposable {
 			}
 		}]);
 	}
-}
-
-interface VsCodeIRange {
-	readonly startLineNumber: number;
-	readonly startColumn: number;
-	readonly endLineNumber: number;
-	readonly endColumn: number;
 }
 
 export function createWorkspaceLinkCache(

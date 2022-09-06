@@ -96,9 +96,9 @@ export class MdFileRenameProvider extends Disposable {
 					});
 
 					const oldLink = resolveDocumentLink(oldDocUri, link.source.hrefText, this.workspace);
-					if (oldLink && !isParentDir(edit.oldUri, oldLink.path)) {
+					if (oldLink && !isParentDir(edit.oldUri, oldLink.resource)) {
 						const rootDir = Utils.dirname(docUri);
-						const newPath = path.relative(rootDir.path, oldLink.path.path);
+						const newPath = path.relative(rootDir.path, oldLink.resource.path);
 						builder.replace(docUri, getFilePathRange(link), encodeURI(newPath.replace(/\\/g, '/')));
 					}
 				}
@@ -142,7 +142,7 @@ export class MdFileRenameProvider extends Disposable {
 			const oldLink = resolveDocumentLink(edit.oldUri, link.source.hrefText, this.workspace);
 			if (oldLink) {
 				const rootDir = Utils.dirname(edit.newUri);
-				const newPath = path.relative(rootDir.toString(true), oldLink.path.toString(true));
+				const newPath = path.relative(rootDir.toString(true), oldLink.resource.toString(true));
 				builder.replace(edit.newUri, getFilePathRange(link), encodeURI(newPath.replace(/\\/g, '/')));
 			}
 		}

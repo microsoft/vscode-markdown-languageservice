@@ -12,7 +12,7 @@ import { ILogger, LogLevel } from '../logging';
 import { IMdParser } from '../parser';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { translatePosition } from '../types/position';
-import { rangeContains } from '../types/range';
+import { makeRange, rangeContains } from '../types/range';
 import { getLine, ITextDocument } from '../types/textDocument';
 import { coalesce } from '../util/arrays';
 import { noopToken } from '../util/cancellation';
@@ -48,20 +48,25 @@ export interface ReferenceHref {
 export type LinkHref = ExternalHref | InternalHref | ReferenceHref;
 
 export function resolveDocumentLink(
-	inputDocument: URI,
+	sourceDocUri: URI,
 	link: string,
 	workspace: IWorkspace,
-): { path: URI; fragment: string } | undefined {
+): { resource: URI; linkFragment: string } | undefined {
 
 	// Assume it must be an relative or absolute file path
 	// Use a fake scheme to avoid parse warnings
 	const tempUri = URI.parse(`vscode-resource:${link}`);
 
-	const docUri = workspace.getContainingDocument?.(inputDocument)?.uri ?? inputDocument;
+	const docUri = workspace.getContainingDocument?.(sourceDocUri)?.uri ?? sourceDocUri;
 
 	let resourceUri: URI | undefined;
 	if (!tempUri.path) {
-		resourceUri = docUri;
+		// Looks like a fragment only link
+		if (typeof tempUri.fragment !== 'string') {
+			return undefined;
+		}
+
+		resourceUri = sourceDocUri;
 	} else if (tempUri.path[0] === '/') {
 		const root = getWorkspaceFolder(workspace, docUri);
 		if (root) {
@@ -78,12 +83,14 @@ export function resolveDocumentLink(
 			resourceUri = Utils.joinPath(base, tempUri.path);
 		}
 	}
+
 	if (!resourceUri) {
 		return undefined;
 	}
+
 	return {
-		path: resourceUri.with({ fragment: '' }),
-		fragment: tempUri.fragment,
+		resource: resourceUri,
+		linkFragment: tempUri.fragment,
 	};
 }
 
@@ -181,8 +188,8 @@ function createHref(
 
 	return {
 		kind: HrefKind.Internal,
-		path: resolved.path,
-		fragment: resolved.fragment,
+		path: resolved.resource,
+		fragment: resolved.linkFragment,
 	};
 }
 
@@ -607,49 +614,48 @@ export class MdLinkProvider extends Disposable {
 	}
 
 	public async resolveDocumentLink(link: lsp.DocumentLink, _token: CancellationToken): Promise<lsp.DocumentLink | undefined> {
-		if (!link.data) {
+		const href = this.reviveLinkHrefData(link);
+		if (!href) {
 			return undefined;
 		}
 
-		const mdLink = link.data as MdLink;
-		if (mdLink.href.kind !== HrefKind.Internal) {
-			return undefined;
-		}
+		let target: URI = href.path;
 
-		// Default to allowing to click link to goto / create file
-		link.target = this.createCommandUri('vscode.open', mdLink.href.path);
-
-		let target = URI.from(mdLink.href.path);
-
-		const stat = await this._workspace.stat(target);
-		if (stat?.isDirectory) {
-			link.target = this.createCommandUri('revealInExplorer', mdLink.href.path);
-			return link;
-		}
-
-		if (!stat) {
-			// We don't think the file exists. If it doesn't already have an extension, try tacking on a `.md` and using that instead
-			let found = false;
-			const dotMdResource = tryAppendMarkdownFileExtension(this._config, target);
-			if (dotMdResource) {
-				if (await this._workspace.stat(dotMdResource)) {
-					target = dotMdResource;
-					found = true;
-				}
-			}
-
-			if (!found) {
+		// If there's a containing document, don't bother with trying to resolve the
+		// link to a workspace file as one will not exist
+		const containingContext = this._workspace.getContainingDocument?.(href.path);
+		if (!containingContext) {
+			const stat = await this._workspace.stat(href.path);
+			if (stat?.isDirectory) {
+				link.target = this.createCommandUri('revealInExplorer', href);
 				return link;
 			}
+
+			if (!stat) {
+				// We don't think the file exists. If it doesn't already have an extension, try tacking on a `.md` and using that instead
+				let found = false;
+				const dotMdResource = tryAppendMarkdownFileExtension(this._config, target);
+				if (dotMdResource) {
+					if (await this._workspace.stat(dotMdResource)) {
+						target = dotMdResource;
+						found = true;
+					}
+				}
+
+				if (!found) {
+					link.target = href.path.toString(true);
+					return link;
+				}
+			}
 		}
 
-		if (!mdLink.href.fragment) {
-			link.target = this.createCommandUri('vscode.open', target);
+		if (!href.fragment) {
+			link.target = target.toString(true);
 			return link;
 		}
 
 		// Try navigating with fragment that sets line number
-		const lineNumberFragment = mdLink.href.fragment.match(/^L(\d+)(?:,(\d+))?$/i);
+		const lineNumberFragment = href.fragment.match(/^L(\d+)(?:,(\d+))?$/i);
 		if (lineNumberFragment) {
 			const line = +lineNumberFragment[1] - 1;
 			if (!isNaN(line)) {
@@ -663,18 +669,29 @@ export class MdLinkProvider extends Disposable {
 		// Try navigating to header in file
 		const doc = await this._workspace.openMarkdownDocument(target);
 		if (doc) {
-			const toc = await this._tocProvider.getForDocument(doc);
-			const entry = toc.lookup(mdLink.href.fragment);
+			const toc = await this._tocProvider.getForContainingDoc(doc);
+			const entry = toc.lookup(href.fragment);
 			if (entry) {
-				link.target = this.createOpenAtPosCommand(target, entry.headerLocation.range.start);
+				link.target = this.createOpenAtPosCommand(URI.parse(entry.headerLocation.uri), entry.headerLocation.range.start);
 				return link;
 			}
-
 		}
 
-		link.target = this.createCommandUri('vscode.open', target);
-
+		link.target = target.toString(true);
 		return link;
+	}
+
+	private reviveLinkHrefData(link: lsp.DocumentLink): { path: URI, fragment: string } | undefined {
+		if (!link.data) {
+			return undefined;
+		}
+
+		const mdLink = link.data as MdLink;
+		if (mdLink.href.kind !== HrefKind.Internal) {
+			return undefined;
+		}
+
+		return { path: URI.from(mdLink.href.path), fragment: mdLink.href.fragment };
 	}
 
 	private toValidDocumentLink(link: MdLink, definitionSet: LinkDefinitionSet): lsp.DocumentLink | undefined {
@@ -689,7 +706,7 @@ export class MdLinkProvider extends Disposable {
 				return {
 					range: link.source.hrefRange,
 					target: undefined, // Needs to be resolved later
-					tooltip: 'Follow link',
+					tooltip: localize('tooltip.link', 'Follow link'),
 					data: link,
 				};
 			}
@@ -704,7 +721,7 @@ export class MdLinkProvider extends Disposable {
 				const target = this.createOpenAtPosCommand(link.source.resource, def.source.hrefRange.start);
 				return {
 					range: link.source.hrefRange,
-					tooltip: localize('definition.tooltip', 'Go to link definition'),
+					tooltip: localize('tooltip.definition', 'Go to link definition'),
 					target: target,
 					data: link
 				};
@@ -717,22 +734,18 @@ export class MdLinkProvider extends Disposable {
 	}
 
 	private createOpenAtPosCommand(resource: URI, pos: lsp.Position): string {
-		// Workaround https://github.com/microsoft/vscode/issues/154993
-		interface VsCodeIRange {
-			readonly startLineNumber: number;
-			readonly startColumn: number;
-			readonly endLineNumber: number;
-			readonly endColumn: number;
+		// If the resource itself already has a fragment, we need to handle opening specially 
+		// instead of using `file://path.md#L123` style uris
+		if (resource.fragment) {
+			// Match the args of `vscode.open`
+			return this.createCommandUri('vscodeMarkdownLanguageservice.open', resource, {
+				selection: makeRange(pos, pos),
+			});
 		}
-		
-		return this.createCommandUri('_workbench.open', resource, [-1 /* active group*/, {
-			selection: <VsCodeIRange>{
-				startLineNumber: pos.line + 1,
-				startColumn: pos.character + 1,
-				endLineNumber: pos.line + 1,
-				endColumn: pos.character + 1,
-			}
-		}]);
+
+		return resource.with({
+			fragment: `L${pos.line + 1},${pos.character + 1}`
+		}).toString(true);
 	}
 }
 

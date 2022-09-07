@@ -188,8 +188,8 @@ export class MdTableOfContentsProvider extends Disposable {
 	private readonly _cache: MdDocumentInfoCache<TableOfContents>;
 
 	constructor(
-		parser: IMdParser,
-		workspace: IWorkspace,
+		private readonly parser: IMdParser,
+		private readonly workspace: IWorkspace,
 		private readonly logger: ILogger,
 	) {
 		super();
@@ -205,5 +205,9 @@ export class MdTableOfContentsProvider extends Disposable {
 
 	public getForDocument(doc: ITextDocument): Promise<TableOfContents> {
 		return this._cache.getForDocument(doc);
+	}
+
+	public getForContainingDoc(doc: ITextDocument): Promise<TableOfContents> {
+		return TableOfContents.createForContainingDoc(this.parser, this.workspace, doc);
 	}
 }

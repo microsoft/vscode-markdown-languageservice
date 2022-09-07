@@ -137,7 +137,7 @@ export class MdRenameProvider extends Disposable {
 			return builder.getEdit();
 		}
 
-		let resolvedNewFilePath = rawNewFilePath.path;
+		let resolvedNewFilePath = rawNewFilePath.resource;
 		if (!Utils.extname(resolvedNewFilePath)) {
 			// If the newly entered path doesn't have a file extension but the original link did
 			// tack on a .md file extension
@@ -157,7 +157,7 @@ export class MdRenameProvider extends Disposable {
 		for (const ref of allRefsInfo.references) {
 			if (ref.kind === MdReferenceKind.Link) {
 				// Try to preserve style of existing links
-				const newLinkText = getLinkRenameText(this.workspace, ref.link.source, rawNewFilePath.path, newName.startsWith('./') || newName.startsWith('.\\'));
+				const newLinkText = getLinkRenameText(this.workspace, ref.link.source, rawNewFilePath.resource, newName.startsWith('./') || newName.startsWith('.\\'));
 				builder.replace(ref.link.source.resource, getFilePathRange(ref.link), encodeURI((newLinkText ?? newName).replace(/\\/g, '/')));
 			}
 		}
@@ -248,7 +248,7 @@ export function getLinkRenameText(workspace: IWorkspace, source: MdLinkSource, n
 			return undefined;
 		}
 
-		return '/' + path.relative(root.path.toString(true), newPath.toString(true));
+		return '/' + path.relative(root.resource.toString(true), newPath.toString(true));
 	}
 
 	const rootDir = Utils.dirname(source.resource);

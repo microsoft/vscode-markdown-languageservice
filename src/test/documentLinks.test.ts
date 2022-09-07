@@ -5,11 +5,13 @@
 
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-types';
+import { URI } from 'vscode-uri';
 import { getLsConfiguration } from '../config';
-import { MdLink, MdLinkComputer, MdLinkProvider } from '../languageFeatures/documentLinks';
+import { InternalHref, MdLink, MdLinkComputer, MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { makeRange } from '../types/range';
 import { noopToken } from '../util/cancellation';
+import { ContainingDocumentContext, IWorkspace } from '../workspace';
 import { createNewMarkdownEngine } from './engine';
 import { InMemoryDocument } from './inMemoryDocument';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
@@ -19,9 +21,13 @@ import { assertRangeEqual, joinLines, workspacePath } from './util';
 
 suite('Link computer', () => {
 
-	function getLinksForFile(fileContents: string): Promise<MdLink[]> {
-		const doc = new InMemoryDocument(workspacePath('x.md'), fileContents);
+	function getLinksForText(fileContents: string): Promise<MdLink[]> {
+		const doc = new InMemoryDocument(workspacePath('test.md'), fileContents);
 		const workspace = new InMemoryWorkspace([doc]);
+		return getLinks(doc, workspace);
+	}
+
+	function getLinks(doc: InMemoryDocument, workspace: IWorkspace): Promise<MdLink[]> {
 		const engine = createNewMarkdownEngine();
 		const linkProvider = new MdLinkComputer(engine, workspace);
 		return linkProvider.getAllLinks(doc, noopToken);
@@ -42,12 +48,12 @@ suite('Link computer', () => {
 	}
 
 	test('Should not return anything for empty document', async () => {
-		const links = await getLinksForFile('');
+		const links = await getLinksForText('');
 		assertLinksEqual(links, []);
 	});
 
 	test('Should not return anything for simple document without links', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'# a',
 			'fdasfdfsafsa',
 		));
@@ -55,7 +61,7 @@ suite('Link computer', () => {
 	});
 
 	test('Should detect basic http links', async () => {
-		const links = await getLinksForFile('a [b](https://example.com) c');
+		const links = await getLinksForText('a [b](https://example.com) c');
 		assertLinksEqual(links, [
 			makeRange(0, 6, 0, 25)
 		]);
@@ -63,13 +69,13 @@ suite('Link computer', () => {
 
 	test('Should detect basic workspace links', async () => {
 		{
-			const links = await getLinksForFile('a [b](./file) c');
+			const links = await getLinksForText('a [b](./file) c');
 			assertLinksEqual(links, [
 				makeRange(0, 6, 0, 12)
 			]);
 		}
 		{
-			const links = await getLinksForFile('a [b](file.png) c');
+			const links = await getLinksForText('a [b](file.png) c');
 			assertLinksEqual(links, [
 				makeRange(0, 6, 0, 14)
 			]);
@@ -77,14 +83,14 @@ suite('Link computer', () => {
 	});
 
 	test('Should detect links with title', async () => {
-		const links = await getLinksForFile('a [b](https://example.com "abc") c');
+		const links = await getLinksForText('a [b](https://example.com "abc") c');
 		assertLinksEqual(links, [
 			makeRange(0, 6, 0, 25)
 		]);
 	});
 
 	test('Should handle links with escaped characters in name (#35245)', async () => {
-		const links = await getLinksForFile('a [b\\]](./file)');
+		const links = await getLinksForText('a [b\\]](./file)');
 		assertLinksEqual(links, [
 			makeRange(0, 8, 0, 14)
 		]);
@@ -92,20 +98,20 @@ suite('Link computer', () => {
 
 	test('Should handle links with balanced parens', async () => {
 		{
-			const links = await getLinksForFile('a [b](https://example.com/a()c) c');
+			const links = await getLinksForText('a [b](https://example.com/a()c) c');
 			assertLinksEqual(links, [
 				makeRange(0, 6, 0, 30)
 			]);
 		}
 		{
-			const links = await getLinksForFile('a [b](https://example.com/a(b)c) c');
+			const links = await getLinksForText('a [b](https://example.com/a(b)c) c');
 			assertLinksEqual(links, [
 				makeRange(0, 6, 0, 31)
 			]);
 		}
 		{
 			// #49011
-			const links = await getLinksForFile('[A link](http://ThisUrlhasParens/A_link(in_parens))');
+			const links = await getLinksForText('[A link](http://ThisUrlhasParens/A_link(in_parens))');
 			assertLinksEqual(links, [
 				makeRange(0, 9, 0, 50)
 			]);
@@ -114,25 +120,25 @@ suite('Link computer', () => {
 
 	test('Should ignore bracketed text inside link title (#150921)', async () => {
 		{
-			const links = await getLinksForFile('[some [inner] in title](link)');
+			const links = await getLinksForText('[some [inner] in title](link)');
 			assertLinksEqual(links, [
 				makeRange(0, 24, 0, 28),
 			]);
 		}
 		{
-			const links = await getLinksForFile('[some [inner] in title](<link>)');
+			const links = await getLinksForText('[some [inner] in title](<link>)');
 			assertLinksEqual(links, [
 				makeRange(0, 25, 0, 29),
 			]);
 		}
 		{
-			const links = await getLinksForFile('[some [inner with space] in title](link)');
+			const links = await getLinksForText('[some [inner with space] in title](link)');
 			assertLinksEqual(links, [
 				makeRange(0, 35, 0, 39),
 			]);
 		}
 		{
-			const links = await getLinksForFile(joinLines(
+			const links = await getLinksForText(joinLines(
 				`# h`,
 				`[[a]](http://example.com)`,
 			));
@@ -143,7 +149,7 @@ suite('Link computer', () => {
 	});
 
 	test('Should handle two links without space', async () => {
-		const links = await getLinksForFile('a ([test](test)[test2](test2)) c');
+		const links = await getLinksForText('a ([test](test)[test2](test2)) c');
 		assertLinksEqual(links, [
 			makeRange(0, 10, 0, 14),
 			makeRange(0, 23, 0, 28)
@@ -152,21 +158,21 @@ suite('Link computer', () => {
 
 	test('should handle hyperlinked images (#49238)', async () => {
 		{
-			const links = await getLinksForFile('[![alt text](image.jpg)](https://example.com)');
+			const links = await getLinksForText('[![alt text](image.jpg)](https://example.com)');
 			assertLinksEqual(links, [
 				makeRange(0, 25, 0, 44),
 				makeRange(0, 13, 0, 22),
 			]);
 		}
 		{
-			const links = await getLinksForFile('[![a]( whitespace.jpg )]( https://whitespace.com )');
+			const links = await getLinksForText('[![a]( whitespace.jpg )]( https://whitespace.com )');
 			assertLinksEqual(links, [
 				makeRange(0, 26, 0, 48),
 				makeRange(0, 7, 0, 21),
 			]);
 		}
 		{
-			const links = await getLinksForFile('[![a](img1.jpg)](file1.txt) text [![a](img2.jpg)](file2.txt)');
+			const links = await getLinksForText('[![a](img1.jpg)](file1.txt) text [![a](img2.jpg)](file2.txt)');
 			assertLinksEqual(links, [
 				makeRange(0, 17, 0, 26),
 				makeRange(0, 6, 0, 14),
@@ -177,12 +183,12 @@ suite('Link computer', () => {
 	});
 
 	test('Should not consider link references starting with ^ character valid (#107471)', async () => {
-		const links = await getLinksForFile('[^reference]: https://example.com');
+		const links = await getLinksForText('[^reference]: https://example.com');
 		assertLinksEqual(links, []);
 	});
 
 	test('Should find definitions links with spaces in angle brackets (#136073)', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'[a]: <b c>',
 			'[b]: <cd>',
 		));
@@ -194,7 +200,7 @@ suite('Link computer', () => {
 	});
 
 	test('Should only find one link for definition (#141285)', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'[Works]: https://example.com',
 		));
 
@@ -204,7 +210,7 @@ suite('Link computer', () => {
 	});
 
 	test('Should find link with space in definition name', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'[my ref]: https://example.com',
 		));
 
@@ -214,7 +220,7 @@ suite('Link computer', () => {
 	});
 
 	test('Should find reference link shorthand (#141285)', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'[ref]',
 			'[ref]: https://example.com',
 		));
@@ -225,7 +231,7 @@ suite('Link computer', () => {
 	});
 
 	test('Should find reference link with space in reference name', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'[text][my ref]',
 		));
 		assertLinksEqual(links, [
@@ -234,7 +240,7 @@ suite('Link computer', () => {
 	});
 
 	test('Should find reference link shorthand using empty closing brackets (#141285)', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'[ref][]',
 		));
 		assertLinksEqual(links, [
@@ -243,7 +249,7 @@ suite('Link computer', () => {
 	});
 
 	test('Should find reference link shorthand using space in reference name', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'[my ref][]',
 		));
 		assertLinksEqual(links, [
@@ -252,7 +258,7 @@ suite('Link computer', () => {
 	});
 
 	test.skip('Should find reference link shorthand for link with space in label (#141285)', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'[ref with space]',
 		));
 		assertLinksEqual(links, [
@@ -261,7 +267,7 @@ suite('Link computer', () => {
 	});
 
 	test('Should not include reference links with escaped leading brackets', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			`\\[bad link][good]`,
 			`\\[good]`,
 			`[good]: http://example.com`,
@@ -272,7 +278,7 @@ suite('Link computer', () => {
 	});
 
 	test('Should not consider links in code fenced with backticks', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'```',
 			'[b](https://example.com)',
 			'```'));
@@ -280,7 +286,7 @@ suite('Link computer', () => {
 	});
 
 	test('Should not consider links in code fenced with tilde', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'~~~',
 			'[b](https://example.com)',
 			'~~~'));
@@ -288,22 +294,22 @@ suite('Link computer', () => {
 	});
 
 	test('Should not consider links in indented code', async () => {
-		const links = await getLinksForFile('    [b](https://example.com)');
+		const links = await getLinksForText('    [b](https://example.com)');
 		assertLinksEqual(links, []);
 	});
 
 	test('Should not consider links in inline code span', async () => {
-		const links = await getLinksForFile('`[b](https://example.com)`');
+		const links = await getLinksForText('`[b](https://example.com)`');
 		assertLinksEqual(links, []);
 	});
 
 	test('Should not consider links with code span inside', async () => {
-		const links = await getLinksForFile('[li`nk](https://example.com`)');
+		const links = await getLinksForText('[li`nk](https://example.com`)');
 		assertLinksEqual(links, []);
 	});
 
 	test('Should not consider links in multiline inline code span', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'`` ',
 			'[b](https://example.com)',
 			'``'));
@@ -311,7 +317,7 @@ suite('Link computer', () => {
 	});
 
 	test('Should not consider link references in code fenced with backticks (#146714)', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'```',
 			'[a] [bb]',
 			'```'));
@@ -319,7 +325,7 @@ suite('Link computer', () => {
 	});
 
 	test('Should not consider reference sources in code fenced with backticks (#146714)', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'```',
 			'[a]: http://example.com;',
 			'[b]: <http://example.com>;',
@@ -329,7 +335,7 @@ suite('Link computer', () => {
 	});
 
 	test('Should not consider links in multiline inline code span between between text', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'[b](https://1.com) `[b](https://2.com)',
 			'[b](https://3.com) ` [b](https://4.com)'));
 
@@ -340,14 +346,14 @@ suite('Link computer', () => {
 	});
 
 	test('Should not consider links in multiline inline code span with new line after the first backtick', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'`',
 			'[b](https://example.com)`'));
 		assertLinksEqual(links, []);
 	});
 
 	test('Should not miss links in invalid multiline inline code span', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'`` ',
 			'',
 			'[b](https://example.com)',
@@ -359,14 +365,14 @@ suite('Link computer', () => {
 	});
 
 	test('Should find autolinks', async () => {
-		const links = await getLinksForFile('pre <http://example.com> post');
+		const links = await getLinksForText('pre <http://example.com> post');
 		assertLinksEqual(links, [
 			makeRange(0, 5, 0, 23)
 		]);
 	});
 
 	test('Should not detect links inside html comment blocks', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			`<!-- <http://example.com> -->`,
 			`<!-- [text](./foo.md) -->`,
 			`<!-- [text]: ./foo.md -->`,
@@ -388,7 +394,7 @@ suite('Link computer', () => {
 
 	test.skip('Should not detect links inside inline html comments', async () => {
 		// See #149678
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			`text <!-- <http://example.com> --> text`,
 			`text <!-- [text](./foo.md) --> text`,
 			`text <!-- [text]: ./foo.md --> text`,
@@ -409,7 +415,7 @@ suite('Link computer', () => {
 	});
 
 	test('Should not mark checkboxes as links', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'- [x]',
 			'- [X]',
 			'- [ ]',
@@ -425,7 +431,7 @@ suite('Link computer', () => {
 	});
 
 	test('Should still find links on line with checkbox', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			'- [x] [x]',
 			'- [X] [x]',
 			'- [] [x]',
@@ -442,35 +448,35 @@ suite('Link computer', () => {
 	});
 
 	test('Should find link only within angle brackets.', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			`[link](<path>)`
 		));
 		assertLinksEqual(links, [makeRange(0, 8, 0, 12)]);
 	});
 
 	test('Should find link within angle brackets even with link title.', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			`[link](<path> "test title")`
 		));
 		assertLinksEqual(links, [makeRange(0, 8, 0, 12)]);
 	});
 
 	test('Should find link within angle brackets even with surrounding spaces.', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			`[link]( <path> )`
 		));
 		assertLinksEqual(links, [makeRange(0, 9, 0, 13)]);
 	});
 
 	test('Should find link within angle brackets for image hyperlinks.', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			`![link](<path>)`
 		));
 		assertLinksEqual(links, [makeRange(0, 9, 0, 13)]);
 	});
 
 	test('Should find link with spaces in angle brackets for image hyperlinks with titles.', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			`![link](< path > "test")`
 		));
 		assertLinksEqual(links, [makeRange(0, 9, 0, 15)]);
@@ -478,7 +484,7 @@ suite('Link computer', () => {
 
 
 	test('Should not find link due to incorrect angle bracket notation or usage.', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			`[link](<path )`,
 			`[link](<> path>)`,
 			`[link](> path)`,
@@ -488,7 +494,7 @@ suite('Link computer', () => {
 
 	test('Should find link within angle brackets even with space inside link.', async () => {
 
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			`[link](<pa th>)`
 		));
 
@@ -496,7 +502,7 @@ suite('Link computer', () => {
 	});
 
 	test('Should find links with titles', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			`[link](<no such.md> "text")`,
 			`[link](<no such.md> 'text')`,
 			`[link](<no such.md> (text))`,
@@ -515,7 +521,7 @@ suite('Link computer', () => {
 	});
 
 	test('Should not include link with empty angle bracket', async () => {
-		const links = await getLinksForFile(joinLines(
+		const links = await getLinksForText(joinLines(
 			`[](<>)`,
 			`[link](<>)`,
 			`[link](<> "text")`,
@@ -523,6 +529,42 @@ suite('Link computer', () => {
 			`[link](<> (text))`,
 		));
 		assertLinksEqual(links, []);
+	});
+
+	test('Should return uri of inner document', async () => {
+		const subScheme = 'sub-doc';
+		const parentUri = workspacePath('test.md');
+		const docUri = parentUri.with({
+			scheme: subScheme,
+			fragment: 'abc',
+		});
+
+		const doc = new InMemoryDocument(docUri, joinLines(
+			`# Header`,
+			`[abc](#header)`,
+		));
+
+		const workspace = new class extends InMemoryWorkspace {
+			constructor() {
+				super([doc]);
+			}
+
+			getContainingDocument(resource: URI): ContainingDocumentContext | undefined {
+				if (resource.scheme === 'sub-doc') {
+					return {
+						uri: resource.with({ scheme: parentUri.scheme }),
+						children: [],
+					};
+				}
+				return undefined;
+			}
+		};
+
+		const links = await getLinks(doc, workspace);
+		assert.strictEqual(links.length, 1);
+
+		const link = links[0];
+		assert.strictEqual((link.href as InternalHref).path.toString(), docUri.toString());
 	});
 });
 

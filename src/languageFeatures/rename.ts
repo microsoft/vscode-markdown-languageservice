@@ -18,7 +18,7 @@ import { WorkspaceEditBuilder } from '../util/editBuilder';
 import { Schemes } from '../util/schemes';
 import { tryDecodeUri } from '../util/uri';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
-import { HrefKind, InternalHref, MdLink, MdLinkKind, MdLinkSource, resolveDocumentLink } from './documentLinks';
+import { HrefKind, InternalHref, MdLink, MdLinkKind, MdLinkSource, resolveInternalDocumentLink } from './documentLinks';
 import { MdHeaderReference, MdReference, MdReferenceKind, MdReferencesProvider } from './references';
 
 const localize = nls.loadMessageBundle();
@@ -132,7 +132,7 @@ export class MdRenameProvider extends Disposable {
 
 		const targetUri = await statLinkToMarkdownFile(this.configuration, this.workspace, triggerHref.path) ?? triggerHref.path;
 
-		const rawNewFilePath = resolveDocumentLink(triggerDocument, newName, this.workspace);
+		const rawNewFilePath = resolveInternalDocumentLink(triggerDocument, newName, this.workspace);
 		if (!rawNewFilePath) {
 			return builder.getEdit();
 		}
@@ -243,7 +243,7 @@ export class MdRenameProvider extends Disposable {
 
 export function getLinkRenameText(workspace: IWorkspace, source: MdLinkSource, newPath: URI, preferDotSlash = false): string | undefined {
 	if (source.hrefText.startsWith('/')) {
-		const root = resolveDocumentLink(source.resource, '/', workspace);
+		const root = resolveInternalDocumentLink(source.resource, '/', workspace);
 		if (!root) {
 			return undefined;
 		}

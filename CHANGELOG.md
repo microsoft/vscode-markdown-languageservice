@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0-alpha.2 — September 7, 2022
+- Make document links use more generic commands instead of internal VS Code commands.
+- Fix document links within notebooks.
+- Add a `resolveLinkTarget` method which can be used to figure out where a link points based on its text and containing document.
+
 ## 0.1.0-alpha.1 — August 30, 2022
 - `getDocumentSymbols` now takes an optional `includeLinkDefinitions` option to also include link definitions in the document symbols.
 - Added `organizeLinkDefinitions` which sorts link definitions to the bottom of the file and also optionally removes unused definitions.

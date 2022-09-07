@@ -10,7 +10,7 @@ import { getLsConfiguration } from './config';
 import { MdExtractLinkDefinitionCodeActionProvider } from './languageFeatures/codeActions/extractLinkDef';
 import { MdDefinitionProvider } from './languageFeatures/definitions';
 import { DiagnosticComputer, DiagnosticOptions, DiagnosticsManager, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
-import { createWorkspaceLinkCache, MdLinkProvider } from './languageFeatures/documentLinks';
+import { createWorkspaceLinkCache, MdLinkProvider, ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks';
 import { MdDocumentSymbolProvider } from './languageFeatures/documentSymbols';
 import { MdFileRenameProvider } from './languageFeatures/fileRename';
 import { MdFoldingProvider } from './languageFeatures/folding';
@@ -27,6 +27,7 @@ import { ITextDocument } from './types/textDocument';
 import { isWorkspaceWithFileWatching, IWorkspace, IWorkspaceWithWatching } from './workspace';
 
 export { DiagnosticCode, DiagnosticLevel, DiagnosticOptions } from './languageFeatures/diagnostics';
+export { ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks';
 export { ILogger, LogLevel } from './logging';
 export { IMdParser, Token } from './parser';
 export { githubSlugifier, ISlugifier } from './slugify';
@@ -51,14 +52,24 @@ export interface IMdLanguageService {
 	 *
 	 * This fills in the target on the link.
 	 *
-	 * @return The resolved link or `undefined` if the passed in link should be used
+	 * @returns The resolved link or `undefined` if the passed in link should be used
 	 */
 	resolveDocumentLink(link: lsp.DocumentLink, token: CancellationToken): Promise<lsp.DocumentLink | undefined>;
 
 	/**
+	 * Try to resolve the resources that a link in a markdown file points to.
+	 * 
+	 * @param linkText The original text of the link
+	 * @param fromResource The resource that contains the link.
+	 * 
+	 * @returns The resolved target or undefined if it could not be resolved.
+	 */
+	resolveLinkTarget(linkText: string, fromResource: URI, token: CancellationToken): Promise<ResolvedDocumentLinkTarget | undefined>;
+
+	/**
 	 * Get the symbols of a markdown file.
 	 *
-	 * Returns the headers and optionally also the link definitions in the file
+	 * @returns The headers and optionally also the link definitions in the file
 	 */
 	getDocumentSymbols(document: ITextDocument, options: { readonly includeLinkDefinitions?: boolean }, token: CancellationToken): Promise<lsp.DocumentSymbol[]>;
 
@@ -128,7 +139,7 @@ export interface IMdLanguageService {
 	/**
 	 * Get the edits for a rename operation.
 	 *
-	 * @return A workspace edit that performs the rename or undefined if the rename cannot be performed.
+	 * @returns A workspace edit that performs the rename or undefined if the rename cannot be performed.
 	 */
 	getRenameEdit(document: ITextDocument, position: lsp.Position, nameName: string, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined>;
 
@@ -139,7 +150,7 @@ export interface IMdLanguageService {
 	 *
 	 * You can pass in uris to resources or directories. However if you pass in multiple edits, these edits must not overlap/conflict.
 	 *
-	 * @return A workspace edit that performs the rename or undefined if the rename cannot be performed.
+	 * @returns A workspace edit that performs the rename or undefined if the rename cannot be performed.
 	 */
 	getRenameFilesInWorkspaceEdit(edits: ReadonlyArray<{ readonly oldUri: URI; readonly newUri: URI }>, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined>;
 
@@ -233,6 +244,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 		},
 		getDocumentLinks: linkProvider.provideDocumentLinks.bind(linkProvider),
 		resolveDocumentLink: linkProvider.resolveDocumentLink.bind(linkProvider),
+		resolveLinkTarget: linkProvider.resolveLinkTarget.bind(linkProvider),
 		getDocumentSymbols: docSymbolProvider.provideDocumentSymbols.bind(docSymbolProvider),
 		getFoldingRanges: foldingProvider.provideFoldingRanges.bind(foldingProvider),
 		getSelectionRanges: smartSelectProvider.provideSelectionRanges.bind(smartSelectProvider),

@@ -48,15 +48,14 @@ export interface ReferenceHref {
 
 export type LinkHref = ExternalHref | InternalHref | ReferenceHref;
 
-export function resolveDocumentLink(
+export function resolveInternalDocumentLink(
 	sourceDocUri: URI,
-	link: string,
+	linkText: string,
 	workspace: IWorkspace,
 ): { resource: URI; linkFragment: string } | undefined {
-
 	// Assume it must be an relative or absolute file path
 	// Use a fake scheme to avoid parse warnings
-	const tempUri = URI.parse(`vscode-resource:${link}`);
+	const tempUri = URI.parse(`vscode-resource:${linkText}`);
 
 	const docUri = workspace.getContainingDocument?.(sourceDocUri)?.uri ?? sourceDocUri;
 
@@ -172,17 +171,16 @@ export interface MdLinkDefinition {
 export type MdLink = MdInlineLink | MdLinkDefinition;
 
 function createHref(
-	document: ITextDocument,
+	sourceDocUri: URI,
 	link: string,
 	workspace: IWorkspace,
 ): ExternalHref | InternalHref | undefined {
-	const cleanLink = stripAngleBrackets(link);
-	if (/^[a-z\-][a-z\-]+:/i.test(cleanLink)) {
+	if (/^[a-z\-][a-z\-]+:/i.test(link)) {
 		// Looks like a uri
-		return { kind: HrefKind.External, uri: URI.parse(tryDecodeUri(cleanLink)) };
+		return { kind: HrefKind.External, uri: URI.parse(tryDecodeUri(link)) };
 	}
 
-	const resolved = resolveDocumentLink(URI.parse(document.uri), cleanLink, workspace);
+	const resolved = resolveInternalDocumentLink(sourceDocUri, link, workspace);
 	if (!resolved) {
 		return undefined;
 	}
@@ -208,7 +206,7 @@ function createMdLink(
 
 	let linkTarget: ExternalHref | InternalHref | undefined;
 	try {
-		linkTarget = createHref(document, link, workspace);
+		linkTarget = createHref(URI.parse(document.uri), link, workspace);
 	} catch {
 		return undefined;
 	}
@@ -368,6 +366,11 @@ class NoLinkRanges {
 	}
 }
 
+export type ResolvedDocumentLinkTarget =
+	| { readonly kind: 'file'; readonly uri: URI; position?: lsp.Position; fragment?: string }
+	| { readonly kind: 'folder'; readonly uri: URI }
+	| { readonly kind: 'external'; readonly uri: URI }
+
 /**
  * Stateless object that extracts link information from markdown files.
  */
@@ -413,6 +416,7 @@ export class MdLinkComputer {
 
 	private *getAutoLinks(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
 		const text = document.getText();
+		const docUri = URI.parse(document.uri);
 		for (const match of text.matchAll(autoLinkPattern)) {
 			const linkOffset = (match.index ?? 0);
 			const linkStart = document.positionAt(linkOffset);
@@ -421,7 +425,7 @@ export class MdLinkComputer {
 			}
 
 			const link = match[1];
-			const linkTarget = createHref(document, link, this.workspace);
+			const linkTarget = createHref(docUri, link, this.workspace);
 			if (!linkTarget) {
 				continue;
 			}
@@ -435,7 +439,7 @@ export class MdLinkComputer {
 				href: linkTarget,
 				source: {
 					hrefText: link,
-					resource: URI.parse(document.uri),
+					resource: docUri,
 					targetRange: hrefRange,
 					hrefRange: hrefRange,
 					range: { start: linkStart, end: linkEnd },
@@ -505,6 +509,7 @@ export class MdLinkComputer {
 
 	private *getLinkDefinitions(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLinkDefinition> {
 		const text = document.getText();
+		const docUri = URI.parse(document.uri);
 		for (const match of text.matchAll(definitionPattern)) {
 			const offset = (match.index ?? 0);
 			const linkStart = document.positionAt(offset);
@@ -518,7 +523,7 @@ export class MdLinkComputer {
 			const isAngleBracketLink = angleBracketLinkRe.test(rawLinkText);
 			const linkText = stripAngleBrackets(rawLinkText);
 
-			const target = createHref(document, linkText, this.workspace);
+			const target = createHref(docUri, linkText, this.workspace);
 			if (!target) {
 				continue;
 			}
@@ -534,7 +539,7 @@ export class MdLinkComputer {
 				kind: MdLinkKind.Definition,
 				source: {
 					hrefText: linkText,
-					resource: URI.parse(document.uri),
+					resource: docUri,
 					range: { start: linkStart, end: linkEnd },
 					targetRange: hrefRange,
 					hrefRange,
@@ -614,22 +619,60 @@ export class MdLinkProvider extends Disposable {
 		return coalesce(links.map(data => this.toValidDocumentLink(data, definitions)));
 	}
 
-	public async resolveDocumentLink(link: lsp.DocumentLink, _token: CancellationToken): Promise<lsp.DocumentLink | undefined> {
+	public async resolveDocumentLink(link: lsp.DocumentLink, token: CancellationToken): Promise<lsp.DocumentLink | undefined> {
 		const href = this.reviveLinkHrefData(link);
 		if (!href) {
 			return undefined;
 		}
 
-		let target: URI = href.path;
+		const target = await this.resolveInternalLinkTarget(href.path, href.fragment, token);
+		switch (target.kind) {
+			case 'folder':
+				link.target = this.createCommandUri('revealInExplorer', href);
+				break;
+			case 'external':
+				link.target = target.uri.toString(true);
+				break;
+			case 'file':
+				if (target.position) {
+					link.target = this.createOpenAtPosCommand(target.uri, target.position);
+				} else {
+					link.target = target.uri.toString(true);
+				}
+				break;
+		}
+
+		return link;
+	}
+
+	public async resolveLinkTarget(linkText: string, sourceDoc: URI, token: CancellationToken): Promise<ResolvedDocumentLinkTarget | undefined> {
+		const href = createHref(sourceDoc, linkText, this._workspace);
+		if (href?.kind !== HrefKind.Internal) {
+			return undefined;
+		}
+
+		const resolved = resolveInternalDocumentLink(sourceDoc, linkText, this._workspace);
+		if (!resolved) {
+			return undefined;
+		}
+
+		return this.resolveInternalLinkTarget(resolved.resource, resolved.linkFragment, token);
+	}
+
+	private async resolveInternalLinkTarget(linkPath: URI, linkFragment: string, token: CancellationToken): Promise<ResolvedDocumentLinkTarget> {
+		let target = linkPath;
 
 		// If there's a containing document, don't bother with trying to resolve the
 		// link to a workspace file as one will not exist
-		const containingContext = this._workspace.getContainingDocument?.(href.path);
+		const containingContext = this._workspace.getContainingDocument?.(target);
 		if (!containingContext) {
-			const stat = await this._workspace.stat(href.path);
+			const stat = await this._workspace.stat(target);
 			if (stat?.isDirectory) {
-				link.target = this.createCommandUri('revealInExplorer', href);
-				return link;
+				return { kind: 'folder', uri: target };
+			}
+
+			if (token.isCancellationRequested) {
+				return { kind: 'folder', uri: target };
 			}
 
 			if (!stat) {
@@ -644,26 +687,23 @@ export class MdLinkProvider extends Disposable {
 				}
 
 				if (!found) {
-					link.target = href.path.toString(true);
-					return link;
+					return { kind: 'file', uri: target };
 				}
 			}
 		}
 
-		if (!href.fragment) {
-			link.target = target.toString(true);
-			return link;
+		if (!linkFragment) {
+			return { kind: 'file', uri: target };
 		}
 
 		// Try navigating with fragment that sets line number
-		const lineNumberFragment = href.fragment.match(/^L(\d+)(?:,(\d+))?$/i);
+		const lineNumberFragment = linkFragment.match(/^L(\d+)(?:,(\d+))?$/i);
 		if (lineNumberFragment) {
 			const line = +lineNumberFragment[1] - 1;
 			if (!isNaN(line)) {
 				const char = +lineNumberFragment[2] - 1;
-				const pos: lsp.Position = { line, character: isNaN(char) ? 0 : char };
-				link.target = this.createOpenAtPosCommand(target, pos);
-				return link;
+				const position: lsp.Position = { line, character: isNaN(char) ? 0 : char };
+				return { kind: 'file', uri: target, position };
 			}
 		}
 
@@ -671,15 +711,13 @@ export class MdLinkProvider extends Disposable {
 		const doc = await this._workspace.openMarkdownDocument(target);
 		if (doc) {
 			const toc = await this._tocProvider.getForContainingDoc(doc);
-			const entry = toc.lookup(href.fragment);
+			const entry = toc.lookup(linkFragment);
 			if (entry) {
-				link.target = this.createOpenAtPosCommand(URI.parse(entry.headerLocation.uri), entry.headerLocation.range.start);
-				return link;
+				return { kind: 'file', uri: URI.parse(entry.headerLocation.uri), position: entry.headerLocation.range.start, fragment: linkFragment };
 			}
 		}
 
-		link.target = target.toString(true);
-		return link;
+		return { kind: 'file', uri: target };
 	}
 
 	private reviveLinkHrefData(link: lsp.DocumentLink): { path: URI, fragment: string } | undefined {

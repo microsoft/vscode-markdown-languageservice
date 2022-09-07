@@ -12,7 +12,7 @@ import { looksLikeMarkdownPath } from '../util/file';
 import { isParentDir } from '../util/path';
 import { IWorkspace } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
-import { HrefKind, MdLink, resolveDocumentLink } from './documentLinks';
+import { HrefKind, MdLink, resolveInternalDocumentLink } from './documentLinks';
 import { MdReferenceKind, MdReferencesProvider } from './references';
 import { getFilePathRange, getLinkRenameText } from './rename';
 import path = require('path');
@@ -95,7 +95,7 @@ export class MdFileRenameProvider extends Disposable {
 						path: Utils.joinPath(edit.oldUri, path.relative(edit.newUri.path, docUri.path)).path
 					});
 
-					const oldLink = resolveDocumentLink(oldDocUri, link.source.hrefText, this.workspace);
+					const oldLink = resolveInternalDocumentLink(oldDocUri, link.source.hrefText, this.workspace);
 					if (oldLink && !isParentDir(edit.oldUri, oldLink.resource)) {
 						const rootDir = Utils.dirname(docUri);
 						const newPath = path.relative(rootDir.path, oldLink.resource.path);
@@ -139,7 +139,7 @@ export class MdFileRenameProvider extends Disposable {
 			// We likely don't need to update anything since an absolute path is used
 		} else {
 			// Resolve the link relative to the old file path
-			const oldLink = resolveDocumentLink(edit.oldUri, link.source.hrefText, this.workspace);
+			const oldLink = resolveInternalDocumentLink(edit.oldUri, link.source.hrefText, this.workspace);
 			if (oldLink) {
 				const rootDir = Utils.dirname(edit.newUri);
 				const newPath = path.relative(rootDir.toString(true), oldLink.resource.toString(true));

@@ -34,7 +34,7 @@ suite('Link computer', () => {
 	}
 
 	function assertLinksEqual(actualLinks: readonly MdLink[], expected: ReadonlyArray<lsp.Range | { readonly range: lsp.Range; readonly sourceText: string }>) {
-		assert.strictEqual(actualLinks.length, expected.length);
+		assert.strictEqual(actualLinks.length, expected.length, 'Link counts should match');
 
 		for (let i = 0; i < actualLinks.length; ++i) {
 			const exp = expected[i];
@@ -180,6 +180,24 @@ suite('Link computer', () => {
 				makeRange(0, 39, 0, 47),
 			]);
 		}
+	});
+
+	test('Should not find empty reference link', async () => {
+		{
+			const links = await getLinksForText('[][]');
+			assertLinksEqual(links, []);
+		}
+		{
+			const links = await getLinksForText('[][cat]');
+			assertLinksEqual(links, []);
+		}
+	});
+
+	test('Should find image reference links', async () => {
+		const links = await getLinksForText('![][cat]');
+		assertLinksEqual(links, [
+			makeRange(0, 4, 0, 7),
+		]);
 	});
 
 	test('Should not consider link references starting with ^ character valid (#107471)', async () => {
@@ -493,7 +511,6 @@ suite('Link computer', () => {
 	});
 
 	test('Should find link within angle brackets even with space inside link.', async () => {
-
 		const links = await getLinksForText(joinLines(
 			`[link](<pa th>)`
 		));

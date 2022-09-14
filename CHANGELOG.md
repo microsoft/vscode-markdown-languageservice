@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.0-alpha.4 — September 14, 2022
+- Fix false positive diagnostic with files that link to themselves.
+
 ## 0.1.0-alpha.3 — September 13, 2022
 - Fix detection of image reference links.
 - Use custom command name for triggering rename.

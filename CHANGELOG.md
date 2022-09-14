@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.0-alpha.5 — September 14, 2022
+- Add `IPullDiagnosticsManager.disposeDocumentResources` to clean up watchers when a file is closed in the editor.
+
 ## 0.1.0-alpha.4 — September 14, 2022
 - Fix false positive diagnostic with files that link to themselves.
 

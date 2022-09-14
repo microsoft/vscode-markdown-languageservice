@@ -294,7 +294,21 @@ const linkPattern = new RegExp(
 /**
 * Matches `[text][ref]` or `[shorthand]`
 */
-const referenceLinkPattern = /(^|[^\]\\])(?:(?:(\[((?:\\\]|[^\]])+)\]\[\s*?)([^\]]*?)\]|\[\s*?([^\s\\\]]*?)\])(?![\:\(]))/gm;
+const referenceLinkPattern = new RegExp(
+	r`(^|[^\]\\])` + // Must not start with another bracket (workaround for lack of support for negative look behinds)
+	r`(?:` +
+	/**/r`(?:` +
+	/****/r`(` + // Start link prefix
+	/******/r`!?` + // Optional image ref
+	/******/r`\[((?:\\\]|[^\]])*)\]` + // Link text
+	/******/r`\[\s*?` + // Start of link def
+	/****/r`)` + // end link prefix
+	/****/r`(` +
+	/******/r`[^\]]*?)\]` + //link def
+	/******/r`|` +
+	/******/r`\[\s*?([^\s\\\]]*?)\])(?![\:\(])` +
+	r`)`,
+	'gm');
 
 /**
  * Matches `<http://example.com>`
@@ -463,10 +477,23 @@ export class MdLinkComputer {
 			let reference = match[4];
 			if (reference === '') { // [ref][],
 				reference = match[3];
+				if (!reference) {
+					continue;
+				}
 				const offset = linkStartOffset + 1;
 				hrefStart = document.positionAt(offset);
 				hrefEnd = document.positionAt(offset + reference.length);
 			} else if (reference) { // [text][ref]
+				const text = match[3];
+				if (!text) {
+					// Handle the case ![][cat]
+					if (match[0].startsWith('!')) {
+						//
+					} else {
+						continue;
+					}
+				}
+
 				const pre = match[2];
 				const offset = linkStartOffset + pre.length;
 				hrefStart = document.positionAt(offset);

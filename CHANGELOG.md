@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0-alpha.3 — September 13, 2022
+- Fix detection of image reference links.
+- Use custom command name for triggering rename.
+
 ## 0.1.0-alpha.2 — September 7, 2022
 - Make document links use more generic commands instead of internal VS Code commands.
 - Fix document links within notebooks.

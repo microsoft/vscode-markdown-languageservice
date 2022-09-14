@@ -98,15 +98,15 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 			builder.insert(resource, { line: defBlock.endLine, character: line.length }, `\n[${placeholder}]: ${definitionText}`);
 		}
 
-		const renamePosition = translatePosition(targetLink.source.targetRange.start, { characterDelta: 2 });
+		const renamePosition = translatePosition(targetLink.source.targetRange.start, { characterDelta: 1 });
 		return {
 			title: MdExtractLinkDefinitionCodeActionProvider.genericTitle,
 			kind: MdExtractLinkDefinitionCodeActionProvider.kind,
 			edit: builder.getEdit(),
 			command: {
-				command: 'editor.action.rename',
+				command: 'vscodeMarkdownLanguageservice.rename',
 				title: 'Rename',
-				arguments: [doc.uri, renamePosition],
+				arguments: [URI.parse(doc.uri), renamePosition],
 			}
 		};
 	}

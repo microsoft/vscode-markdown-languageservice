@@ -497,4 +497,30 @@ suite('Diagnostic Manager', () => {
 			assertDiagnosticsEqual(diagnostics, []);
 		}
 	}));
+
+	test('Should treat fragment links to self as marking file as existing', withStore(async (store) => {
+		// Here we create a document that references itself using a link
+		const doc1 = new InMemoryDocument(workspacePath('doc1.md'), joinLines(
+			`# header`,
+			`[link](#header)`
+		));
+		const workspace = new InMemoryWorkspace([doc1]);
+
+		const manager = createManager(store, workspace);
+		const options = getDiagnosticsOptions({});
+
+		const firstRequest = await manager.computeDiagnostics(doc1, options, noopToken);
+		assertDiagnosticsEqual(firstRequest as lsp.Diagnostic[], []);
+		assert.strictEqual(workspace.statCallList.length, 0);
+
+		// Now we open a second document that links to the first
+		const doc2 = new InMemoryDocument(workspacePath('doc2.md'), joinLines(
+			`[text](./doc1.md#header)`
+		));
+		workspace.createDocument(doc2);
+
+		const secondRequest = await manager.computeDiagnostics(doc2, options, noopToken);
+		assertDiagnosticsEqual(secondRequest as lsp.Diagnostic[], []);
+		assert.strictEqual(workspace.statCallList.length, 0);
+	}));
 });

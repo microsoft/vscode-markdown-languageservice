@@ -114,6 +114,9 @@ export class DiagnosticComputer {
 			return { links, diagnostics: [], statCache };
 		}
 
+		// Current doc always implicitly exists
+		statCache.set(URI.parse(doc.uri), { exists: true });
+
 		return {
 			links: links,
 			statCache,

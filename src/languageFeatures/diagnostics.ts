@@ -279,6 +279,14 @@ export interface IPullDiagnosticsManager extends IDisposable {
 	 * Compute the current diagnostics for a file.
 	 */
 	computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]>;
+
+	/**
+	 * Clean up resources that help provide diagnostics for a document. 
+	 * 
+	 * You should call this when you will no longer be making diagnostic requests for a document, for example
+	 * when the file has been closed in the editor (but still exists on disk).
+	 */
+	disposeDocumentResources(document: URI): void;
 }
 
 class FileLinkState extends Disposable {
@@ -454,7 +462,7 @@ export class DiagnosticsManager extends Disposable implements IPullDiagnosticsMa
 		}));
 	}
 
-	async computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]> {
+	public async computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]> {
 		const uri = URI.parse(doc.uri);
 
 		const results = await this._computer.compute(doc, options, token);
@@ -464,5 +472,9 @@ export class DiagnosticsManager extends Disposable implements IPullDiagnosticsMa
 
 		this._linkWatcher.updateLinksForDocument(uri, results.links, results.statCache);
 		return results.diagnostics;
+	}
+
+	public disposeDocumentResources(uri: URI): void {
+		this._linkWatcher.deleteDocument(uri);
 	}
 }

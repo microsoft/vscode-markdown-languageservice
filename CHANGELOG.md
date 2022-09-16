@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.0-alpha.6 — September 16, 2022
+- Use parsed markdown to generate header slugs instead of using the original text.
+
 ## 0.1.0-alpha.5 — September 14, 2022
 - Add `IPullDiagnosticsManager.disposeDocumentResources` to clean up watchers when a file is closed in the editor.
 

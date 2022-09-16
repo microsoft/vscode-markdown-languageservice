@@ -11,6 +11,7 @@ export interface Token {
 	readonly markup: string;
 	readonly content: string;
 	readonly map: number[] | null;
+	readonly children: readonly Token[] | null;
 }
 
 export interface TokenWithMap extends Token {

@@ -6,7 +6,7 @@
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { ILogger, LogLevel } from './logging';
-import { IMdParser } from './parser';
+import { IMdParser, Token } from './parser';
 import { githubSlugifier, ISlugifier, Slug } from './slugify';
 import { makeRange } from './types/range';
 import { getLine, ITextDocument } from './types/textDocument';
@@ -95,15 +95,39 @@ export class TableOfContents {
 
 		const existingSlugEntries = new Map<string, { count: number }>();
 
-		for (const heading of tokens.filter(token => token.type === 'heading_open')) {
-			if (!heading.map) {
+		type HeaderInfo = { open: Token; body: Token[] };
+
+		const headers: HeaderInfo[] = [];
+		let currentHeader: HeaderInfo | undefined;
+
+		for (const token of tokens) {
+			switch (token.type) {
+				case 'heading_open': {
+					currentHeader = { open: token, body: [] };
+					headers.push(currentHeader);
+					break;
+				}
+				case 'heading_close': {
+					currentHeader = undefined;
+					break;
+				}
+				default: {
+					currentHeader?.body.push(token);
+					break;
+				}
+			}
+		}
+
+		for (const { open, body } of headers) {
+			if (!open.map) {
 				continue;
 			}
 
-			const lineNumber = heading.map[0];
+			const lineNumber = open.map[0];
 			const line = getLine(document, lineNumber);
+			const bodyText = TableOfContents.getHeaderTitleAsPlainText(body);
 
-			let slug = parser.slugifier.fromHeading(line);
+			let slug = parser.slugifier.fromHeading(bodyText);
 			const existingSlugEntry = existingSlugEntries.get(slug.value);
 			if (existingSlugEntry) {
 				++existingSlugEntry.count;
@@ -124,8 +148,8 @@ export class TableOfContents {
 
 			toc.push({
 				slug,
-				text: TableOfContents.getHeaderText(line),
-				level: TableOfContents.getHeaderLevel(heading.markup),
+				text: line.replace(/^\s*#+\s*(.*?)(\s+#+)?$/, (_, word) => word.trim()),
+				level: TableOfContents.getHeaderLevel(open.markup),
 				line: lineNumber,
 				sectionLocation: headerLocation, // Populated in next steps
 				headerLocation,
@@ -165,8 +189,26 @@ export class TableOfContents {
 		}
 	}
 
-	private static getHeaderText(header: string): string {
-		return header.replace(/^\s*#+\s*(.*?)(\s+#+)?$/, (_, word) => word.trim());
+	private static tokenToPlainText(token: Token): string {
+		if (token.children) {
+			return token.children.map(TableOfContents.tokenToPlainText).join('');
+		}
+
+		switch (token.type) {
+			case 'text':
+			case 'emoji':
+			case 'code_inline':
+				return token.content;
+			default:
+				return '';
+		}
+	}
+
+	private static getHeaderTitleAsPlainText(headerTitleParts: readonly Token[]): string {
+		return headerTitleParts
+			.map(TableOfContents.tokenToPlainText)
+			.join('')
+			.trim();
 	}
 
 	public static readonly empty = new TableOfContents([], githubSlugifier);

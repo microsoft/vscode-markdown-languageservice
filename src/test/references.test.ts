@@ -110,7 +110,7 @@ suite('References', () => {
 		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
 			`# a B c`,
 			`[simple](#a-b-c)`,
-			`[start underscore](#_a-b-c)`,
+			`[start underscore](#a-b-c)`,
 			`[different case](#a-B-C)`,
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));

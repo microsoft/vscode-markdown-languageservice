@@ -33,7 +33,7 @@ export { IMdParser, Token } from './parser';
 export { githubSlugifier, ISlugifier } from './slugify';
 export { ITextDocument } from './types/textDocument';
 export { FileStat, FileWatcherOptions, IWorkspace } from './workspace';
-export { IWorkspaceWithWatching };
+export { IWorkspaceWithWatching, FileRename };
 
 
 /**

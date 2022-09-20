@@ -150,9 +150,9 @@ export interface IMdLanguageService {
 	 *
 	 * You can pass in uris to resources or directories. However if you pass in multiple edits, these edits must not overlap/conflict.
 	 *
-	 * @returns A workspace edit that performs the rename or undefined if the rename cannot be performed.
+	 * @returns An object with a workspace edit that performs the rename and a list of old file uris that effected the edit. Returns undefined if the rename cannot be performed. 
 	 */
-	getRenameFilesInWorkspaceEdit(edits: ReadonlyArray<{ readonly oldUri: URI; readonly newUri: URI }>, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined>;
+	getRenameFilesInWorkspaceEdit(edits: ReadonlyArray<{ readonly oldUri: URI; readonly newUri: URI }>, token: CancellationToken): Promise<{ participatingOldUris: URI[]; edit: lsp.WorkspaceEdit } | undefined>;
 
 	/**
 	 * Get code actions for a selection in a file.

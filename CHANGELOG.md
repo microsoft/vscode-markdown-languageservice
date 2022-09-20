@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.0-alpha.8 — September 20, 2022
+- Make `getRenameFilesInWorkspaceEdit` return full sets of participating edits instead of participating old uris.
+
 ## 0.1.0-alpha.7 — September 20, 2022
 - Update `getRenameFilesInWorkspaceEdit` to also return the files that effect the edit.
 

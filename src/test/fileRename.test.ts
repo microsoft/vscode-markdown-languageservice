@@ -387,8 +387,8 @@ suite('File Rename', () => {
 			]
 		});
 
-		assert.strictEqual(response?.participatingOldUris.length, 2);
-		assert.strictEqual(response?.participatingOldUris[0].toString(), old1Uri.toString());
-		assert.strictEqual(response?.participatingOldUris[1].toString(), old2Uri.toString());
+		assert.strictEqual(response?.participatingRenames.length, 2);
+		assert.strictEqual(response?.participatingRenames[0].oldUri.toString(), old1Uri.toString());
+		assert.strictEqual(response?.participatingRenames[1].oldUri.toString(), old2Uri.toString());
 	}));
 });

@@ -18,13 +18,13 @@ import { getFilePathRange, getLinkRenameText } from './rename';
 import path = require('path');
 
 
-interface FileRename {
+export interface FileRename {
 	readonly oldUri: URI;
 	readonly newUri: URI;
 }
 
 export interface FileRenameResponse {
-	participatingOldUris: URI[];
+	participatingRenames: readonly FileRename[];
 	edit: lsp.WorkspaceEdit;
 }
 
@@ -41,7 +41,7 @@ export class MdFileRenameProvider extends Disposable {
 
 	async getRenameFilesInWorkspaceEdit(edits: readonly FileRename[], token: CancellationToken): Promise<FileRenameResponse | undefined> {
 		const builder = new WorkspaceEditBuilder();
-		const participatingOldUris: URI[] = [];
+		const participatingRenames: FileRename[] = [];
 
 		for (const edit of edits) {
 			const stat = await this.workspace.stat(edit.newUri);
@@ -50,7 +50,7 @@ export class MdFileRenameProvider extends Disposable {
 			}
 
 			if (await (stat?.isDirectory ? this.addDirectoryRenameEdits(edit, builder, token) : this.addSingleFileRenameEdits(edit, builder, token))) {
-				participatingOldUris.push(edit.oldUri);
+				participatingRenames.push(edit);
 			}
 
 			if (token.isCancellationRequested) {
@@ -58,7 +58,7 @@ export class MdFileRenameProvider extends Disposable {
 			}
 		}
 
-		return { participatingOldUris, edit: builder.getEdit() };
+		return { participatingRenames, edit: builder.getEdit() };
 	}
 
 	private async addSingleFileRenameEdits(edit: FileRename, builder: WorkspaceEditBuilder, token: CancellationToken): Promise<boolean> {

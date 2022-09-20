@@ -12,7 +12,7 @@ import { MdDefinitionProvider } from './languageFeatures/definitions';
 import { DiagnosticComputer, DiagnosticOptions, DiagnosticsManager, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
 import { createWorkspaceLinkCache, MdLinkProvider, ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks';
 import { MdDocumentSymbolProvider } from './languageFeatures/documentSymbols';
-import { MdFileRenameProvider } from './languageFeatures/fileRename';
+import { FileRename, MdFileRenameProvider } from './languageFeatures/fileRename';
 import { MdFoldingProvider } from './languageFeatures/folding';
 import { MdOrganizeLinkDefinitionProvider } from './languageFeatures/organizeLinkDefs';
 import { MdPathCompletionProvider } from './languageFeatures/pathCompletions';
@@ -34,6 +34,7 @@ export { githubSlugifier, ISlugifier } from './slugify';
 export { ITextDocument } from './types/textDocument';
 export { FileStat, FileWatcherOptions, IWorkspace } from './workspace';
 export { IWorkspaceWithWatching };
+
 
 /**
  * Provides language tooling methods for working with markdown.
@@ -152,7 +153,7 @@ export interface IMdLanguageService {
 	 *
 	 * @returns An object with a workspace edit that performs the rename and a list of old file uris that effected the edit. Returns undefined if the rename cannot be performed. 
 	 */
-	getRenameFilesInWorkspaceEdit(edits: ReadonlyArray<{ readonly oldUri: URI; readonly newUri: URI }>, token: CancellationToken): Promise<{ participatingOldUris: URI[]; edit: lsp.WorkspaceEdit } | undefined>;
+	getRenameFilesInWorkspaceEdit(edits: readonly FileRename[], token: CancellationToken): Promise<{ participatingRenames: readonly FileRename[]; edit: lsp.WorkspaceEdit } | undefined>;
 
 	/**
 	 * Get code actions for a selection in a file.

@@ -44,12 +44,12 @@ export interface IMdLanguageService {
 	/**
 	 * Get all links of a markdown file.
 	 *
-	 * Note that you must invoke {@link resolveDocumentLink} on each link before executing the link.
+	 * Note that you must invoke {@link IMdLanguageService.resolveDocumentLink} on each link before executing the link.
 	 */
 	getDocumentLinks(document: ITextDocument, token: CancellationToken): Promise<lsp.DocumentLink[]>;
 
 	/**
-	 * Resolves a link from {@link getDocumentLinks}.
+	 * Resolves a link from {@link IMdLanguageService.getDocumentLinks}.
 	 *
 	 * This fills in the target on the link.
 	 *
@@ -165,7 +165,7 @@ export interface IMdLanguageService {
 	/**
 	 * Compute diagnostics for a given file.
 	 *
-	 * Note that this function is stateless and re-validates all links every time you make the request. Use {@link createPullDiagnosticsManager}
+	 * Note that this function is stateless and re-validates all links every time you make the request. Use {@link IMdLanguageService.createPullDiagnosticsManager}
 	 * to more efficiently get diagnostics.
 	 */
 	computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]>;

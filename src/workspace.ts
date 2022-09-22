@@ -69,7 +69,7 @@ export interface IWorkspace {
 	 *
 	 * This may either get the document from a cache or open it and add it to the cache.
 	 *
-	 * @return The document, or `undefined` if the file could not be opened or was not a markdown file.
+	 * @returns The document, or `undefined` if the file could not be opened or was not a markdown file.
 	 */
 	openMarkdownDocument(resource: URI): Promise<ITextDocument | undefined>;
 
@@ -78,7 +78,7 @@ export interface IWorkspace {
 	 *
 	 * @param resource URI to check. Does not have to be to a markdown file.
 	 *
-	 * @return Metadata or `undefined` if the resource does not exist.
+	 * @returns Metadata or `undefined` if the resource does not exist.
 	 */
 	stat(resource: URI): Promise<FileStat | undefined>;
 
@@ -87,7 +87,7 @@ export interface IWorkspace {
 	 *
 	 * @param resource URI of the directory to check. Does not have to be to a markdown file.
 	 *
-	 * @return List of `[fileName, metadata]` tuples.
+	 * @returns List of `[fileName, metadata]` tuples.
 	 */
 	readDirectory(resource: URI): Promise<Iterable<readonly [string, FileStat]>>;
 
@@ -96,7 +96,7 @@ export interface IWorkspace {
 	 *
 	 * If `resource` is a notebook cell for example, this should return the parent notebook.
 	 *
-	 * @return The parent document info or `undefined` if none.
+	 * @returns The parent document info or `undefined` if none.
 	 */
 	getContainingDocument?(resource: URI): ContainingDocumentContext | undefined;
 }
@@ -178,7 +178,7 @@ export async function openLinkToMarkdownFile(config: LsConfiguration, workspace:
 /**
  * Check that a link to a file exists.
  *
- * @return The resolved URI or `undefined` if the file does not exist.
+ * @returns The resolved URI or `undefined` if the file does not exist.
  */
 export async function statLinkToMarkdownFile(config: LsConfiguration, workspace: IWorkspace, linkUri: URI, out_statCache?: ResourceMap<{ readonly exists: boolean }>): Promise<URI | undefined> {
 	const exists = async (uri: URI): Promise<boolean> => {

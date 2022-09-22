@@ -5,7 +5,6 @@
 			"ES2020",
 		],
 		"sourceMap": true,
-		"declaration": true,
 		"module": "commonjs",
 		"strict": true,
 		"noImplicitAny": true,

@@ -17,7 +17,7 @@ import { Disposable, IDisposable } from '../util/dispose';
 import { looksLikeMarkdownPath } from '../util/file';
 import { Limiter } from '../util/limiter';
 import { ResourceMap } from '../util/resourceMap';
-import { FileStat, IWorkspace, IWorkspaceWithWatching as IWorkspaceWithFileWatching, statLinkToMarkdownFile } from '../workspace';
+import { FileStat, IWorkspace, IWorkspaceWithWatching, statLinkToMarkdownFile } from '../workspace';
 import { HrefKind, InternalHref, LinkDefinitionSet, MdLink, MdLinkProvider, MdLinkSource, parseLocationInfoFromFragment } from './documentLinks';
 
 const localize = nls.loadMessageBundle();
@@ -327,7 +327,7 @@ class FileLinkState extends Disposable {
 	}>();
 
 	constructor(
-		readonly _workspace: IWorkspaceWithFileWatching
+		readonly _workspace: IWorkspaceWithWatching
 	) {
 		super();
 	}
@@ -430,7 +430,7 @@ export class DiagnosticsManager extends Disposable implements IPullDiagnosticsMa
 
 	constructor(
 		configuration: LsConfiguration,
-		workspace: IWorkspaceWithFileWatching,
+		workspace: IWorkspaceWithWatching,
 		linkProvider: MdLinkProvider,
 		tocProvider: MdTableOfContentsProvider
 	) {

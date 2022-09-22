@@ -28,13 +28,13 @@ import { isWorkspaceWithFileWatching, IWorkspace, IWorkspaceWithWatching } from 
 
 export { DiagnosticCode, DiagnosticLevel, DiagnosticOptions } from './languageFeatures/diagnostics';
 export { ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks';
+export { RenameNotSupportedAtLocationError } from './languageFeatures/rename';
 export { ILogger, LogLevel } from './logging';
 export { IMdParser, Token } from './parser';
 export { githubSlugifier, ISlugifier } from './slugify';
 export { ITextDocument } from './types/textDocument';
 export { FileStat, FileWatcherOptions, IWorkspace } from './workspace';
 export { IWorkspaceWithWatching, FileRename };
-
 
 /**
  * Provides language tooling methods for working with markdown.

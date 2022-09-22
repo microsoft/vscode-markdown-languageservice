@@ -314,7 +314,7 @@ export class MdPathCompletionProvider {
 				continue;
 			}
 
-			const isDir = !!type.isDirectory;
+			const isDir = type.isDirectory;
 			const newText = (context.skipEncoding ? name : encodeURIComponent(name)) + (isDir ? '/' : '');
 			yield {
 				label: isDir ? name + '/' : name,

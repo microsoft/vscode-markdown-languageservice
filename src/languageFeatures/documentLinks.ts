@@ -380,10 +380,13 @@ class NoLinkRanges {
 	}
 }
 
+/**
+ * The place a document link links to.
+ */
 export type ResolvedDocumentLinkTarget =
 	| { readonly kind: 'file'; readonly uri: URI; position?: lsp.Position; fragment?: string }
 	| { readonly kind: 'folder'; readonly uri: URI }
-	| { readonly kind: 'external'; readonly uri: URI }
+	| { readonly kind: 'external'; readonly uri: URI };
 
 /**
  * Stateless object that extracts link information from markdown files.

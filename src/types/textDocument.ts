@@ -7,14 +7,34 @@ import { Position, Range } from 'vscode-languageserver-types';
 import { makeRange } from './range';
 
 /**
- * Minimal version of `vscode.TextDocument`.
+ * A document in the workspace.
  */
 export interface ITextDocument {
+	/**
+	 * The uri of the document, as a string.
+	 */
 	readonly uri: string;
+	
+	/**
+	 * Version number of the document's content. 
+	 */
 	readonly version: number;
+
+	/**
+	 * The total number of lines in the document.
+	 */
 	readonly lineCount: number;
 
+	/**
+	 * Get text contents of the document.
+	 * 
+	 * @param range Optional range to get the text of. If not specified, the entire document content is returned.
+	 */
 	getText(range?: Range): string;
+
+	/**
+	 * Converts an offset in the document into a {@link Position position}.
+	 */
 	positionAt(offset: number): Position;
 }
 

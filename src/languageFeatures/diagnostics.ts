@@ -80,7 +80,6 @@ function toSeverity(level: DiagnosticLevel | undefined): DiagnosticSeverity | un
  */
 export enum DiagnosticCode {
 	/** The linked to reference does not exist. */
-
 	link_noSuchReferences = 'link.no-such-reference',
 
 	/** The linked to heading does not exist in the current file. */

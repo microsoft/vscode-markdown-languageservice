@@ -6,7 +6,7 @@
 import type { CancellationToken, CompletionContext } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
-import { getLsConfiguration } from './config';
+import { getLsConfiguration, LsConfiguration } from './config';
 import { MdExtractLinkDefinitionCodeActionProvider } from './languageFeatures/codeActions/extractLinkDef';
 import { MdDefinitionProvider } from './languageFeatures/definitions';
 import { DiagnosticComputer, DiagnosticOptions, DiagnosticsManager, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
@@ -26,6 +26,7 @@ import { MdTableOfContentsProvider } from './tableOfContents';
 import { ITextDocument } from './types/textDocument';
 import { isWorkspaceWithFileWatching, IWorkspace } from './workspace';
 
+export { LsConfiguration } from './config';
 export { DiagnosticCode, DiagnosticLevel, DiagnosticOptions, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
 export { ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks';
 export { FileRename } from './languageFeatures/fileRename';
@@ -188,8 +189,7 @@ export interface IMdLanguageService {
 /**
  * Initialization options for creating a new {@link IMdLanguageService}.
  */
-export interface LanguageServiceInitialization {
-	//#region Services
+export interface LanguageServiceInitialization extends Partial<LsConfiguration> {
 
 	/**
 	 * The {@link IWorkspace workspace} that the  {@link IMdLanguageService language service} uses to work with files. 
@@ -206,28 +206,6 @@ export interface LanguageServiceInitialization {
 	 * The {@link ILogger logger} that the  {@link IMdLanguageService language service} use for logging messages.
 	 */
 	readonly logger: ILogger;
-
-	//#endregion
-	
-	//#region Config
-
-	/**
-	 * List of file extensions should be considered as markdown.
-	 *
-	 * These should not include the leading `.`.
-	 *
-	 * @default ['md']
-	 */
-	readonly markdownFileExtensions?: readonly string[];
-
-	/**
-	 * List of path globs that should be excluded from cross-file operations.
-	 *
-	 * Note that this does not prevent explicit requests for those files.
-	 */
-	readonly excludePaths?: readonly string[];
-
-	//#endregion
 }
 
 /**

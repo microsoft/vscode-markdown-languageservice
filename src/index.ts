@@ -24,17 +24,17 @@ import { ILogger } from './logging';
 import { IMdParser } from './parser';
 import { MdTableOfContentsProvider } from './tableOfContents';
 import { ITextDocument } from './types/textDocument';
-import { isWorkspaceWithFileWatching, IWorkspace, IWorkspaceWithWatching } from './workspace';
+import { isWorkspaceWithFileWatching, IWorkspace } from './workspace';
 
-export { DiagnosticCode, DiagnosticLevel, DiagnosticOptions } from './languageFeatures/diagnostics';
+export { DiagnosticCode, DiagnosticLevel, DiagnosticOptions, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
 export { ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks';
+export { FileRename } from './languageFeatures/fileRename';
 export { RenameNotSupportedAtLocationError } from './languageFeatures/rename';
 export { ILogger, LogLevel } from './logging';
 export { IMdParser, Token } from './parser';
 export { githubSlugifier, ISlugifier } from './slugify';
 export { ITextDocument } from './types/textDocument';
-export { FileStat, FileWatcherOptions, IWorkspace } from './workspace';
-export { IWorkspaceWithWatching, FileRename };
+export { ContainingDocumentContext, FileStat, FileWatcherOptions, IFileSystemWatcher, IWorkspace, IWorkspaceWithWatching } from './workspace';
 
 /**
  * Provides language tooling methods for working with markdown.
@@ -185,14 +185,31 @@ export interface IMdLanguageService {
 	dispose(): void;
 }
 
+/**
+ * Initialization options for creating a new {@link IMdLanguageService}.
+ */
 export interface LanguageServiceInitialization {
-	// Services
+	//#region Services
 
+	/**
+	 * The {@link IWorkspace workspace} that the  {@link IMdLanguageService language service} uses to work with files. 
+	 */
 	readonly workspace: IWorkspace;
+
+	/**
+	 * The {@link IMdParser markdown parsing engine} that the  {@link IMdLanguageService language service} uses to
+	 * process Markdown source. 
+	 */
 	readonly parser: IMdParser;
+
+	/**
+	 * The {@link ILogger logger} that the  {@link IMdLanguageService language service} use for logging messages.
+	 */
 	readonly logger: ILogger;
 
-	// Config
+	//#endregion
+	
+	//#region Config
 
 	/**
 	 * List of file extensions should be considered as markdown.
@@ -209,10 +226,12 @@ export interface LanguageServiceInitialization {
 	 * Note that this does not prevent explicit requests for those files.
 	 */
 	readonly excludePaths?: readonly string[];
+
+	//#endregion
 }
 
 /**
- * Create a new instance of the language service.
+ * Create a new instance of the {@link IMdLanguageService language service}.
  */
 export function createLanguageService(init: LanguageServiceInitialization): IMdLanguageService {
 	const config = getLsConfiguration(init);

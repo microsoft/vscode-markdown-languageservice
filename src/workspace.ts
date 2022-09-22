@@ -7,13 +7,23 @@ import { Event } from 'vscode-languageserver';
 import { URI, Utils } from 'vscode-uri';
 import { defaultMarkdownFileExtension, LsConfiguration } from './config';
 import { ITextDocument } from './types/textDocument';
-import { IDisposable } from './util/dispose';
 import { ResourceMap } from './util/resourceMap';
 
+/**
+ * Result of {@link IWorkspace.stat stating} a file.
+ */
 export interface FileStat {
-	readonly isDirectory?: boolean;
+	/**
+	 * True if the file is directory.
+	 */
+	readonly isDirectory: boolean;
 }
 
+/**
+ * Information about a parent markdown document that contains sub-documents.
+ * 
+ * This could be a notebook document for example, where the `children` are the Markdown cells in the notebook.
+ */
 export interface ContainingDocumentContext {
 	/**
 	 * Uri of the parent document.
@@ -101,9 +111,17 @@ export interface IWorkspace {
 	getContainingDocument?(resource: URI): ContainingDocumentContext | undefined;
 }
 
+/**
+ * Configures which events a {@link IFileSystemWatcher} fires.
+ */
 export interface FileWatcherOptions {
+	/** Ignore file creation events. */
 	readonly ignoreCreate?: boolean;
+
+	/** Ignore file change events. */
 	readonly ignoreChange?: boolean;
+
+	/** Ignore file delete events. */
 	readonly ignoreDelete?: boolean;
 }
 
@@ -124,7 +142,13 @@ export function isWorkspaceWithFileWatching(workspace: IWorkspace): workspace is
 /**
  * Watches a file for changes to it on the file system.
  */
-export interface IFileSystemWatcher extends IDisposable {
+export interface IFileSystemWatcher {
+
+	/**
+	 * Dispose of the watcher. This should stop watching and clean up any associated resources.
+	 */
+	dispose(): void;
+
 	/** Fired when the file is created. */
 	readonly onDidCreate: Event<URI>;
 

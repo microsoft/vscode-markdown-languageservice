@@ -28,6 +28,9 @@ export interface MdReferencesResponse {
 	readonly triggerRef: MdReference;
 }
 
+/**
+ * Error thrown when rename is not supported performed at the requested location.
+ */
 export class RenameNotSupportedAtLocationError extends Error {
 	constructor() {
 		super(localize('rename.notSupported', 'Renaming is not supported here. Try renaming a header or link.'));

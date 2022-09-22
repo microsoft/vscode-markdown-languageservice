@@ -22,18 +22,47 @@ import { HrefKind, InternalHref, LinkDefinitionSet, MdLink, MdLinkProvider, MdLi
 
 const localize = nls.loadMessageBundle();
 
-
+/**
+ * The severity at which diagnostics are reported
+ */
 export enum DiagnosticLevel {
+	/** Don't report this diagnostic. */
 	ignore = 'ignore',
+
+	/** Report the diagnostic as a warning. */
 	warning = 'warning',
+
+	/** Report the diagnostic as an error. */
 	error = 'error',
 }
 
+/**
+ * Configure how diagnostics are computed.
+ */
 export interface DiagnosticOptions {
+	/**
+	 * Diagnostic level for invalid reference links, e.g. `[text][no-such-ref]`.
+	 */
 	readonly validateReferences: DiagnosticLevel | undefined;
+
+	/**
+	 * Diagnostic level for fragments links to headers in the current file that don't exist, e.g. `[text](#no-such-header)`.
+	 */
 	readonly validateFragmentLinks: DiagnosticLevel | undefined;
+
+	/**
+	 * Diagnostic level for links to local files that don't exist, e.g. `[text](./no-such-file.png)`.
+	 */
 	readonly validateFileLinks: DiagnosticLevel | undefined;
+
+	/**
+	 * Diagnostic level for the fragment part of links to other local markdown files , e.g. `[text](./file.md#no-such-header)`.
+	 */
 	readonly validateMarkdownFileLinkFragments: DiagnosticLevel | undefined;
+
+	/**
+	 * Glob of links that should not be validated.
+	 */
 	readonly ignoreLinks: readonly string[];
 }
 
@@ -46,10 +75,21 @@ function toSeverity(level: DiagnosticLevel | undefined): DiagnosticSeverity | un
 	}
 }
 
+/**
+ * Error codes of Markdown diagnostics
+ */
 export enum DiagnosticCode {
+	/** The linked to reference does not exist. */
+
 	link_noSuchReferences = 'link.no-such-reference',
+
+	/** The linked to heading does not exist in the current file. */
 	link_noSuchHeaderInOwnFile = 'link.no-such-header-in-own-file',
+	
+	/** The linked to local file does not exist. */
 	link_noSuchFile = 'link.no-such-file',
+
+	/** The linked to heading does not exist in the another file. */
 	link_noSuchHeaderInFile = 'link.no-such-header-in-file',
 }
 
@@ -279,8 +319,16 @@ export class DiagnosticComputer {
 /**
  * Stateful object that can more efficiently compute diagnostics for the workspace.
  */
-export interface IPullDiagnosticsManager extends IDisposable {
+export interface IPullDiagnosticsManager {
 
+	/**
+	 * Dispose of the diagnostic manager and clean up any associated resources.
+	 */
+	dispose(): void;
+
+	/**
+	 * Event fired when a file that Markdown document is linking to changes.
+	 */
 	readonly onLinkedToFileChanged: Event<{
 		readonly changedResource: URI;
 		readonly linkingResources: readonly URI[];

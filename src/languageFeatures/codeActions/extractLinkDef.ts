@@ -13,6 +13,7 @@ import { getLine, ITextDocument } from '../../types/textDocument';
 import { WorkspaceEditBuilder } from '../../util/editBuilder';
 import { ExternalHref, HrefKind, InternalHref, LinkDefinitionSet, MdDocumentLinksInfo, MdInlineLink, MdLink, MdLinkDefinition, MdLinkKind, MdLinkProvider } from '../documentLinks';
 import { getExistingDefinitionBlock } from '../organizeLinkDefs';
+import { codeActionKindContains } from './util';
 
 const localize = nls.loadMessageBundle();
 
@@ -139,8 +140,4 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 
 		return false;
 	}
-}
-
-function codeActionKindContains(kindA: string, kindB: string): unknown {
-	return kindA === kindB || kindB.startsWith(kindA + '.');
 }

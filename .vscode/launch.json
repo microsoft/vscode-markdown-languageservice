@@ -11,7 +11,7 @@
 			"program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
 			"args": [
 				"${workspaceFolder}/test",
-				"out/test/*.test.js",
+				"'out/test/**/*.test.js'",
 				"--ui=tdd"
 			],
 			"console": "integratedTerminal",

@@ -5,8 +5,10 @@
 
 import * as assert from 'assert';
 import * as os from 'os';
+import * as lsp from 'vscode-languageserver-types';
 import { Position, Range } from 'vscode-languageserver-types';
 import * as URI from 'vscode-uri';
+import { DiagnosticLevel, DiagnosticOptions } from '../languageFeatures/diagnostics';
 import { DisposableStore } from '../util/dispose';
 import { InMemoryDocument } from './inMemoryDocument';
 
@@ -50,4 +52,21 @@ export function getCursorPositions(contents: string, doc: InMemoryDocument): Pos
 		wordLength = CURSOR.length;
 	}
 	return positions;
+}
+
+export const defaultDiagnosticsOptions = Object.freeze<DiagnosticOptions>({
+	validateFileLinks: DiagnosticLevel.warning,
+	validateMarkdownFileLinkFragments: undefined,
+	validateFragmentLinks: DiagnosticLevel.warning,
+	validateReferences: DiagnosticLevel.warning,
+	validateUnusedLinkDefinitions: DiagnosticLevel.warning,
+	validateDuplicateLinkDefinitions: DiagnosticLevel.warning,
+	ignoreLinks: [],
+});
+
+export function applyActionEdit(doc: InMemoryDocument, action: lsp.CodeAction): string {
+	const edits = (action.edit?.documentChanges?.filter(change => {
+		return lsp.TextDocumentEdit.is(change) && change.textDocument.uri === doc.uri;
+	}) ?? []) as lsp.TextDocumentEdit[];
+	return doc.applyEdits(edits.map(edit => edit.edits).flat());
 }

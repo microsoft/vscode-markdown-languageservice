@@ -277,6 +277,7 @@ export class DiagnosticComputer {
 					tags: [
 						lsp.DiagnosticTag.Unnecessary,
 					],
+					data: link
 				};
 			}
 		}

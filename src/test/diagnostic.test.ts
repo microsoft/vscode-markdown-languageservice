@@ -18,17 +18,8 @@ import { createNewMarkdownEngine } from './engine';
 import { InMemoryDocument } from './inMemoryDocument';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
-import { assertRangeEqual, joinLines, withStore, workspacePath, workspaceRoot } from './util';
+import { assertRangeEqual, defaultDiagnosticsOptions, joinLines, withStore, workspacePath, workspaceRoot } from './util';
 
-const defaultDiagnosticsOptions = Object.freeze<DiagnosticOptions>({
-	validateFileLinks: DiagnosticLevel.warning,
-	validateMarkdownFileLinkFragments: undefined,
-	validateFragmentLinks: DiagnosticLevel.warning,
-	validateReferences: DiagnosticLevel.warning,
-	validateUnusedLinkDefinitions: DiagnosticLevel.warning,
-	validateDuplicateLinkDefinitions: DiagnosticLevel.warning,
-	ignoreLinks: [],
-});
 
 async function getComputedDiagnostics(store: DisposableStore, doc: InMemoryDocument, workspace: IWorkspace, options: Partial<DiagnosticOptions> = {}): Promise<lsp.Diagnostic[]> {
 	const engine = createNewMarkdownEngine();
@@ -405,10 +396,10 @@ suite('Diagnostic Computer', () => {
 		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
 			`[ref]`,
 			`text`,
-			`[ref]: http::/example.com`,
-			`[bad-ref]: http::/example.com`,
+			`[ref]: http://example.com`,
+			`[bad-ref]: http://example.com`,
 			`text`,
-			`[bad-ref2]: http::/example.com`,
+			`[bad-ref2]: http://example.com`,
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
@@ -416,6 +407,18 @@ suite('Diagnostic Computer', () => {
 		assertDiagnosticsEqual(diagnostics, [
 			makeRange(3, 0, 3, 29),
 			makeRange(5, 0, 5, 30),
+		]);
+	}));
+
+	test('Unused link definition diagnostic should span title', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`[unused]: http://example.com "title"`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		assertDiagnosticsEqual(diagnostics, [
+			makeRange(0, 0, 0, 36),
 		]);
 	}));
 

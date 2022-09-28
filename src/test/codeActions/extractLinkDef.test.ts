@@ -4,43 +4,37 @@
  *--------------------------------------------------------------------------------------------*/
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-types';
-import { MdLinkProvider } from '../languageFeatures/documentLinks';
-import { MdExtractLinkDefinitionCodeActionProvider } from '../languageFeatures/codeActions/extractLinkDef';
-import { MdTableOfContentsProvider } from '../tableOfContents';
-import { noopToken } from '../util/cancellation';
-import { DisposableStore } from '../util/dispose';
-import { createNewMarkdownEngine } from './engine';
-import { InMemoryDocument } from './inMemoryDocument';
-import { InMemoryWorkspace } from './inMemoryWorkspace';
-import { nulLogger } from './nulLogging';
-import { joinLines, withStore, workspacePath } from './util';
-import { makeRange } from '../types/range';
-import { getLsConfiguration } from '../config';
+import { MdLinkProvider } from '../../languageFeatures/documentLinks';
+import { MdExtractLinkDefinitionCodeActionProvider } from '../../languageFeatures/codeActions/extractLinkDef';
+import { MdTableOfContentsProvider } from '../../tableOfContents';
+import { noopToken } from '../../util/cancellation';
+import { DisposableStore } from '../../util/dispose';
+import { createNewMarkdownEngine } from '../engine';
+import { InMemoryDocument } from '../inMemoryDocument';
+import { InMemoryWorkspace } from '../inMemoryWorkspace';
+import { nulLogger } from '../nulLogging';
+import { applyActionEdit, joinLines, withStore, workspacePath } from '../util';
+import { makeRange } from '../../types/range';
+import { getLsConfiguration } from '../../config';
 
-async function getExtractActions(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position): Promise<lsp.CodeAction[]> {
+async function getActions(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position): Promise<lsp.CodeAction[]> {
 	const workspace = store.add(new InMemoryWorkspace([doc]));
 	const engine = createNewMarkdownEngine();
 	const config = getLsConfiguration({});
-	
+
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
 	const provider = new MdExtractLinkDefinitionCodeActionProvider(linkProvider);
 	return provider.getActions(doc, makeRange(pos, pos), lsp.CodeActionContext.create([], undefined, undefined), noopToken);
 }
 
-function applyActionEdit(doc: InMemoryDocument, action: lsp.CodeAction): string {
-	const edits = (action.edit?.documentChanges?.filter(change => {
-		return lsp.TextDocumentEdit.is(change) && change.textDocument.uri === doc.uri;
-	}) ?? []) as lsp.TextDocumentEdit[];
-	return doc.applyEdits(edits.map(edit => edit.edits).flat());
-}
 
 suite('Extract link definition code action', () => {
 	test('Should return disabled code action when not on link', withStore(async (store) => {
 		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(
 			`test`
 		));
-		const actions = await getExtractActions(store, doc, { line: 0, character: 3 });
+		const actions = await getActions(store, doc, { line: 0, character: 3 });
 		assert.strictEqual(actions.length, 1);
 		assert.strictEqual(actions[0].disabled?.reason, MdExtractLinkDefinitionCodeActionProvider.notOnLinkAction.disabled!.reason!);
 	}));
@@ -49,7 +43,7 @@ suite('Extract link definition code action', () => {
 		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(
 			`[text][ref]`
 		));
-		const actions = await getExtractActions(store, doc, { line: 0, character: 3 });
+		const actions = await getActions(store, doc, { line: 0, character: 3 });
 		assert.strictEqual(actions.length, 1);
 		assert.strictEqual(actions[0].disabled?.reason, MdExtractLinkDefinitionCodeActionProvider.alreadyRefLinkAction.disabled!.reason!);
 	}));
@@ -58,7 +52,7 @@ suite('Extract link definition code action', () => {
 		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(
 			`[text](./img.png)`
 		));
-		const actions = await getExtractActions(store, doc, { line: 0, character: 3 });
+		const actions = await getActions(store, doc, { line: 0, character: 3 });
 		assert.strictEqual(actions.length, 1);
 
 		const newContent = applyActionEdit(doc, actions[0]);
@@ -82,37 +76,37 @@ suite('Extract link definition code action', () => {
 
 		{
 			// Before link
-			const actions = await getExtractActions(store, doc, { line: 0, character: 1 });
+			const actions = await getActions(store, doc, { line: 0, character: 1 });
 			assert.strictEqual(actions.length, 1);
 			assert.strictEqual(actions[0].disabled?.reason, MdExtractLinkDefinitionCodeActionProvider.notOnLinkAction.disabled?.reason);
 		}
 		{
 			// On opening `[`
-			const actions = await getExtractActions(store, doc, { line: 0, character: 2 });
+			const actions = await getActions(store, doc, { line: 0, character: 2 });
 			assert.strictEqual(actions.length, 1);
 			assert.strictEqual(applyActionEdit(doc, actions[0]), expectedNewContent);
 		}
 		{
 			// On opening link text
-			const actions = await getExtractActions(store, doc, { line: 0, character: 5 });
+			const actions = await getActions(store, doc, { line: 0, character: 5 });
 			assert.strictEqual(actions.length, 1);
 			assert.strictEqual(applyActionEdit(doc, actions[0]), expectedNewContent);
 		}
 		{
 			// On link target
-			const actions = await getExtractActions(store, doc, { line: 0, character: 14 });
+			const actions = await getActions(store, doc, { line: 0, character: 14 });
 			assert.strictEqual(actions.length, 1);
 			assert.strictEqual(applyActionEdit(doc, actions[0]), expectedNewContent);
 		}
 		{
 			// On closing `)`
-			const actions = await getExtractActions(store, doc, { line: 0, character: 19 });
+			const actions = await getActions(store, doc, { line: 0, character: 19 });
 			assert.strictEqual(actions.length, 1);
 			assert.strictEqual(applyActionEdit(doc, actions[0]), expectedNewContent);
 		}
 		{
 			// After link
-			const actions = await getExtractActions(store, doc, { line: 0, character: 20 });
+			const actions = await getActions(store, doc, { line: 0, character: 20 });
 			assert.strictEqual(actions.length, 1);
 			assert.strictEqual(actions[0].disabled?.reason, MdExtractLinkDefinitionCodeActionProvider.notOnLinkAction.disabled?.reason);
 		}
@@ -124,7 +118,7 @@ suite('Extract link definition code action', () => {
 			``,
 			`[abc]: http:://example.com`
 		));
-		const actions = await getExtractActions(store, doc, { line: 0, character: 3 });
+		const actions = await getActions(store, doc, { line: 0, character: 3 });
 		assert.strictEqual(actions.length, 1);
 
 		const newContent = applyActionEdit(doc, actions[0]);
@@ -144,7 +138,7 @@ suite('Extract link definition code action', () => {
 			`[def2]: http:://example.com?2`,
 			`[def4]: http:://example.com?4`,
 		));
-		const actions = await getExtractActions(store, doc, { line: 0, character: 3 });
+		const actions = await getActions(store, doc, { line: 0, character: 3 });
 		assert.strictEqual(actions.length, 1);
 
 		const newContent = applyActionEdit(doc, actions[0]);
@@ -164,7 +158,7 @@ suite('Extract link definition code action', () => {
 			``,
 			`[abc]: http:://example.com`
 		));
-		const actions = await getExtractActions(store, doc, { line: 0, character: 3 });
+		const actions = await getActions(store, doc, { line: 0, character: 3 });
 		assert.strictEqual(actions.length, 1);
 
 		const newContent = applyActionEdit(doc, actions[0]);
@@ -182,7 +176,7 @@ suite('Extract link definition code action', () => {
 			``,
 			`[abc]: http:://example.com`
 		));
-		const actions = await getExtractActions(store, doc, { line: 0, character: 3 });
+		const actions = await getActions(store, doc, { line: 0, character: 3 });
 		assert.strictEqual(actions.length, 1);
 
 		const newContent = applyActionEdit(doc, actions[0]);
@@ -200,7 +194,7 @@ suite('Extract link definition code action', () => {
 			``,
 			`[abc]: http:://example.com`
 		));
-		const actions = await getExtractActions(store, doc, { line: 0, character: 3 });
+		const actions = await getActions(store, doc, { line: 0, character: 3 });
 		assert.strictEqual(actions.length, 1);
 
 		const newContent = applyActionEdit(doc, actions[0]);
@@ -220,7 +214,7 @@ suite('Extract link definition code action', () => {
 			`[xyz]: http:://example.com?xyz`,
 			``,
 		));
-		const actions = await getExtractActions(store, doc, { line: 0, character: 3 });
+		const actions = await getActions(store, doc, { line: 0, character: 3 });
 		assert.strictEqual(actions.length, 1);
 
 		const newContent = applyActionEdit(doc, actions[0]);
@@ -242,7 +236,7 @@ suite('Extract link definition code action', () => {
 			``,
 			`[abc]: http:://example.com?abc`,
 		));
-		const actions = await getExtractActions(store, doc, { line: 0, character: 3 });
+		const actions = await getActions(store, doc, { line: 0, character: 3 });
 		assert.strictEqual(actions.length, 1);
 
 		const newContent = applyActionEdit(doc, actions[0]);
@@ -262,7 +256,7 @@ suite('Extract link definition code action', () => {
 			`b [text](http://example.com#b)`,
 			`a [text](http://example.com#a)`,
 		));
-		const actions = await getExtractActions(store, doc, { line: 0, character: 3 });
+		const actions = await getActions(store, doc, { line: 0, character: 3 });
 		assert.strictEqual(actions.length, 1);
 
 		const newContent = applyActionEdit(doc, actions[0]);

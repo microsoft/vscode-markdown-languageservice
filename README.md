@@ -69,7 +69,7 @@ Currently supported language features:
 
 	- Extract all occurrences of a link in a file to a link definition at the bottom of the file.
 
-- Diagnostics (experimental)
+- Diagnostics (error reporting)
 
 	Supports generating diagnostics for invalid links to:
 

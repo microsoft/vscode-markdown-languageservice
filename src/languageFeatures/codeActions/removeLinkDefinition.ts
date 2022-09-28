@@ -25,12 +25,21 @@ export class MdRemoveLinkDefinitionCodeActionProvider {
 			return;
 		}
 
+		const unusedDiagnosticLines = new Set<number>();
+
 		for (const diag of context.diagnostics) {
-			if (diag.data && rangeIntersects(diag.range, range)) {
-				if (diag.code === DiagnosticCode.link_unusedDefinition) {
-					yield this.getRemoveDefinitionAction(doc, diag.data as MdLinkDefinition, MdRemoveLinkDefinitionCodeActionProvider.removeUnusedDefTitle);
-				} else if (diag.code === DiagnosticCode.link_duplicateDefinition) {
-					yield this.getRemoveDefinitionAction(doc, diag.data as MdLinkDefinition, MdRemoveLinkDefinitionCodeActionProvider.removeDuplicateDefTitle);
+			if (diag.code === DiagnosticCode.link_unusedDefinition && diag.data && rangeIntersects(diag.range, range)) {
+				const link = diag.data as MdLinkDefinition;
+				yield this.getRemoveDefinitionAction(doc, link, MdRemoveLinkDefinitionCodeActionProvider.removeUnusedDefTitle);
+				unusedDiagnosticLines.add(link.source.range.start.line);
+			}
+		}
+
+		for (const diag of context.diagnostics) {
+			if (diag.code === DiagnosticCode.link_duplicateDefinition && diag.data && rangeIntersects(diag.range, range)) {
+				const link = diag.data as MdLinkDefinition;
+				if (!unusedDiagnosticLines.has(link.source.range.start.line)) {
+					yield this.getRemoveDefinitionAction(doc, link, MdRemoveLinkDefinitionCodeActionProvider.removeDuplicateDefTitle);
 				}
 			}
 		}

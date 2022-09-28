@@ -319,6 +319,7 @@ export class DiagnosticComputer {
 								{ uri: def.source.resource.toString(), range: def.ref.range },
 								localize('duplicateLinkDefinitionRelated', 'Link is also defined here'),
 							)),
+					data: duplicateDef
 				};
 			}
 		}

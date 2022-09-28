@@ -131,6 +131,29 @@ suite('Remove link definition code action', () => {
 			));
 		}
 	}));
+
+
+	test('Should prefer unused code action if link definition is both unused and duplicated', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(
+			`text`,
+			``,
+			`[def]: http://example.com "title"`,
+			`[def]: http://example.com/other "title2"`,
+			``,
+			`more text`,
+		));
+		const actions = await getActions(store, doc, { line: 2, character: 3 });
+		assert.strictEqual(actions.length, 1);
+
+		const newContent = applyActionEdit(doc, actions[0]);
+		assert.strictEqual(newContent, joinLines(
+			`text`,
+			``,
+			`[def]: http://example.com/other "title2"`,
+			``,
+			`more text`,
+		));
+	}));
 });
 
 

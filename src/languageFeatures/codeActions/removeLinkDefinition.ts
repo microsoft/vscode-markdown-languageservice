@@ -48,7 +48,7 @@ export class MdRemoveLinkDefinitionCodeActionProvider {
 		const builder = new WorkspaceEditBuilder();
 
 		const range = definition.source.range;
-		builder.replace(URI.parse(doc.uri), makeRange(range.start.line, 0, range.start.line, Infinity), '');
+		builder.replace(URI.parse(doc.uri), makeRange(range.start.line, 0, range.start.line, Number.MAX_VALUE), '');
 
 		return { title, kind: lsp.CodeActionKind.QuickFix, edit: builder.getEdit() };
 	}

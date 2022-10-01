@@ -8,6 +8,7 @@ import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration, LsConfiguration } from './config';
 import { MdExtractLinkDefinitionCodeActionProvider } from './languageFeatures/codeActions/extractLinkDef';
+import { MdRemoveLinkDefinitionCodeActionProvider } from './languageFeatures/codeActions/removeLinkDefinition';
 import { MdDefinitionProvider } from './languageFeatures/definitions';
 import { DiagnosticComputer, DiagnosticOptions, DiagnosticsManager, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
 import { createWorkspaceLinkCache, MdLinkProvider, ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks';
@@ -231,6 +232,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const organizeLinkDefinitions = new MdOrganizeLinkDefinitionProvider(linkProvider);
 
 	const extractCodeActionProvider = new MdExtractLinkDefinitionCodeActionProvider(linkProvider);
+	const removeLinkDefinitionActionProvider = new MdRemoveLinkDefinitionCodeActionProvider();
 
 	return Object.freeze<IMdLanguageService>({
 		dispose: () => {
@@ -258,7 +260,10 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 		getRenameEdit: renameProvider.provideRenameEdits.bind(renameProvider),
 		getRenameFilesInWorkspaceEdit: fileRenameProvider.getRenameFilesInWorkspaceEdit.bind(fileRenameProvider),
 		getCodeActions: async (doc: ITextDocument, range: lsp.Range, context: lsp.CodeActionContext, token: CancellationToken): Promise<lsp.CodeAction[]> => {
-			return extractCodeActionProvider.getActions(doc, range, context, token);
+			return (await Promise.all([
+				extractCodeActionProvider.getActions(doc, range, context, token),
+				Array.from(removeLinkDefinitionActionProvider.getActions(doc, range, context)),
+			])).flat();
 		},
 		computeDiagnostics: async (doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]> => {
 			return (await diagnosticsComputer.compute(doc, options, token))?.diagnostics;

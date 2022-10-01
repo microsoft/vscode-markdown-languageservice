@@ -18,15 +18,8 @@ import { createNewMarkdownEngine } from './engine';
 import { InMemoryDocument } from './inMemoryDocument';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
-import { assertRangeEqual, joinLines, withStore, workspacePath, workspaceRoot } from './util';
+import { assertRangeEqual, defaultDiagnosticsOptions, joinLines, withStore, workspacePath, workspaceRoot } from './util';
 
-const defaultDiagnosticsOptions = Object.freeze<DiagnosticOptions>({
-	validateFileLinks: DiagnosticLevel.warning,
-	validateMarkdownFileLinkFragments: undefined,
-	validateFragmentLinks: DiagnosticLevel.warning,
-	validateReferences: DiagnosticLevel.warning,
-	ignoreLinks: [],
-});
 
 async function getComputedDiagnostics(store: DisposableStore, doc: InMemoryDocument, workspace: IWorkspace, options: Partial<DiagnosticOptions> = {}): Promise<lsp.Diagnostic[]> {
 	const engine = createNewMarkdownEngine();
@@ -77,7 +70,7 @@ suite('Diagnostic Computer', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace, { validateUnusedLinkDefinitions: DiagnosticLevel.ignore });
 		assertDiagnosticsEqual(diagnostics, [
 			makeRange(0, 6, 0, 22),
 			makeRange(3, 11, 3, 27),
@@ -95,7 +88,7 @@ suite('Diagnostic Computer', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace, { validateUnusedLinkDefinitions: DiagnosticLevel.ignore });
 		assertDiagnosticsEqual(diagnostics, [
 			makeRange(2, 6, 2, 21),
 			makeRange(5, 11, 5, 26),
@@ -188,7 +181,7 @@ suite('Diagnostic Computer', () => {
 			`[text]: /no-such-file`,
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc1]));
-		const diagnostics = await getComputedDiagnostics(store, doc1, workspace, { ignoreLinks: ['/no-such-file'] });
+		const diagnostics = await getComputedDiagnostics(store, doc1, workspace, { ignoreLinks: ['/no-such-file'], validateUnusedLinkDefinitions: DiagnosticLevel.ignore });
 		assertDiagnosticsEqual(diagnostics, []);
 	}));
 
@@ -375,7 +368,7 @@ suite('Diagnostic Computer', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace, { validateUnusedLinkDefinitions: DiagnosticLevel.ignore });
 		assertDiagnosticsEqual(diagnostics, [
 			makeRange(0, 8, 0, 18),
 			makeRange(2, 8, 2, 18),
@@ -397,6 +390,51 @@ suite('Diagnostic Computer', () => {
 
 		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
 		assertDiagnosticsEqual(diagnostics, []);
+	}));
+
+	test('Should generate diagnostics for unused link definitions', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`[ref]`,
+			`text`,
+			`[ref]: http://example.com`,
+			`[bad-ref]: http://example.com`,
+			`text`,
+			`[bad-ref2]: http://example.com`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		assertDiagnosticsEqual(diagnostics, [
+			makeRange(3, 0, 3, 29),
+			makeRange(5, 0, 5, 30),
+		]);
+	}));
+
+	test('Unused link definition diagnostic should span title', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`[unused]: http://example.com "title"`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		assertDiagnosticsEqual(diagnostics, [
+			makeRange(0, 0, 0, 36),
+		]);
+	}));
+
+	test('Should generate diagnostics for duplicate link definitions', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`[def]: http://example.com`,
+			`[other]: http://example.com`,
+			`[def]: http://example.com/other`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace, { validateUnusedLinkDefinitions: DiagnosticLevel.ignore });
+		assertDiagnosticsEqual(diagnostics, [
+			makeRange(0, 1, 0, 4),
+			makeRange(2, 1, 2, 4),
+		]);
 	}));
 });
 

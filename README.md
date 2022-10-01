@@ -68,6 +68,7 @@ Currently supported language features:
 -  Code actions
 
 	- Extract all occurrences of a link in a file to a link definition at the bottom of the file.
+	- Quick fixes for removing duplicated or unused link definitions.
 
 - Diagnostics (error reporting)
 
@@ -77,6 +78,11 @@ Currently supported language features:
 	- Header within the current file.
 	- Files in the workspace.
 	- Headers in other files.
+	
+	Also can generate diagnostics for:
+
+	- Unused link definitions.
+	- Duplicate link definitions.
 
 - Update links on file rename (experimental)
 

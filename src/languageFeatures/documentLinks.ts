@@ -564,7 +564,8 @@ export class MdLinkComputer {
 
 			const refStart = translatePosition(linkStart, { characterDelta: 1 });
 			const refRange: lsp.Range = { start: refStart, end: translatePosition(refStart, { characterDelta: reference.length }) };
-			const linkEnd = translatePosition(linkStart, { characterDelta: match[0].length });
+			const line = getLine(document, linkStart.line);
+			const linkEnd = translatePosition(linkStart, { characterDelta: line.length });
 			yield {
 				kind: MdLinkKind.Definition,
 				source: {

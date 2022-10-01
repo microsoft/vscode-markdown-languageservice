@@ -18,7 +18,7 @@ import { looksLikeMarkdownPath } from '../util/file';
 import { Limiter } from '../util/limiter';
 import { ResourceMap } from '../util/resourceMap';
 import { FileStat, IWorkspace, IWorkspaceWithWatching, statLinkToMarkdownFile } from '../workspace';
-import { HrefKind, InternalHref, LinkDefinitionSet, MdLink, MdLinkProvider, MdLinkSource, parseLocationInfoFromFragment } from './documentLinks';
+import { HrefKind, InternalHref, LinkDefinitionSet, MdLink, MdLinkDefinition, MdLinkKind, MdLinkProvider, MdLinkSource, parseLocationInfoFromFragment, ReferenceHref } from './documentLinks';
 
 const localize = nls.loadMessageBundle();
 
@@ -28,6 +28,13 @@ const localize = nls.loadMessageBundle();
 export enum DiagnosticLevel {
 	/** Don't report this diagnostic. */
 	ignore = 'ignore',
+
+	/**
+	 * Report the diagnostic at a hint level.
+	 * 
+	 * Hints will typically not be directly reported by editors, but may show up as unused spans.
+	 */
+	hint = 'hint',
 
 	/** Report the diagnostic as a warning. */
 	warning = 'warning',
@@ -61,6 +68,16 @@ export interface DiagnosticOptions {
 	readonly validateMarkdownFileLinkFragments: DiagnosticLevel | undefined;
 
 	/**
+	 * Diagnostic level for link definitions that aren't used anywhere. `[never-used]: http://example.com`.
+	 */
+	readonly validateUnusedLinkDefinitions: DiagnosticLevel | undefined;
+
+	/**
+	 * Diagnostic level for duplicate link definitions.
+	 */
+	readonly validateDuplicateLinkDefinitions: DiagnosticLevel | undefined;
+
+	/**
 	 * Glob of links that should not be validated.
 	 */
 	readonly ignoreLinks: readonly string[];
@@ -70,6 +87,7 @@ function toSeverity(level: DiagnosticLevel | undefined): DiagnosticSeverity | un
 	switch (level) {
 		case DiagnosticLevel.error: return DiagnosticSeverity.Error;
 		case DiagnosticLevel.warning: return DiagnosticSeverity.Warning;
+		case DiagnosticLevel.hint: return DiagnosticSeverity.Hint;
 		case DiagnosticLevel.ignore: return undefined;
 		case undefined: return undefined;
 	}
@@ -84,12 +102,18 @@ export enum DiagnosticCode {
 
 	/** The linked to heading does not exist in the current file. */
 	link_noSuchHeaderInOwnFile = 'link.no-such-header-in-own-file',
-	
+
 	/** The linked to local file does not exist. */
 	link_noSuchFile = 'link.no-such-file',
 
 	/** The linked to heading does not exist in the another file. */
 	link_noSuchHeaderInFile = 'link.no-such-header-in-file',
+
+	/** The link definition is not used anywhere. */
+	link_unusedDefinition = 'link.unused-definition',
+
+	/** The link definition is not used anywhere. */
+	link_duplicateDefinition = 'link.duplicate-definition',
 }
 
 /**
@@ -161,8 +185,10 @@ export class DiagnosticComputer {
 			statCache,
 			diagnostics: (await Promise.all([
 				this.validateFileLinks(options, links, statCache, token),
-				Array.from(this.validateReferenceLinks(options, links, definitions)),
 				this.validateFragmentLinks(doc, options, links, token),
+				Array.from(this.validateReferenceLinks(options, links, definitions)),
+				Array.from(this.validateUnusedLinkDefinitions(options, links)),
+				Array.from(this.validateDuplicateLinkDefinitions(options, links)),
 			])).flat()
 		};
 	}
@@ -191,7 +217,7 @@ export class DiagnosticComputer {
 				if (parseLocationInfoFromFragment(link.href.fragment)) {
 					continue;
 				}
-				
+
 				if (!this.isIgnoredLink(options, link.source.hrefText)) {
 					diagnostics.push({
 						code: DiagnosticCode.link_noSuchHeaderInOwnFile,
@@ -225,6 +251,75 @@ export class DiagnosticComputer {
 					data: {
 						ref: link.href.ref,
 					},
+				};
+			}
+		}
+	}
+
+	private *validateUnusedLinkDefinitions(options: DiagnosticOptions, links: readonly MdLink[]): Iterable<lsp.Diagnostic> {
+		const errorSeverity = toSeverity(options.validateUnusedLinkDefinitions);
+		if (typeof errorSeverity === 'undefined') {
+			return;
+		}
+
+		const usedRefs = new Set<string>(
+			links
+				.filter(link => link.kind === MdLinkKind.Link && link.href.kind === HrefKind.Reference)
+				.map(link => (link.href as ReferenceHref).ref));
+
+		for (const link of links) {
+			if (link.kind === MdLinkKind.Definition && !usedRefs.has(link.ref.text)) {
+				yield {
+					code: DiagnosticCode.link_unusedDefinition,
+					message: localize('unusedLinkDefinition', 'Link definition is unused'),
+					range: link.source.range,
+					severity: errorSeverity,
+					tags: [
+						lsp.DiagnosticTag.Unnecessary,
+					],
+					data: link
+				};
+			}
+		}
+
+	}
+	private *validateDuplicateLinkDefinitions(options: DiagnosticOptions, links: readonly MdLink[]): Iterable<lsp.Diagnostic> {
+		const errorSeverity = toSeverity(options.validateDuplicateLinkDefinitions);
+		if (typeof errorSeverity === 'undefined') {
+			return;
+		}
+
+		const definitionMultiMap = new Map<string, MdLinkDefinition[]>();
+		for (const link of links) {
+			if (link.kind === MdLinkKind.Definition) {
+				const existing = definitionMultiMap.get(link.ref.text);
+				if (existing) {
+					existing.push(link);
+				} else {
+					definitionMultiMap.set(link.ref.text, [link]);
+				}
+			}
+		}
+
+		for (const [ref, defs] of definitionMultiMap) {
+			if (defs.length <= 1) {
+				continue;
+			}
+
+			for (const duplicateDef of defs) {
+				yield {
+					code: DiagnosticCode.link_duplicateDefinition,
+					message: localize('duplicateLinkDefinition', 'Link definition for \'{0}\' already exists', ref),
+					range: duplicateDef.ref.range,
+					severity: errorSeverity,
+					relatedInformation:
+						defs
+							.filter(x => x !== duplicateDef)
+							.map(def => lsp.DiagnosticRelatedInformation.create(
+								{ uri: def.source.resource.toString(), range: def.ref.range },
+								localize('duplicateLinkDefinitionRelated', 'Link is also defined here'),
+							)),
+					data: duplicateDef
 				};
 			}
 		}

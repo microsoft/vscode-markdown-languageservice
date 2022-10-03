@@ -11,6 +11,7 @@ import { MdExtractLinkDefinitionCodeActionProvider } from './languageFeatures/co
 import { MdRemoveLinkDefinitionCodeActionProvider } from './languageFeatures/codeActions/removeLinkDefinition';
 import { MdDefinitionProvider } from './languageFeatures/definitions';
 import { DiagnosticComputer, DiagnosticOptions, DiagnosticsManager, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
+import { MdDocumentHighlightProvider } from './languageFeatures/documentHighlights';
 import { createWorkspaceLinkCache, MdLinkProvider, ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks';
 import { MdDocumentSymbolProvider } from './languageFeatures/documentSymbols';
 import { FileRename, MdFileRenameProvider } from './languageFeatures/fileRename';
@@ -165,6 +166,11 @@ export interface IMdLanguageService {
 	getCodeActions(document: ITextDocument, range: lsp.Range, context: lsp.CodeActionContext, token: CancellationToken): Promise<lsp.CodeAction[]>;
 
 	/**
+	 * Get document highlights for a position in the document.
+	 */
+	getDocumentHighlights(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<lsp.DocumentHighlight[]>;
+
+	/**
 	 * Compute diagnostics for a given file.
 	 *
 	 * Note that this function is stateless and re-validates all links every time you make the request. Use {@link IMdLanguageService.createPullDiagnosticsManager}
@@ -230,6 +236,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const docSymbolProvider = new MdDocumentSymbolProvider(tocProvider, linkProvider, logger);
 	const workspaceSymbolProvider = new MdWorkspaceSymbolProvider(init.workspace, docSymbolProvider);
 	const organizeLinkDefinitions = new MdOrganizeLinkDefinitionProvider(linkProvider);
+	const documentHighlightProvider = new MdDocumentHighlightProvider(tocProvider, linkProvider);
 
 	const extractCodeActionProvider = new MdExtractLinkDefinitionCodeActionProvider(linkProvider);
 	const removeLinkDefinitionActionProvider = new MdRemoveLinkDefinitionCodeActionProvider();
@@ -264,6 +271,9 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 				extractCodeActionProvider.getActions(doc, range, context, token),
 				Array.from(removeLinkDefinitionActionProvider.getActions(doc, range, context)),
 			])).flat();
+		},
+		getDocumentHighlights: (document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<lsp.DocumentHighlight[]> => {
+			return documentHighlightProvider.getDocumentHighlights(document, position, token);
 		},
 		computeDiagnostics: async (doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]> => {
 			return (await diagnosticsComputer.compute(doc, options, token))?.diagnostics;

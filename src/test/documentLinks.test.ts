@@ -583,6 +583,22 @@ suite('Link computer', () => {
 		const link = links[0];
 		assert.strictEqual((link.href as InternalHref).path.toString(), docUri.toString());
 	});
+
+	test(`Should allow links to end with ':' if they are not link defs (https://github.com/microsoft/vscode/issues/162691)`, async () => {
+		const links = await getLinksForText(joinLines(
+			`- [@just-web/contributions]: abc`,
+			`- [@just-web/contributions]:`,
+			`- [@just-web/contributions][]:`,
+			`- [@just-web/contributions][ref]:`,
+		));
+
+		assertLinksEqual(links, [
+			makeRange(0, 3, 0, 26),
+			makeRange(1, 3, 1, 26),
+			makeRange(2, 3, 2, 26),
+			makeRange(3, 28, 3, 31),
+		]);
+	});
 });
 
 

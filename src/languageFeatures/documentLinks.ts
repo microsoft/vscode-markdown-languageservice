@@ -306,7 +306,7 @@ const referenceLinkPattern = new RegExp(
 	/****/r`(` +
 	/******/r`[^\]]*?)\]` + //link def
 	/******/r`|` +
-	/******/r`\[\s*?([^\s\\\]]*?)\])(?![\:\(])` +
+	/******/r`\[\s*?([^\s\\\]]*?)\])(?![\(])` +
 	r`)`,
 	'gm');
 
@@ -506,11 +506,18 @@ export class MdLinkComputer {
 				const offset = linkStartOffset + 1;
 				hrefStart = document.positionAt(offset);
 				const line = getLine(document, hrefStart.line);
+
+				// See if link looks like link definition
+				if (linkStart.character === 0 && line[match[0].length - match[1].length] === ':') {
+					continue;
+				}
+
 				// See if link looks like a checkbox
 				const checkboxMatch = line.match(/^\s*[\-\*]\s*\[x\]/i);
 				if (checkboxMatch && hrefStart.character <= checkboxMatch[0].length) {
 					continue;
 				}
+
 				hrefEnd = document.positionAt(offset + reference.length);
 			} else {
 				continue;

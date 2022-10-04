@@ -517,6 +517,7 @@ export class MdLinkComputer {
 				if (checkboxMatch && hrefStart.character <= checkboxMatch[0].length) {
 					continue;
 				}
+
 				hrefEnd = document.positionAt(offset + reference.length);
 			} else {
 				continue;

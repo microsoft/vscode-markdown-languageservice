@@ -507,7 +507,7 @@ export class MdLinkComputer {
 				hrefStart = document.positionAt(offset);
 				const line = getLine(document, hrefStart.line);
 
-				// See if links looks like link definition
+				// See if link looks like link definition
 				if (linkStart.character === 0 && line[match[0].length - match[1].length] === ':') {
 					continue;
 				}

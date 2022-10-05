@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0-alpha.1 October 5, 2022
+- Added diagnostics for unused link definitions.
+- Added diagnostics for duplicated link definitions.
+- Added quick fixes for removing duplicate / unused link definitions.
+
 ## 0.1.0 September 28, 2022
 - Added `getCodeActions` to get code actions.
     - Added a code action to extract all occurrences of a link in a file to a link definition at the bottom.

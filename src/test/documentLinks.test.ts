@@ -599,6 +599,19 @@ suite('Link computer', () => {
 			makeRange(3, 28, 3, 31),
 		]);
 	});
+
+	test(`Should handle reference links with backticks`, async () => {
+		const links = await getLinksForText(joinLines(
+			'[`github`][github]',
+			``,
+			`[github]: https://github.com`,
+		));
+
+		assertLinksEqual(links, [
+			makeRange(0, 11, 0, 17),
+			makeRange(2, 10, 2, 28),
+		]);
+	});
 });
 
 

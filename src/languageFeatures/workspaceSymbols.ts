@@ -25,9 +25,14 @@ export class MdWorkspaceSymbolProvider extends Disposable {
 		this._cache = this._register(new MdWorkspaceInfoCache(workspace, doc => this.provideDocumentSymbolInformation(doc, noopToken)));
 	}
 
-	public async provideWorkspaceSymbols(query: string, _token: CancellationToken): Promise<lsp.WorkspaceSymbol[]> {
-		const allSymbols = (await this._cache.values()).flat();
-		return allSymbols.filter(symbolInformation => symbolInformation.name.toLowerCase().indexOf(query.toLowerCase()) !== -1);
+	public async provideWorkspaceSymbols(query: string, token: CancellationToken): Promise<lsp.WorkspaceSymbol[]> {
+		const allSymbols = await this._cache.values();
+		if (token.isCancellationRequested) {
+			return [];
+		}
+
+		const normalizedQueryStr = query.toLowerCase();
+		return allSymbols.flat().filter(symbolInformation => symbolInformation.name.includes(normalizedQueryStr));
 	}
 
 	public async provideDocumentSymbolInformation(document: ITextDocument, token: CancellationToken): Promise<lsp.SymbolInformation[]> {

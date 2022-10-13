@@ -100,33 +100,37 @@ export class MdPathCompletionProvider {
 		private readonly linkProvider: MdLinkProvider,
 	) { }
 
-	public async provideCompletionItems(document: ITextDocument, position: lsp.Position, _context: CompletionContext, _token: CancellationToken): Promise<lsp.CompletionItem[]> {
+	public async provideCompletionItems(document: ITextDocument, position: lsp.Position, _context: CompletionContext, token: CancellationToken): Promise<lsp.CompletionItem[]> {
 		const context = this.getPathCompletionContext(document, position);
 		if (!context) {
 			return [];
 		}
 
+		const items: lsp.CompletionItem[] = [];
+		for await (const item of this._provideCompletionItems(document, position, context, token)) {
+			items.push(item);
+		}
+		return items;
+	}
+
+	private async *_provideCompletionItems(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
 		switch (context.kind) {
 			case CompletionContextKind.ReferenceLink: {
-				const items: lsp.CompletionItem[] = [];
-				for await (const item of this.provideReferenceSuggestions(document, position, context)) {
-					items.push(item);
-				}
-				return items;
+				yield* this.provideReferenceSuggestions(document, position, context, token);
+				return;
 			}
-
 			case CompletionContextKind.LinkDefinition:
 			case CompletionContextKind.Link: {
-				const items: lsp.CompletionItem[] = [];
-
 				const isAnchorInCurrentDoc = context.anchorInfo && context.anchorInfo.beforeAnchor.length === 0;
 
 				// Add anchor #links in current doc
 				if (context.linkPrefix.length === 0 || isAnchorInCurrentDoc) {
 					const insertRange = makeRange(context.linkTextStartPosition, position);
-					for await (const item of this.provideHeaderSuggestions(document, position, context, insertRange)) {
-						items.push(item);
-					}
+					yield* this.provideHeaderSuggestions(document, position, context, insertRange, token);
+				}
+
+				if (token.isCancellationRequested) {
+					return;
 				}
 
 				if (!isAnchorInCurrentDoc) {
@@ -134,22 +138,22 @@ export class MdPathCompletionProvider {
 						const rawUri = this.resolveReference(document, context.anchorInfo.beforeAnchor);
 						if (rawUri) {
 							const otherDoc = await openLinkToMarkdownFile(this.configuration, this.workspace, rawUri);
+							if (token.isCancellationRequested) {
+								return;
+							}
+
 							if (otherDoc) {
 								const anchorStartPosition = translatePosition(position, { characterDelta: -(context.anchorInfo.anchorPrefix.length + 1) });
 								const range = makeRange(anchorStartPosition, position);
-								for await (const item of this.provideHeaderSuggestions(otherDoc, position, context, range)) {
-									items.push(item);
-								}
+								yield* this.provideHeaderSuggestions(otherDoc, position, context, range, token);
 							}
 						}
 					} else { // Normal path suggestions
-						for await (const item of this.providePathSuggestions(document, position, context)) {
-							items.push(item);
-						}
+						yield* this.providePathSuggestions(document, position, context, token);
 					}
 				}
 
-				return items;
+				return;
 			}
 		}
 	}
@@ -252,11 +256,15 @@ export class MdPathCompletionProvider {
 		};
 	}
 
-	private async *provideReferenceSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext): AsyncIterable<lsp.CompletionItem> {
+	private async *provideReferenceSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
 		const insertionRange = makeRange(context.linkTextStartPosition, position);
 		const replacementRange = makeRange(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
 
 		const { definitions } = await this.linkProvider.getLinks(document);
+		if (token.isCancellationRequested) {
+			return;
+		}
+
 		for (const def of definitions) {
 			yield {
 				kind: lsp.CompletionItemKind.Reference,
@@ -270,8 +278,12 @@ export class MdPathCompletionProvider {
 		}
 	}
 
-	private async *provideHeaderSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, insertionRange: lsp.Range): AsyncIterable<lsp.CompletionItem> {
+	private async *provideHeaderSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, insertionRange: lsp.Range, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
 		const toc = await TableOfContents.createForContainingDoc(this.parser, this.workspace, document);
+		if (token.isCancellationRequested) {
+			return;
+		}
+
 		for (const entry of toc.entries) {
 			const replacementRange = makeRange(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
 			const label = '#' + decodeURIComponent(entry.slug.value);
@@ -287,7 +299,7 @@ export class MdPathCompletionProvider {
 		}
 	}
 
-	private async *providePathSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext): AsyncIterable<lsp.CompletionItem> {
+	private async *providePathSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
 		const valueBeforeLastSlash = context.linkPrefix.substring(0, context.linkPrefix.lastIndexOf('/') + 1); // keep the last slash
 
 		const parentDir = this.resolveReference(document, valueBeforeLastSlash || '.');
@@ -305,6 +317,10 @@ export class MdPathCompletionProvider {
 		try {
 			dirInfo = await this.workspace.readDirectory(parentDir);
 		} catch {
+			return;
+		}
+
+		if (token.isCancellationRequested) {
 			return;
 		}
 

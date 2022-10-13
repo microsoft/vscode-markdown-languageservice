@@ -21,18 +21,26 @@ export class MdSelectionRangeProvider {
 		private readonly logger: ILogger,
 	) { }
 
-	public async provideSelectionRanges(document: ITextDocument, positions: Position[], _token: CancellationToken): Promise<lsp.SelectionRange[] | undefined> {
+	public async provideSelectionRanges(document: ITextDocument, positions: Position[], token: CancellationToken): Promise<lsp.SelectionRange[] | undefined> {
 		this.logger.log(LogLevel.Debug, 'MdSelectionRangeProvider', `provideSelectionRanges — ${document.uri} ${document.version}`);
 
 		const promises = await Promise.all(positions.map((position) => {
-			return this.provideSelectionRange(document, position);
+			return this.provideSelectionRange(document, position, token);
 		}));
 		return promises.filter(item => item !== undefined) as lsp.SelectionRange[];
 	}
 
-	private async provideSelectionRange(document: ITextDocument, position: Position): Promise<lsp.SelectionRange | undefined> {
+	private async provideSelectionRange(document: ITextDocument, position: Position, token: CancellationToken): Promise<lsp.SelectionRange | undefined> {
 		const headerRange = await this.getHeaderSelectionRange(document, position);
+		if (token.isCancellationRequested) {
+			return;
+		}
+
 		const blockRange = await this.getBlockSelectionRange(document, position, headerRange);
+		if (token.isCancellationRequested) {
+			return;
+		}
+
 		const inlineRange = await this.getInlineSelectionRange(document, position, blockRange);
 		return inlineRange || blockRange || headerRange;
 	}

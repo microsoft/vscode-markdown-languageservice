@@ -320,7 +320,7 @@ const autoLinkPattern = /\<(\w+:[^\>\s]+)\>/g;
  */
 const definitionPattern = /^([\t ]*\[(?!\^)((?:\\\]|[^\]])+)\]:\s*)([^<]\S*|<[^>]+>)/gm;
 
-const inlineCodePattern = /(?:^|[^`])(`+)(?:.+?|.*?(?:(?:\r?\n).+?)*?)(?:\r?\n)?\1(?:$|[^`])/gm;
+const inlineCodePattern = /(^|[^`])(`+)((?:.+?|.*?(?:(?:\r?\n).+?)*?)(?:\r?\n)?\2)(?:$|[^`])/gm;
 
 class NoLinkRanges {
 	public static async compute(tokenizer: IMdParser, document: ITextDocument): Promise<NoLinkRanges> {
@@ -330,10 +330,10 @@ class NoLinkRanges {
 		const inlineRanges = new Map</* line number */ number, lsp.Range[]>();
 		const text = document.getText();
 		for (const match of text.matchAll(inlineCodePattern)) {
-			const startOffset = match.index ?? 0;
+			const startOffset = (match.index ?? 0) + match[1].length;
 			const startPosition = document.positionAt(startOffset);
 
-			const range: lsp.Range = { start: startPosition, end: document.positionAt(startOffset + match[0].length) };
+			const range: lsp.Range = { start: startPosition, end: document.positionAt(startOffset + match[3].length) };
 			for (let line = range.start.line; line <= range.end.line; ++line) {
 				let entry = inlineRanges.get(line);
 				if (!entry) {

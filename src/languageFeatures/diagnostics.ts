@@ -18,7 +18,7 @@ import { looksLikeMarkdownPath } from '../util/file';
 import { Limiter } from '../util/limiter';
 import { ResourceMap } from '../util/resourceMap';
 import { FileStat, IWorkspace, IWorkspaceWithWatching, statLinkToMarkdownFile } from '../workspace';
-import { HrefKind, InternalHref, LinkDefinitionSet, MdLink, MdLinkDefinition, MdLinkKind, MdLinkProvider, MdLinkSource, parseLocationInfoFromFragment, ReferenceHref } from './documentLinks';
+import { HrefKind, InternalHref, LinkDefinitionSet, MdLink, MdLinkDefinition, MdLinkKind, MdLinkProvider, MdLinkSource, parseLocationInfoFromFragment, ReferenceLinkMap } from './documentLinks';
 
 const localize = nls.loadMessageBundle();
 
@@ -262,13 +262,15 @@ export class DiagnosticComputer {
 			return;
 		}
 
-		const usedRefs = new Set<string>(
-			links
-				.filter(link => link.kind === MdLinkKind.Link && link.href.kind === HrefKind.Reference)
-				.map(link => (link.href as ReferenceHref).ref));
+		const usedRefs = new ReferenceLinkMap<boolean>();
+		for (const link of links) {
+			if (link.kind === MdLinkKind.Link && link.href.kind === HrefKind.Reference) {
+				usedRefs.set(link.href.ref, true);
+			}
+		}
 
 		for (const link of links) {
-			if (link.kind === MdLinkKind.Definition && !usedRefs.has(link.ref.text)) {
+			if (link.kind === MdLinkKind.Definition && !usedRefs.lookup(link.ref.text)) {
 				yield {
 					code: DiagnosticCode.link_unusedDefinition,
 					message: localize('unusedLinkDefinition', 'Link definition is unused'),
@@ -281,8 +283,8 @@ export class DiagnosticComputer {
 				};
 			}
 		}
-
 	}
+	
 	private *validateDuplicateLinkDefinitions(options: DiagnosticOptions, links: readonly MdLink[]): Iterable<lsp.Diagnostic> {
 		const errorSeverity = toSeverity(options.validateDuplicateLinkDefinitions);
 		if (typeof errorSeverity === 'undefined') {

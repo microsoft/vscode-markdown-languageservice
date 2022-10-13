@@ -145,15 +145,17 @@ suite('Diagnostic Computer', () => {
 		]);
 	}));
 
-	// test('Should not generate diagnostics when validate is disabled', withStore(async (store) => {
-	// 	const doc1 = new InMemoryDocument(workspacePath('doc1.md'), joinLines(
-	// 		`[text](#no-such-header)`,
-	// 		`[text][no-such-ref]`,
-	// 	));
-	// 	const workspace = store.add(new InMemoryWorkspace([doc1]));
-	// 	const diagnostics = await getComputedDiagnostics(store, doc1, workspace, new MemoryDiagnosticConfiguration({ enabled: false }).getOptions(doc1.uri));
-	// 	assertDiagnosticsEqual(diagnostics, []);
-	// }));
+	test('Reference links should be case insensitive', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`[good link][GoOd]`,
+			``,
+			`[gOoD]: http://example.com`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		assertDiagnosticsEqual(diagnostics, []);
+	}));
 
 	test('Should not generate diagnostics for email autolink', withStore(async (store) => {
 		const doc1 = new InMemoryDocument(workspacePath('doc1.md'), joinLines(

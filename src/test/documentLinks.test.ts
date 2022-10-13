@@ -275,12 +275,12 @@ suite('Link computer', () => {
 		]);
 	});
 
-	test.skip('Should find reference link shorthand for link with space in label (#141285)', async () => {
+	test('Should find reference link shorthand for link with space in label (#141285)', async () => {
 		const links = await getLinksForText(joinLines(
 			'[ref with space]',
 		));
 		assertLinksEqual(links, [
-			makeRange(0, 7, 0, 26),
+			makeRange(0, 1, 0, 15),
 		]);
 	});
 
@@ -604,8 +604,10 @@ suite('Link computer', () => {
 
 suite('Link provider', () => {
 
+	const testFile = workspacePath('x.md');
+
 	function getLinksForFile(fileContents: string) {
-		const doc = new InMemoryDocument(workspacePath('x.md'), fileContents);
+		const doc = new InMemoryDocument(testFile, fileContents);
 		const workspace = new InMemoryWorkspace([doc]);
 
 		const engine = createNewMarkdownEngine();
@@ -641,6 +643,39 @@ suite('Link provider', () => {
 	test('Should not include reference link shorthand when definition does not exist (#141285)', async () => {
 		const links = await getLinksForFile('[ref]');
 		assertLinksEqual(links, []);
+	});
+
+	test('Should find reference links case insensitively', async () => {
+		const links = await getLinksForFile(joinLines(
+			'[ref]',
+			'[rEf][]',
+			'[ref][ReF]',
+			'',
+			'[REF]: http://example.com'
+		));
+		assertLinksEqual(links, [
+			makeRange(0, 1, 0, 4),
+			makeRange(1, 1, 1, 4),
+			makeRange(2, 6, 2, 9),
+			makeRange(4, 7, 4, 25),
+		]);
+	});
+
+	test('Should use first link reference found in document', async () => {
+		const links = await getLinksForFile(joinLines(
+			`[abc]`,
+			``,
+			`[abc]: http://example.com/1`,
+			`[abc]: http://example.com/2`,
+		));
+
+		assertLinksEqual(links, [
+			makeRange(0, 1, 0, 4),
+			makeRange(2, 7, 2, 27),
+			makeRange(3, 7, 3, 27),
+		]);
+
+		assert.strictEqual(links[0].target, testFile.with({ fragment: 'L3,8' }).toString(true));
 	});
 
 	test('Should not encode link', async () => {

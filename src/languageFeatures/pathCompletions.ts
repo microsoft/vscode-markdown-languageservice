@@ -257,7 +257,7 @@ export class MdPathCompletionProvider {
 		const replacementRange = makeRange(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
 
 		const { definitions } = await this.linkProvider.getLinks(document);
-		for (const [_, def] of definitions) {
+		for (const def of definitions) {
 			yield {
 				kind: lsp.CompletionItemKind.Reference,
 				label: def.ref.text,

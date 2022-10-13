@@ -21,22 +21,23 @@ export class MdFoldingProvider {
 		private readonly logger: ILogger,
 	) { }
 
-	public async provideFoldingRanges(
-		document: ITextDocument,
-		_token: CancellationToken
-	): Promise<lsp.FoldingRange[]> {
+	public async provideFoldingRanges(document: ITextDocument, token: CancellationToken): Promise<lsp.FoldingRange[]> {
 		this.logger.log(LogLevel.Debug, 'MdFoldingProvider', `provideFoldingRanges — ${document.uri} ${document.version}`);
 
 		const foldables = await Promise.all([
-			this.getRegions(document),
-			this.getHeaderFoldingRanges(document),
-			this.getBlockFoldingRanges(document)
+			this.getRegions(document, token),
+			this.getHeaderFoldingRanges(document, token),
+			this.getBlockFoldingRanges(document, token)
 		]);
 		return foldables.flat().slice(0, rangeLimit);
 	}
 
-	private async getRegions(document: ITextDocument): Promise<lsp.FoldingRange[]> {
+	private async getRegions(document: ITextDocument, token: CancellationToken): Promise<lsp.FoldingRange[]> {
 		const tokens = await this.parser.tokenize(document);
+		if (token.isCancellationRequested) {
+			return [];
+		}
+		
 		const regionMarkers = tokens.filter(isRegionMarker)
 			.map(token => ({ line: token.map[0], isStart: isStartRegion(token.content) }));
 
@@ -55,8 +56,12 @@ export class MdFoldingProvider {
 			.filter((region: lsp.FoldingRange | null): region is lsp.FoldingRange => !!region);
 	}
 
-	private async getHeaderFoldingRanges(document: ITextDocument): Promise<lsp.FoldingRange[]> {
+	private async getHeaderFoldingRanges(document: ITextDocument, token: CancellationToken): Promise<lsp.FoldingRange[]> {
 		const toc = await this.tocProvider.getForDocument(document);
+		if (token.isCancellationRequested) {
+			return [];
+		}
+
 		return toc.entries.map((entry): lsp.FoldingRange => {
 			let endLine = entry.sectionLocation.range.end.line;
 			if (isEmptyOrWhitespace(getLine(document, endLine)) && endLine >= entry.line + 1) {
@@ -66,8 +71,12 @@ export class MdFoldingProvider {
 		});
 	}
 
-	private async getBlockFoldingRanges(document: ITextDocument): Promise<lsp.FoldingRange[]> {
+	private async getBlockFoldingRanges(document: ITextDocument, token: CancellationToken): Promise<lsp.FoldingRange[]> {
 		const tokens = await this.parser.tokenize(document);
+		if (token.isCancellationRequested) {
+			return [];
+		}
+
 		const multiLineListItems = tokens.filter(isFoldableToken);
 		return multiLineListItems.map(listItem => {
 			const start = listItem.map[0];

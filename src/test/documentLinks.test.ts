@@ -675,7 +675,7 @@ suite('Link provider', () => {
 			makeRange(3, 7, 3, 27),
 		]);
 
-		assert.strictEqual(links[0].target, testFile.toString() + '#L3,8');
+		assert.strictEqual(links[0].target, testFile.with({ fragment: 'L3,8' }).toString(true));
 	});
 
 	test('Should not encode link', async () => {

@@ -292,7 +292,7 @@ const linkPattern = new RegExp(
 	'g');
 
 /**
-* Matches `[text][ref]` or `[shorthand]`
+* Matches `[text][ref]` or `[shorthand]` or `[shorthand][]`
 */
 const referenceLinkPattern = new RegExp(
 	r`(^|[^\]\\])` + // Must not start with another bracket (workaround for lack of support for negative look behinds)
@@ -306,7 +306,7 @@ const referenceLinkPattern = new RegExp(
 	/****/r`(` +
 	/******/r`[^\]]*?)\]` + //link def
 	/******/r`|` +
-	/******/r`\[\s*?([^\s\\\]]*?)\])(?![\(])` +
+	/******/r`\[\s*?([^\\\]]*?)\s*\])(?![\(])` +
 	r`)`,
 	'gm');
 
@@ -595,23 +595,53 @@ export interface MdDocumentLinksInfo {
 	readonly definitions: LinkDefinitionSet;
 }
 
-export class LinkDefinitionSet implements Iterable<[string, MdLinkDefinition]> {
-	private readonly _map = new Map<string, MdLinkDefinition>();
+export class ReferenceLinkMap<T> {
+	private readonly _map = new Map</* normalized ref */ string, T>();
+
+	public set(ref: string, link: T) {
+		this._map.set(this.normalizeRefName(ref), link);
+	}
+
+	public lookup(ref: string): T | undefined {
+		return this._map.get(this.normalizeRefName(ref));
+	}
+
+	public has(ref: string): boolean {
+		return this._map.has(this.normalizeRefName(ref));
+	}
+
+	public [Symbol.iterator](): Iterator<T> {
+		return this._map.values();
+	}
+
+	/**
+	 * Normalizes a link reference. Link references are case-insensitive, so this lowercases the reference too so you can
+	 * correctly compare two normalized references.
+	 */
+	private normalizeRefName(ref: string): string {
+		return ref.normalize().trim().toLowerCase();
+	}
+}
+
+export class LinkDefinitionSet implements Iterable<MdLinkDefinition> {
+	private readonly _map = new ReferenceLinkMap<MdLinkDefinition>();
 
 	constructor(links: Iterable<MdLink>) {
 		for (const link of links) {
 			if (link.kind === MdLinkKind.Definition) {
-				this._map.set(link.ref.text, link);
+				if (!this._map.has(link.ref.text)) {
+					this._map.set(link.ref.text, link);
+				}
 			}
 		}
 	}
 
-	public [Symbol.iterator](): Iterator<[string, MdLinkDefinition]> {
-		return this._map.entries();
+	public [Symbol.iterator](): Iterator<MdLinkDefinition> {
+		return this._map[Symbol.iterator]();
 	}
 
 	public lookup(ref: string): MdLinkDefinition | undefined {
-		return this._map.get(ref);
+		return this._map.lookup(ref);
 	}
 }
 

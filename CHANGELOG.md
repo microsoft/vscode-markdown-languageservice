@@ -1,9 +1,15 @@
 # Changelog
 
+## TODO
+- Fix reference links shorthand for names with spaces.
+- Fix reference links references should be case in-sensitive.
+- Fix reference links should resolve to first matching link definition.
+
 ## 0.2.0-alpha.1 October 5, 2022
 - Added diagnostics for unused link definitions.
 - Added diagnostics for duplicated link definitions.
 - Added quick fixes for removing duplicate / unused link definitions.
+- Added document highlight provider.
 
 ## 0.1.0 September 28, 2022
 - Added `getCodeActions` to get code actions.

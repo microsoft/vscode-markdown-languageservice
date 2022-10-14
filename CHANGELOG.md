@@ -1,6 +1,6 @@
 # Changelog
 
-## TODO
+## 0.2.0-alpha.2 October 13, 2022
 - Fix reference links shorthand for names with spaces.
 - Fix reference links references should be case in-sensitive.
 - Fix reference links should resolve to first matching link definition.

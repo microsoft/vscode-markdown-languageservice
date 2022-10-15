@@ -696,7 +696,7 @@ export class MdLinkProvider extends Disposable {
 		const target = await this.resolveInternalLinkTarget(href.path, href.fragment, token);
 		switch (target.kind) {
 			case 'folder':
-				link.target = this.createCommandUri('revealInExplorer', href);
+				link.target = this.createCommandUri('revealInExplorer', href.path);
 				break;
 			case 'external':
 				link.target = target.uri.toString(true);

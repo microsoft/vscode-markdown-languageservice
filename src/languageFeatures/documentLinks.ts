@@ -405,12 +405,12 @@ export class MdLinkComputer {
 		}
 
 		const inlineLinks = Array.from(this.getInlineLinks(document, noLinkRanges));
-		return Array.from([
+		return [
 			...inlineLinks,
 			...this.getReferenceLinks(document, noLinkRanges.concatInline(inlineLinks.map(x => x.source.range))),
 			...this.getLinkDefinitions(document, noLinkRanges),
 			...this.getAutoLinks(document, noLinkRanges),
-		]);
+		];
 	}
 
 	private *getInlineLinks(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLink> {

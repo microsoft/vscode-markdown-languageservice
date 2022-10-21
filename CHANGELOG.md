@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0-alpha.3 October 21, 2022
+- Fix detection of reference links with images.
+- Extract link definition should prefer inner links if on nested links.
+- Remove unused link definition now deletes entire line instead of leaving blank line.
+
 ## 0.2.0-alpha.2 October 13, 2022
 - Fix reference links shorthand for names with spaces.
 - Fix reference links references should be case in-sensitive.

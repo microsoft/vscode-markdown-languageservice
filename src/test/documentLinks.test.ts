@@ -612,6 +612,48 @@ suite('Link computer', () => {
 			makeRange(2, 10, 2, 28),
 		]);
 	});
+
+	test('Should find reference links to images', async () => {
+		const links = await getLinksForText(joinLines(
+			`[![alt](img)][def]`,
+			``,
+			`[def]: http://example.com`,
+		));
+
+		assertLinksEqual(links, [
+			makeRange(0, 8, 0, 11),
+			makeRange(0, 14, 0, 17),
+			makeRange(2, 7, 2, 25),
+		]);
+	});
+
+	test('Should find links to images references', async () => {
+		const links = await getLinksForText(joinLines(
+			`[![alt][def]](img)`,
+			``,
+			`[def]: http://example.com`,
+		));
+
+		assertLinksEqual(links, [
+			makeRange(0, 14, 0, 17),
+			makeRange(0, 8, 0, 11),
+			makeRange(2, 7, 2, 25),
+		]);
+	});
+
+	test('Should find reference links to image references', async () => {
+		const links = await getLinksForText(joinLines(
+			`[![alt][img]][def]`,
+			``,
+			`[def]: http://example.com`,
+		));
+
+		assertLinksEqual(links, [
+			makeRange(0, 8, 0, 11),
+			makeRange(0, 14, 0, 17),
+			makeRange(2, 7, 2, 25),
+		]);
+	});
 });
 
 
@@ -633,7 +675,7 @@ suite('Link provider', () => {
 		assert.strictEqual(actualLinks.length, expectedRanges.length);
 
 		for (let i = 0; i < actualLinks.length; ++i) {
-			assertRangeEqual(actualLinks[i].range, expectedRanges[i], `Range ${i} to be equal`);
+			assertRangeEqual(actualLinks[i].range, expectedRanges[i], `Range ${ i } to be equal`);
 		}
 	}
 

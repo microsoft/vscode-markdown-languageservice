@@ -271,7 +271,7 @@ function stripAngleBrackets(link: string) {
  */
 const linkPattern = new RegExp(
 	// text
-	r`(\[` + // open prefix match -->
+	r`(!?\[` + // open prefix match -->
 	/**/r`(?:` +
 	/*****/r`[^\[\]\\]|` + // Non-bracket chars, or...
 	/*****/r`\\.|` + // Escaped char, or...
@@ -300,7 +300,11 @@ const referenceLinkPattern = new RegExp(
 	/**/r`(?:` +
 	/****/r`(` + // Start link prefix
 	/******/r`!?` + // Optional image ref
-	/******/r`\[((?:\\\]|[^\]])*)\]` + // Link text
+	/******/r`\[((?:` +// Link text
+	/********/r`\\\]|` + // escaped bracket, or...
+	/********/r`[^\[\]]|` + //non bracket char, or...
+	/********/r`\[[^\[\]]*\]` + // matched bracket pair
+	/******/`+)*)\]` + // end link  text
 	/******/r`\[\s*?` + // Start of link def
 	/****/r`)` + // end link prefix
 	/****/r`(` +
@@ -416,16 +420,23 @@ export class MdLinkComputer {
 	private *getInlineLinks(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
 		const text = document.getText();
 		for (const match of text.matchAll(linkPattern)) {
-			const matchLinkData = createMdLink(document, match[1], match[2], match[3], match.index ?? 0, match[0], this.workspace);
+			const linkTextIncludingBrackets = match[1];
+			const matchLinkData = createMdLink(document, linkTextIncludingBrackets, match[2], match[3], match.index ?? 0, match[0], this.workspace);
 			if (matchLinkData && !noLinkRanges.contains(matchLinkData.source.hrefRange.start)) {
 				yield matchLinkData;
 
-				// Also check link destination for links
-				for (const innerMatch of match[1].matchAll(linkPattern)) {
-					const innerData = createMdLink(document, innerMatch[1], innerMatch[2], innerMatch[3], (match.index ?? 0) + (innerMatch.index ?? 0), innerMatch[0], this.workspace);
-					if (innerData) {
-						yield innerData;
+				// Also check for images in link text
+				if (/\![\[\(]/.test(linkTextIncludingBrackets)) {
+					const linkText = linkTextIncludingBrackets.slice(1, -1);
+					const startOffset =  (match.index ?? 0) + 1;
+					for (const innerMatch of linkText.matchAll(linkPattern)) {
+						const innerData = createMdLink(document, innerMatch[1], innerMatch[2], innerMatch[3], startOffset + (innerMatch.index ?? 0), innerMatch[0], this.workspace);
+						if (innerData) {
+							yield innerData;
+						}
 					}
+
+					yield* this.getReferenceLinksInText(document, linkText, startOffset, noLinkRanges);
 				}
 			}
 		}
@@ -466,10 +477,14 @@ export class MdLinkComputer {
 		}
 	}
 
-	private *getReferenceLinks(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
+	private getReferenceLinks(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
 		const text = document.getText();
+		return this.getReferenceLinksInText(document, text, 0, noLinkRanges);
+	}
+
+	private *getReferenceLinksInText(document: ITextDocument, text: string, startingOffset: number, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
 		for (const match of text.matchAll(referenceLinkPattern)) {
-			const linkStartOffset = (match.index ?? 0) + match[1].length;
+			const linkStartOffset = startingOffset + (match.index ?? 0) + match[1].length;
 			const linkStart = document.positionAt(linkStartOffset);
 			if (noLinkRanges.contains(linkStart)) {
 				continue;
@@ -490,11 +505,14 @@ export class MdLinkComputer {
 				const text = match[3];
 				if (!text) {
 					// Handle the case ![][cat]
-					if (match[0].startsWith('!')) {
-						//
-					} else {
+					if (!match[0].startsWith('!')) {
+						// Empty links are not valid
 						continue;
 					}
+				}
+				if (!match[0].startsWith('!')) {
+					// Also get links in text
+					yield* this.getReferenceLinksInText(document, match[3], linkStartOffset + 1, noLinkRanges);
 				}
 
 				const pre = match[2];

@@ -7,7 +7,7 @@ import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import * as nls from 'vscode-nls';
 import { URI } from 'vscode-uri';
-import { translatePosition } from '../../types/position';
+import { comparePosition, translatePosition } from '../../types/position';
 import { makeRange, rangeIntersects } from '../../types/range';
 import { getLine, ITextDocument } from '../../types/textDocument';
 import { WorkspaceEditBuilder } from '../../util/editBuilder';
@@ -57,6 +57,9 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 		if (!linksInRange.length) {
 			return [MdExtractLinkDefinitionCodeActionProvider.notOnLinkAction];
 		}
+
+		// Sort by range start to get most specific link
+		linksInRange.sort((a, b) => comparePosition(b.source.range.start, a.source.range.start));
 
 		// Even though multiple links may be in the selection, we only generate an action for the first link we find.
 		// Creating actions for every link is overwhelming when users select all in a file

@@ -48,6 +48,7 @@ export function isBeforeOrEqual(pos: Position, other: Position): boolean {
 export function isAfter(pos: Position, other: Position): boolean {
 	return !isBeforeOrEqual(pos, other);
 }
+
 export function comparePosition(a: Position, b: Position): number {
 	if (a.line < b.line) {
 		return -1;

@@ -75,6 +75,22 @@ suite('Remove link definition code action', () => {
 		));
 	}));
 
+	test('Should remove entire line instead of leaving blank line', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(
+			`[a]: http://example.com "title"`,
+			`[b]: http://example.com/b "title2"`,
+			`[c]: http://example.com/c "title3"`,
+		));
+		const actions = await getActions(store, doc, { line: 1, character: 3 });
+		assert.strictEqual(actions.length, 1);
+
+		const newContent = applyActionEdit(doc, actions[0]);
+		assert.strictEqual(newContent, joinLines(
+			`[a]: http://example.com "title"`,
+			`[c]: http://example.com/c "title3"`,
+		));
+	}));
+
 	test('Should return when on unused definition with title', withStore(async (store) => {
 		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(
 			`text`,
@@ -131,7 +147,6 @@ suite('Remove link definition code action', () => {
 			));
 		}
 	}));
-
 
 	test('Should prefer unused code action if link definition is both unused and duplicated', withStore(async (store) => {
 		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(

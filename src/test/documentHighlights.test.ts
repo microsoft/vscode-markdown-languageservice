@@ -157,6 +157,38 @@ suite('Document highlights', () => {
 		);
 	}));
 
+	test('Should highlight links to images', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`![](./cat.gif)`, // trigger 1
+			`![](cat.gif)`,
+			`[cat](./cat.gif)`,
+			`[cat](cat.gif)`,
+			``,
+			`[ref]: cat.gif`, // trigger 2
+			`[ref]: ./cat.gif`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const expectedRanges = [
+			{ range: makeRange(0, 4, 0, 13) },
+			{ range: makeRange(1, 4, 1, 11) },
+			{ range: makeRange(2, 6, 2, 15) },
+			{ range: makeRange(3, 6, 3, 13) },
+
+			{ range: makeRange(5, 7, 5, 14) },
+			{ range: makeRange(6, 7, 6, 16) },
+		];
+
+		{
+			const highlights = await getDocumentHighlights(store, doc, { line: 1, character: 9 }, workspace);
+			assertHighlightsEqual(highlights, ...expectedRanges);
+		}
+		{
+			const highlights = await getDocumentHighlights(store, doc, { line: 5, character: 9 }, workspace);
+			assertHighlightsEqual(highlights, ...expectedRanges);
+		}
+	}));
+
 	test('Should highlight file when on file part of link to other files', withStore(async (store) => {
 		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
 			`# a b c`,
@@ -206,6 +238,35 @@ suite('Document highlights', () => {
 		}
 		{
 			const highlights = await getDocumentHighlights(store, doc, { line: 5, character: 1 }, workspace);
+			assertHighlightsEqual(highlights, ...expected);
+		}
+	}));
+
+	test('Should highlight external links', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`text [link](http://example.com/a)`, // trigger 1
+			`text [link](http://example.com)`,
+			`text [link](http://example.com/a)`,
+			`text [link](http://example.com/b)`,
+			``,
+			`[ref]: http://example.com/a`, // trigger 2
+			`[ref]: http://example.com/b`, 
+
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const expected = [
+			{ range: makeRange(0, 12, 0, 32) },
+			{ range: makeRange(2, 12, 2, 32) },
+			{ range: makeRange(5, 7, 5, 27) },
+		];
+
+		{
+			const highlights = await getDocumentHighlights(store, doc, { line: 2, character: 14 }, workspace);
+			assertHighlightsEqual(highlights, ...expected);
+		}
+		{
+			const highlights = await getDocumentHighlights(store, doc, { line: 5, character: 8 }, workspace);
 			assertHighlightsEqual(highlights, ...expected);
 		}
 	}));

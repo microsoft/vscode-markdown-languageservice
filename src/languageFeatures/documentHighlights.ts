@@ -6,16 +6,19 @@
 import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
+import { LsConfiguration } from '../config';
 import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOfContents';
 import { translatePosition } from '../types/position';
 import { modifyRange, rangeContains } from '../types/range';
 import { ITextDocument } from '../types/textDocument';
-import { HrefKind, InternalHref, MdLink, MdLinkKind, MdLinkProvider } from './documentLinks';
+import { tryAppendMarkdownFileExtension } from '../workspace';
+import { HrefKind, InternalHref, looksLikeLinkToDoc, MdLink, MdLinkKind, MdLinkProvider } from './documentLinks';
 import { getFilePathRange } from './rename';
 
 export class MdDocumentHighlightProvider {
 
 	constructor(
+		private readonly configuration: LsConfiguration,
 		private readonly tocProvider: MdTableOfContentsProvider,
 		private readonly linkProvider: MdLinkProvider,
 	) { }
@@ -72,7 +75,7 @@ export class MdDocumentHighlightProvider {
 			return this.getHighlightsForReference(link.href.ref, links);
 		} else if (link.href.kind === HrefKind.Internal) {
 			if (link.source.fragmentRange && rangeContains(link.source.fragmentRange, position)) {
-				return this.getHighlightsForLinkFragment(document, (link.href as InternalHref).fragment.toLowerCase(), links, toc);
+				return this.getHighlightsForLinkFragment(document, link.href, links, toc);
 			}
 
 			return this.getHighlightsForLinkPath(link.href.path, links);
@@ -81,14 +84,23 @@ export class MdDocumentHighlightProvider {
 		return [];
 	}
 
-	private *getHighlightsForLinkFragment(document: ITextDocument, fragment: string, links: readonly MdLink[], toc: TableOfContents): Iterable<lsp.DocumentHighlight> {
-		const header = toc.lookup(fragment);
-		if (header) {
-			yield { range: header.headerLocation.range, kind: lsp.DocumentHighlightKind.Write };
+	private *getHighlightsForLinkFragment(document: ITextDocument, href: InternalHref, links: readonly MdLink[], toc: TableOfContents): Iterable<lsp.DocumentHighlight> {
+		const targetDoc = tryAppendMarkdownFileExtension(this.configuration, href.path);
+		if (!targetDoc) {
+			return;
+		}
+
+		const fragment = href.fragment.toLowerCase();
+
+		if (targetDoc.toString() === document.uri) {
+			const header = toc.lookup(fragment);
+			if (header) {
+				yield { range: header.headerLocation.range, kind: lsp.DocumentHighlightKind.Write };
+			}
 		}
 
 		for (const link of links) {
-			if (link.href.kind === HrefKind.Internal && link.href.path.toString() === document.uri.toString()) {
+			if (link.href.kind === HrefKind.Internal && looksLikeLinkToDoc(this.configuration, link.href, targetDoc)) {
 				if (link.source.fragmentRange && link.href.fragment.toLowerCase() === fragment) {
 					yield {
 						range: modifyRange(link.source.fragmentRange, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 })),
@@ -100,8 +112,13 @@ export class MdDocumentHighlightProvider {
 	}
 
 	private *getHighlightsForLinkPath(path: URI, links: readonly MdLink[]): Iterable<lsp.DocumentHighlight> {
+		const targetDoc = tryAppendMarkdownFileExtension(this.configuration, path);
+		if (!targetDoc) {
+			return;
+		}
+
 		for (const link of links) {
-			if (link.href.kind === HrefKind.Internal && link.href.path.toString() === path.toString()) {
+			if (link.href.kind === HrefKind.Internal && looksLikeLinkToDoc(this.configuration, link.href, targetDoc)) {
 				yield {
 					range: getFilePathRange(link),
 					kind: lsp.DocumentHighlightKind.Read,

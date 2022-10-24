@@ -236,14 +236,14 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const docSymbolProvider = new MdDocumentSymbolProvider(tocProvider, linkProvider, logger);
 	const workspaceSymbolProvider = new MdWorkspaceSymbolProvider(init.workspace, docSymbolProvider);
 	const organizeLinkDefinitions = new MdOrganizeLinkDefinitionProvider(linkProvider);
-	const documentHighlightProvider = new MdDocumentHighlightProvider(tocProvider, linkProvider);
+	const documentHighlightProvider = new MdDocumentHighlightProvider(config, tocProvider, linkProvider);
 
 	const extractCodeActionProvider = new MdExtractLinkDefinitionCodeActionProvider(linkProvider);
 	const removeLinkDefinitionActionProvider = new MdRemoveLinkDefinitionCodeActionProvider();
 
 	return Object.freeze<IMdLanguageService>({
 		dispose: () => {
-			linkCache.dispose();
+			linkCache.dispose(); 
 			tocProvider.dispose();
 			workspaceSymbolProvider.dispose();
 			linkProvider.dispose();

@@ -226,8 +226,13 @@ export async function statLinkToMarkdownFile(config: LsConfiguration, workspace:
 
 export function tryAppendMarkdownFileExtension(config: LsConfiguration, linkUri: URI): URI | undefined {
 	const ext = Utils.extname(linkUri).toLowerCase().replace(/^\./, '');
-	if (ext === '' || !(config.markdownFileExtensions.includes(ext) || config.knownLinkedToFileExtensions.includes(ext))) {
+	if (config.markdownFileExtensions.includes(ext)) {
+		return linkUri;
+	}
+
+	if (ext === '' || !config.knownLinkedToFileExtensions.includes(ext)) {
 		return linkUri.with({ path: linkUri.path + '.' + (config.markdownFileExtensions[0] ?? defaultMarkdownFileExtension) });
 	}
+	
 	return undefined;
 }

@@ -25,7 +25,7 @@ function getDocumentHighlights(store: DisposableStore, doc: InMemoryDocument, po
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const config = getLsConfiguration({});
 	const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
-	const provider = new MdDocumentHighlightProvider(tocProvider, linkProvider);
+	const provider = new MdDocumentHighlightProvider(config, tocProvider, linkProvider);
 	return provider.getDocumentHighlights(doc, pos, noopToken);
 }
 
@@ -138,6 +138,46 @@ suite('Document highlights', () => {
 			const highlights = await getDocumentHighlights(store, doc, { line: 7, character: 8 }, workspace);
 			assertHighlightsEqual(highlights, ...expected);
 		}
+	}));
+
+	test('Should highlight fragment when on fragment part of link to other files', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`# a b c`,
+			`text [link](other#a-b-c)`,
+			`text [link](other.md#a-B-c "title")`,
+			`text [link](./other.md#a-B-c "title")`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const highlights = await getDocumentHighlights(store, doc, { line: 1, character: 20 }, workspace);
+		assertHighlightsEqual(highlights,
+			{ range: makeRange(1, 17, 1, 23) },
+			{ range: makeRange(2, 20, 2, 26) },
+			{ range: makeRange(3, 22, 3, 28) },
+		);
+	}));
+
+	test('Should highlight file when on file part of link to other files', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`# a b c`,
+			`text [link](other#a-b-c)`,
+			`text [link](other.md#a-B-c "title")`,
+			`text [link](./other.md#a-B-c "title")`,
+			`text [link](other#x-y-z)`,
+			`text [link](other.md#x-y-z "title")`,
+			`text [link](./other.md#x-y-z "title")`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const highlights = await getDocumentHighlights(store, doc, { line: 1, character: 15 }, workspace);
+		assertHighlightsEqual(highlights,
+			{ range: makeRange(1, 12, 1, 17) },
+			{ range: makeRange(2, 12, 2, 20) },
+			{ range: makeRange(3, 12, 3, 22) },
+			{ range: makeRange(4, 12, 4, 17) },
+			{ range: makeRange(5, 12, 5, 20) },
+			{ range: makeRange(6, 12, 6, 22) },
+		);
 	}));
 
 	test('Should highlight reference links when on link reference or definition', withStore(async (store) => {

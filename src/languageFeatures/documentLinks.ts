@@ -428,7 +428,7 @@ export class MdLinkComputer {
 				// Also check for images in link text
 				if (/\![\[\(]/.test(linkTextIncludingBrackets)) {
 					const linkText = linkTextIncludingBrackets.slice(1, -1);
-					const startOffset =  (match.index ?? 0) + 1;
+					const startOffset = (match.index ?? 0) + 1;
 					for (const innerMatch of linkText.matchAll(linkPattern)) {
 						const innerData = createMdLink(document, innerMatch[1], innerMatch[2], innerMatch[3], startOffset + (innerMatch.index ?? 0), innerMatch[0], this.workspace);
 						if (innerData) {
@@ -893,4 +893,13 @@ export function createWorkspaceLinkCache(
 ) {
 	const linkComputer = new MdLinkComputer(parser, workspace);
 	return new MdWorkspaceInfoCache(workspace, doc => linkComputer.getAllLinks(doc, noopToken));
+}
+
+export function looksLikeLinkToDoc(configuration: LsConfiguration, href: InternalHref, targetDoc: URI): boolean {
+	if (href.path.fsPath === targetDoc.fsPath) {
+		return true;
+	}
+
+	return configuration.markdownFileExtensions.some(ext =>
+		href.path.with({ path: href.path.path + '.' + ext }).fsPath === targetDoc.fsPath);
 }

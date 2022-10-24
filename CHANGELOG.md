@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.0-alpha.4 October 24, 2022
+- Fix document highlights for links to headers in other files.
+
 ## 0.2.0-alpha.3 October 21, 2022
 - Fix detection of reference links with images.
 - Extract link definition should prefer inner links if on nested links.

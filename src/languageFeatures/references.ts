@@ -16,7 +16,7 @@ import { Disposable } from '../util/dispose';
 import { looksLikeMarkdownPath } from '../util/file';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
-import { HrefKind, InternalHref, MdLink, MdLinkKind } from './documentLinks';
+import { HrefKind, looksLikeLinkToDoc, MdLink, MdLinkKind } from './documentLinks';
 
 export enum MdReferenceKind {
 	Link = 1,
@@ -134,7 +134,7 @@ export class MdReferencesProvider extends Disposable {
 
 		for (const link of links) {
 			if (link.href.kind === HrefKind.Internal
-				&& this.looksLikeLinkToDoc(link.href, URI.parse(document.uri))
+				&& looksLikeLinkToDoc(this.configuration, link.href, URI.parse(document.uri))
 				&& this.parser.slugifier.fromHeading(link.href.fragment).value === header.slug.value
 			) {
 				references.push({
@@ -222,7 +222,7 @@ export class MdReferencesProvider extends Disposable {
 			}
 
 			for (const link of allLinksInWorkspace) {
-				if (link.href.kind !== HrefKind.Internal || !this.looksLikeLinkToDoc(link.href, resolvedResource)) {
+				if (link.href.kind !== HrefKind.Internal || !looksLikeLinkToDoc(this.configuration, link.href, resolvedResource)) {
 					continue;
 				}
 
@@ -248,18 +248,9 @@ export class MdReferencesProvider extends Disposable {
 		return this.workspace.hasMarkdownDocument(resolvedHrefPath) || looksLikeMarkdownPath(this.configuration, resolvedHrefPath);
 	}
 
-	private looksLikeLinkToDoc(href: InternalHref, targetDoc: URI): boolean {
-		if (href.path.fsPath === targetDoc.fsPath) {
-			return true;
-		}
-
-		return this.configuration.markdownFileExtensions.some(ext => 
-			href.path.with({ path: href.path.path + '.' + ext }).fsPath === targetDoc.fsPath);
-	}
-
 	private *findLinksToFile(resource: URI, links: readonly MdLink[], sourceLink: MdLink | undefined): Iterable<MdReference> {
 		for (const link of links) {
-			if (link.href.kind !== HrefKind.Internal || !this.looksLikeLinkToDoc(link.href, resource)) {
+			if (link.href.kind !== HrefKind.Internal || !looksLikeLinkToDoc(this.configuration, link.href, resource)) {
 				continue;
 			}
 

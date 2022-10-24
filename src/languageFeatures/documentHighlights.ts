@@ -71,17 +71,21 @@ export class MdDocumentHighlightProvider {
 			return this.getHighlightsForReference(link.ref.text, links);
 		}
 
-		if (link.href.kind === HrefKind.Reference) {
-			return this.getHighlightsForReference(link.href.ref, links);
-		} else if (link.href.kind === HrefKind.Internal) {
-			if (link.source.fragmentRange && rangeContains(link.source.fragmentRange, position)) {
-				return this.getHighlightsForLinkFragment(document, link.href, links, toc);
+		switch (link.href.kind) {
+			case HrefKind.Reference: {
+				return this.getHighlightsForReference(link.href.ref, links);
 			}
+			case HrefKind.Internal: {
+				if (link.source.fragmentRange && rangeContains(link.source.fragmentRange, position)) {
+					return this.getHighlightsForLinkFragment(document, link.href, links, toc);
+				}
 
-			return this.getHighlightsForLinkPath(link.href.path, links);
+				return this.getHighlightsForLinkPath(link.href.path, links);
+			}
+			case HrefKind.External: {
+				return this.getHighlightsForExternalLink(link.href.uri, links);
+			}
 		}
-
-		return [];
 	}
 
 	private *getHighlightsForLinkFragment(document: ITextDocument, href: InternalHref, links: readonly MdLink[], toc: TableOfContents): Iterable<lsp.DocumentHighlight> {
@@ -112,13 +116,20 @@ export class MdDocumentHighlightProvider {
 	}
 
 	private *getHighlightsForLinkPath(path: URI, links: readonly MdLink[]): Iterable<lsp.DocumentHighlight> {
-		const targetDoc = tryAppendMarkdownFileExtension(this.configuration, path);
-		if (!targetDoc) {
-			return;
-		}
-
+		const targetDoc = tryAppendMarkdownFileExtension(this.configuration, path) ?? path;
 		for (const link of links) {
 			if (link.href.kind === HrefKind.Internal && looksLikeLinkToDoc(this.configuration, link.href, targetDoc)) {
+				yield {
+					range: getFilePathRange(link),
+					kind: lsp.DocumentHighlightKind.Read,
+				};
+			}
+		}
+	}
+
+	private *getHighlightsForExternalLink(uri: URI, links: readonly MdLink[]): Iterable<lsp.DocumentHighlight> {
+		for (const link of links) {
+			if (link.href.kind === HrefKind.External && link.href.uri.toString() === uri.toString()) {
 				yield {
 					range: getFilePathRange(link),
 					kind: lsp.DocumentHighlightKind.Read,

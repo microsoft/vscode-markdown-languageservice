@@ -262,7 +262,7 @@ export function getLinkRenameText(workspace: IWorkspace, source: MdLinkSource, n
 	const rootDir = Utils.dirname(source.resource);
 	if (rootDir.scheme === newPath.scheme && rootDir.scheme !== Schemes.untitled) {
 		let newLink = path.relative(rootDir.toString(true), newPath.toString(true));
-		if (preferDotSlash && !newLink.startsWith('../') || preferDotSlash && !newLink.startsWith('..\\')) {
+		if (preferDotSlash && !(newLink.startsWith('../') || newLink.startsWith('..\\'))) {
 			newLink = './' + newLink;
 		}
 		return newLink;

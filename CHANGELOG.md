@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.0-alpha.6 UNRELEASED
+- Don't add extra `./` on file rename edits.
+
 ## 0.2.0-alpha.5 October 24, 2022
 - Fix document highlights for image links.
 - Make document highlights work for external links.

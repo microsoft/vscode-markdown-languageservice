@@ -374,7 +374,7 @@ suite('File Rename', () => {
 			{ oldUri: old2Uri, newUri: new2Uri },
 			// And create an edit that does not effect the result
 			{
-				oldUri: workspacePath('uninvolved.md'), 
+				oldUri: workspacePath('uninvolved.md'),
 				newUri: workspacePath('uninvolved-new.md')
 			}
 		], workspace);
@@ -390,5 +390,34 @@ suite('File Rename', () => {
 		assert.strictEqual(response?.participatingRenames.length, 2);
 		assert.strictEqual(response?.participatingRenames[0].oldUri.toString(), old1Uri.toString());
 		assert.strictEqual(response?.participatingRenames[1].oldUri.toString(), old2Uri.toString());
+	}));
+
+
+	test('Should not use ./../ when updating relative path', withStore(async (store) => {
+		const docUri = workspacePath('sub', 'doc.md');
+		const doc = new InMemoryDocument(docUri, joinLines(
+			`[abc](./other.md)`,
+			`[abc](other.md)`,
+			`[abc](other)`,
+			`[abc](/sub/other.md)`,
+		));
+
+		const oldLinkedUri = workspacePath('sub', 'other.md');
+		const newLinkedUri = workspacePath('other.md');
+
+		const workspace = store.add(new InMemoryWorkspace([
+			doc,
+			workspacePath('sub', 'other.md'),
+		]));
+
+		const response = await getFileRenameEdits(store, [{ oldUri: oldLinkedUri, newUri: newLinkedUri }], workspace);
+		assertEditsEqual(response!.edit, {
+			uri: docUri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 6, 0, 16), '../other.md'),
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 14), '../other.md'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 11), '../other'),
+				lsp.TextEdit.replace(makeRange(3, 6, 3, 19), '/other.md'),
+			]
+		});
 	}));
 });

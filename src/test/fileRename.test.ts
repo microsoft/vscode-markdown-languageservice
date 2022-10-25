@@ -351,6 +351,32 @@ suite('File Rename', () => {
 		});
 	}));
 
+	test('Renaming directory containing file should use updated file name in edit', withStore(async (store) => {
+		const docUri = workspacePath('sub', 'doc.md');
+		const doc = new InMemoryDocument(docUri, joinLines(
+			`[abc](../sub/other.md)`,
+			`[abc](/sub/other.md)`,
+		));
+
+		const oldUri = workspacePath('sub');
+		const newUri = workspacePath('newSub');
+
+		const workspace = store.add(new InMemoryWorkspace([
+			doc,
+			// Create workspace state after the rename
+			workspacePath('newSub', 'other.md'),
+		]));
+
+		const response = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri: newUri }], workspace);
+		assertEditsEqual(response!.edit, {
+			// Here we need to be using the new path to 'doc'
+			uri: workspacePath('newSub', 'doc.md'), edits: [
+				lsp.TextEdit.replace(makeRange(0, 6, 0, 21), '../newSub/other.md'),
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 19), '/newSub/other.md'),
+			]
+		});
+	}));
+
 	test('Should update links when renaming multiple files', withStore(async (store) => {
 		const uri = workspacePath('doc.md');
 		const doc = new InMemoryDocument(uri, joinLines(
@@ -417,6 +443,37 @@ suite('File Rename', () => {
 				lsp.TextEdit.replace(makeRange(1, 6, 1, 14), '../other.md'),
 				lsp.TextEdit.replace(makeRange(2, 6, 2, 11), '../other'),
 				lsp.TextEdit.replace(makeRange(3, 6, 3, 19), '/other.md'),
+			]
+		});
+	}));
+
+	test('Should update paths when both referenced file and doc are moved', withStore(async (store) => {
+		const docUri = workspacePath('doc.md');
+
+		const newDocUri = workspacePath('newSub', 'newDoc.md');
+		const newDoc = new InMemoryDocument(newDocUri, joinLines(
+			`[abc](images/cat.gif)`,
+			`[abc](./images/cat.gif)`,
+		));
+
+		// Create workspace state after the rename
+		const workspace = store.add(new InMemoryWorkspace([
+			newDoc,
+			workspacePath('newSub', 'kitty.gif'),
+			workspacePath('newSub', 'kitty.gif'),
+		]));
+
+		// Move both the image and the document
+		const response = await getFileRenameEdits(store, [
+			{ oldUri: docUri, newUri: newDocUri },
+			{ oldUri: workspacePath('images', 'cat.gif'), newUri: workspacePath('newSub', 'kitty.gif') },
+		], workspace);
+ 
+		assertEditsEqual(response!.edit, {
+			// Here we need to be using the new path to 'doc'
+			uri: newDocUri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 6, 0, 20), 'kitty.gif'),
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 22), './kitty.gif'),
 			]
 		});
 	}));

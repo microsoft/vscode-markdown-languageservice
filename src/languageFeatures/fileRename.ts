@@ -2,10 +2,12 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+import * as path from 'path';
 import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { URI, Utils } from 'vscode-uri';
 import { isExcludedPath, LsConfiguration } from '../config';
+import { ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
 import { WorkspaceEditBuilder } from '../util/editBuilder';
 import { looksLikeMarkdownPath } from '../util/file';
@@ -15,7 +17,6 @@ import { MdWorkspaceInfoCache } from '../workspaceCache';
 import { HrefKind, MdLink, resolveInternalDocumentLink } from './documentLinks';
 import { MdReferenceKind, MdReferencesProvider } from './references';
 import { getFilePathRange, getLinkRenameText } from './rename';
-import path = require('path');
 
 
 export interface FileRename {
@@ -49,7 +50,7 @@ export class MdFileRenameProvider extends Disposable {
 				return undefined;
 			}
 
-			if (await (stat?.isDirectory ? this.addDirectoryRenameEdits(edit, builder, token) : this.addSingleFileRenameEdits(edit, builder, token))) {
+			if (await (stat?.isDirectory ? this.addDirectoryRenameEdits(edit, builder, token) : this.addSingleFileRenameEdits(edit, edits, builder, token))) {
 				participatingRenames.push(edit);
 			}
 
@@ -61,7 +62,7 @@ export class MdFileRenameProvider extends Disposable {
 		return { participatingRenames, edit: builder.getEdit() };
 	}
 
-	private async addSingleFileRenameEdits(edit: FileRename, builder: WorkspaceEditBuilder, token: CancellationToken): Promise<boolean> {
+	private async addSingleFileRenameEdits(edit: FileRename, allEdits: readonly FileRename[], builder: WorkspaceEditBuilder, token: CancellationToken): Promise<boolean> {
 		let didParticipate = false;
 
 		// Update all references to the file
@@ -74,7 +75,7 @@ export class MdFileRenameProvider extends Disposable {
 		}
 
 		// If the file moved was markdown, we also need to update links in the file itself
-		if (await this.tryAddEditsInSelf(edit, builder)) {
+		if (await this.tryAddEditsInSelf(edit, allEdits, builder)) {
 			didParticipate = true;
 		}
 
@@ -101,7 +102,8 @@ export class MdFileRenameProvider extends Disposable {
 					const newUri = edit.newUri.with({
 						path: path.join(edit.newUri.path, relative)
 					});
-					if (await this.addLinkRenameEdit(docUri, link, newUri, builder)) {
+					const newDocUri = Utils.joinPath(edit.newUri, path.posix.relative(edit.oldUri.path, docUri.path));
+					if (await this.addLinkRenameEdit(newDocUri, link, newUri, builder)) {
 						didParticipate = true;
 					}
 				}
@@ -110,7 +112,7 @@ export class MdFileRenameProvider extends Disposable {
 				if (link.source.pathText.startsWith('..') && isParentDir(edit.newUri, docUri)) {
 					// Resolve the link relative to the old file path
 					const oldDocUri = docUri.with({
-						path: Utils.joinPath(edit.oldUri, path.relative(edit.newUri.path, docUri.path)).path
+						path: Utils.joinPath(edit.oldUri, path.posix.relative(edit.newUri.path, docUri.path)).path
 					});
 
 					const oldLink = resolveInternalDocumentLink(oldDocUri, link.source.hrefText, this.workspace);
@@ -132,7 +134,7 @@ export class MdFileRenameProvider extends Disposable {
 	 * Try to add edits for when a markdown file has been renamed.
 	 * In this case we also need to update links within the file.
 	 */
-	private async tryAddEditsInSelf(edit: FileRename, builder: WorkspaceEditBuilder): Promise<boolean> {
+	private async tryAddEditsInSelf(edit: FileRename, allEdits: readonly FileRename[], builder: WorkspaceEditBuilder): Promise<boolean> {
 		if (!looksLikeMarkdownPath(this.config, edit.newUri)) {
 			return false;
 		}
@@ -150,14 +152,14 @@ export class MdFileRenameProvider extends Disposable {
 
 		let didParticipate = false;
 		for (const link of links) {
-			if (this.addEditsForLinksInSelf(link, edit, builder)) {
+			if (await this.addEditsForLinksInSelf(doc, link, edit, allEdits, builder)) {
 				didParticipate = true;
 			}
 		}
 		return didParticipate;
 	}
 
-	private addEditsForLinksInSelf(link: MdLink, edit: FileRename, builder: WorkspaceEditBuilder): boolean {
+	private async addEditsForLinksInSelf(doc: ITextDocument, link: MdLink, edit: FileRename, allEdits: readonly FileRename[], builder: WorkspaceEditBuilder): Promise<boolean> {
 		if (link.href.kind !== HrefKind.Internal) {
 			return false;
 		}
@@ -165,17 +167,23 @@ export class MdFileRenameProvider extends Disposable {
 		if (link.source.hrefText.startsWith('/')) {
 			// We likely don't need to update anything since an absolute path is used
 			return false;
-		} else {
-			// Resolve the link relative to the old file path
-			const oldLink = resolveInternalDocumentLink(edit.oldUri, link.source.hrefText, this.workspace);
-			if (oldLink) {
-				const rootDir = Utils.dirname(edit.newUri);
-				const newPath = path.relative(rootDir.toString(true), oldLink.resource.toString(true));
-				builder.replace(edit.newUri, getFilePathRange(link), encodeURI(newPath.replace(/\\/g, '/')));
-				return true;
+		}
+
+		// Resolve the link relative to the old file path
+		let oldLink = resolveInternalDocumentLink(edit.oldUri, link.source.hrefText, this.workspace);
+		if (!oldLink) {
+			return false;
+		}
+
+		// See if the old link was effected by one of the renames
+		for (const edit of allEdits) {
+			if (edit.oldUri.toString() === oldLink.resource.toString() || isParentDir(edit.oldUri, oldLink.resource)) {
+				oldLink = { resource: Utils.joinPath(edit.newUri, path.posix.relative(edit.oldUri.path, oldLink.resource.path)), linkFragment: oldLink.linkFragment };
+				break;
 			}
 		}
-		return false;
+
+		return this.addLinkRenameEdit(URI.parse(doc.uri), link, oldLink.resource, builder);
 	}
 
 	/**

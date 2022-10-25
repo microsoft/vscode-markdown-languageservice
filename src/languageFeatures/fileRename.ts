@@ -101,7 +101,8 @@ export class MdFileRenameProvider extends Disposable {
 					const newUri = edit.newUri.with({
 						path: path.join(edit.newUri.path, relative)
 					});
-					if (await this.addLinkRenameEdit(docUri, link, newUri, builder)) {
+					const newDocUri = Utils.joinPath(edit.newUri, path.relative(edit.oldUri.path, docUri.path));
+					if (await this.addLinkRenameEdit(newDocUri, link, newUri, builder)) {
 						didParticipate = true;
 					}
 				}

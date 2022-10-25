@@ -350,6 +350,32 @@ suite('File Rename', () => {
 			]
 		});
 	}));
+	
+	test('Renaming directory containing file should use updated file name in edit', withStore(async (store) => {
+		const docUri = workspacePath('sub', 'doc.md');
+		const doc = new InMemoryDocument(docUri, joinLines(
+			`[abc](../sub/other.md)`,
+			`[abc](/sub/other.md)`,
+		));
+
+		const oldUri = workspacePath('sub');
+		const newUri = workspacePath('newSub');
+
+		const workspace = store.add(new InMemoryWorkspace([
+			doc,
+			// Create workspace state after the rename
+			workspacePath('newSub', 'other.md'),
+		]));
+
+		const response = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri: newUri }], workspace);
+		assertEditsEqual(response!.edit, {
+			// Here we need to be using the new path to 'doc'
+			uri: workspacePath('newSub', 'doc.md'), edits: [
+				lsp.TextEdit.replace(makeRange(0, 6, 0, 21), '../newSub/other.md'),
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 19), '/newSub/other.md'),
+			]
+		});
+	}));
 
 	test('Should update links when renaming multiple files', withStore(async (store) => {
 		const uri = workspacePath('doc.md');

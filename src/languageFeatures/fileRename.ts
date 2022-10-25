@@ -2,6 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+import * as path from 'path';
 import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { URI, Utils } from 'vscode-uri';
@@ -15,7 +16,6 @@ import { MdWorkspaceInfoCache } from '../workspaceCache';
 import { HrefKind, MdLink, resolveInternalDocumentLink } from './documentLinks';
 import { MdReferenceKind, MdReferencesProvider } from './references';
 import { getFilePathRange, getLinkRenameText } from './rename';
-import path = require('path');
 
 
 export interface FileRename {
@@ -101,7 +101,7 @@ export class MdFileRenameProvider extends Disposable {
 					const newUri = edit.newUri.with({
 						path: path.join(edit.newUri.path, relative)
 					});
-					const newDocUri = Utils.joinPath(edit.newUri, path.relative(edit.oldUri.fsPath, docUri.fsPath));
+					const newDocUri = Utils.joinPath(edit.newUri, path.posix.relative(edit.oldUri.path, docUri.path));
 					if (await this.addLinkRenameEdit(newDocUri, link, newUri, builder)) {
 						didParticipate = true;
 					}
@@ -111,7 +111,7 @@ export class MdFileRenameProvider extends Disposable {
 				if (link.source.pathText.startsWith('..') && isParentDir(edit.newUri, docUri)) {
 					// Resolve the link relative to the old file path
 					const oldDocUri = docUri.with({
-						path: Utils.joinPath(edit.oldUri, path.relative(edit.newUri.path, docUri.path)).path
+						path: Utils.joinPath(edit.oldUri, path.posix.relative(edit.newUri.path, docUri.path)).path
 					});
 
 					const oldLink = resolveInternalDocumentLink(oldDocUri, link.source.hrefText, this.workspace);

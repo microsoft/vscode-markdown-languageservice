@@ -1,7 +1,9 @@
 # Changelog
 
-## 0.2.0-alpha.6 UNRELEASED
+## 0.2.0-alpha.6 October 25, 2022
 - Don't add extra `./` on file rename edits.
+- Fixed renaming using old file name in edit.
+- Fix rename should use renamed file names.
 
 ## 0.2.0-alpha.5 October 24, 2022
 - Fix document highlights for image links.

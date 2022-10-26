@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.0-alpha.7 October 26, 2022
+- Fix more edge cases around directory renames.
+
 ## 0.2.0-alpha.6 October 25, 2022
 - Don't add extra `./` on file rename edits.
 - Fixed renaming using old file name in edit.

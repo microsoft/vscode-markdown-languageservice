@@ -102,9 +102,10 @@ export class MdFileRenameProvider extends Disposable {
 					const newUri = edit.newUri.with({
 						path: path.join(edit.newUri.path, relative)
 					});
-					const newDocUri = Utils.joinPath(edit.newUri, path.posix.relative(edit.oldUri.path, docUri.path));
-					if (await this.addLinkRenameEdit(newDocUri, link, newUri, builder)) {
+
+					if (this.addLinkRenameEdit(docUri, link, newUri, builder)) {
 						didParticipate = true;
+						continue;
 					}
 				}
 
@@ -116,12 +117,20 @@ export class MdFileRenameProvider extends Disposable {
 					});
 
 					const oldLink = resolveInternalDocumentLink(oldDocUri, link.source.hrefText, this.workspace);
-					if (oldLink && !isParentDir(edit.oldUri, oldLink.resource)) {
-						const rootDir = Utils.dirname(docUri);
-						const newPath = path.relative(rootDir.path, oldLink.resource.path);
+					if (oldLink) {
+						let newPathText: string;
+						if (isParentDir(edit.oldUri, oldLink.resource)) {
+							// The link still points within the directory being moved.
+							// This means we just need to normalize the path it in case it was referencing any old names.
+							const rootDir = Utils.dirname(oldDocUri);
+							newPathText = './' + path.posix.relative(rootDir.path, oldLink.resource.path);
+						} else {
+							const rootDir = Utils.dirname(docUri);
+							newPathText = path.posix.relative(rootDir.path, oldLink.resource.path);
+						}
 
 						didParticipate = true;
-						builder.replace(docUri, getFilePathRange(link), encodeURI(newPath.replace(/\\/g, '/')));
+						builder.replace(docUri, getFilePathRange(link), encodeURI(newPathText));
 					}
 				}
 			}
@@ -202,7 +211,7 @@ export class MdFileRenameProvider extends Disposable {
 		let didParticipate = false;
 		for (const ref of refs) {
 			if (ref.kind === MdReferenceKind.Link) {
-				if (await this.addLinkRenameEdit(URI.parse(ref.location.uri), ref.link, edit.newUri, builder)) {
+				if (this.addLinkRenameEdit(URI.parse(ref.location.uri), ref.link, edit.newUri, builder)) {
 					didParticipate = true;
 				}
 			}
@@ -210,7 +219,7 @@ export class MdFileRenameProvider extends Disposable {
 		return didParticipate;
 	}
 
-	private async addLinkRenameEdit(doc: URI, link: MdLink, newUri: URI, builder: WorkspaceEditBuilder): Promise<boolean> {
+	private addLinkRenameEdit(doc: URI, link: MdLink, newUri: URI, builder: WorkspaceEditBuilder): boolean {
 		if (link.href.kind !== HrefKind.Internal) {
 			return false;
 		}
@@ -229,7 +238,7 @@ export class MdFileRenameProvider extends Disposable {
 
 		const newLinkText = getLinkRenameText(this.workspace, link.source, newFilePath, link.source.pathText.startsWith('.'));
 		if (typeof newLinkText === 'string') {
-			builder.replace(doc, getFilePathRange(link), encodeURI(newLinkText.replace(/\\/g, '/')));
+			builder.replace(doc, getFilePathRange(link), encodeURI(newLinkText));
 			return true;
 		}
 		return false;

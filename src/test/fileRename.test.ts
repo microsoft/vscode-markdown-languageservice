@@ -352,7 +352,7 @@ suite('File Rename', () => {
 	}));
 
 	test('Renaming directory containing file should use updated file name in edit', withStore(async (store) => {
-		const docUri = workspacePath('sub', 'doc.md');
+		const docUri = workspacePath('newSub', 'doc.md');
 		const doc = new InMemoryDocument(docUri, joinLines(
 			`[abc](../sub/other.md)`,
 			`[abc](/sub/other.md)`,
@@ -361,17 +361,17 @@ suite('File Rename', () => {
 		const oldUri = workspacePath('sub');
 		const newUri = workspacePath('newSub');
 
+		// Create workspace state after the rename
 		const workspace = store.add(new InMemoryWorkspace([
 			doc,
-			// Create workspace state after the rename
 			workspacePath('newSub', 'other.md'),
 		]));
 
 		const response = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri: newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			// Here we need to be using the new path to 'doc'
-			uri: workspacePath('newSub', 'doc.md'), edits: [
-				lsp.TextEdit.replace(makeRange(0, 6, 0, 21), '../newSub/other.md'),
+			uri: docUri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 6, 0, 21), './other.md'),
 				lsp.TextEdit.replace(makeRange(1, 6, 1, 19), '/newSub/other.md'),
 			]
 		});
@@ -468,12 +468,51 @@ suite('File Rename', () => {
 			{ oldUri: docUri, newUri: newDocUri },
 			{ oldUri: workspacePath('images', 'cat.gif'), newUri: workspacePath('newSub', 'kitty.gif') },
 		], workspace);
- 
+
 		assertEditsEqual(response!.edit, {
 			// Here we need to be using the new path to 'doc'
 			uri: newDocUri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 6, 0, 20), 'kitty.gif'),
 				lsp.TextEdit.replace(makeRange(1, 6, 1, 22), './kitty.gif'),
+			]
+		});
+	}));
+
+	test('Should update paths when containing folder is moved', withStore(async (store) => {
+		// Create workspace state after the rename
+		const newDocUri = workspacePath('new', 'old', 'readme.md');
+		const newDoc = new InMemoryDocument(newDocUri, joinLines(
+			`[abc](/top.md)`,
+			`[abc](/old/sibling.md)`,
+			`[abc](../top.md)`,
+			`[abc](../old/sibling.md)`,
+			`[abc](../old/)`,
+			`[abc](../old)`,
+			`[abc](/old)`,
+			`[abc](/old/)`,
+		));
+
+		const workspace = store.add(new InMemoryWorkspace([
+			newDoc,
+			workspacePath('new', 'old', 'sibling.md'),
+			workspacePath('top.md'),
+		]));
+
+		// Move both the image and the document
+		const response = await getFileRenameEdits(store, [
+			{ oldUri: workspacePath('old'), newUri: workspacePath('new', 'old') },
+		], workspace);
+
+		assertEditsEqual(response!.edit, {
+			// Here we need to be using the new path to 'doc'
+			uri: newDocUri, edits: [
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 21), '/new/old/sibling.md'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 15), '../../top.md'),
+				lsp.TextEdit.replace(makeRange(3, 6, 3, 23), './sibling.md'),
+				lsp.TextEdit.replace(makeRange(4, 6, 4, 13), './'),
+				lsp.TextEdit.replace(makeRange(5, 6, 5, 12), './'),
+				lsp.TextEdit.replace(makeRange(6, 6, 6, 10), '/new/old'),
+				lsp.TextEdit.replace(makeRange(7, 6, 7, 11), '/new/old'),
 			]
 		});
 	}));

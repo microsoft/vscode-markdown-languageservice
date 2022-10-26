@@ -98,9 +98,9 @@ export class MdFileRenameProvider extends Disposable {
 
 				// Update links to the moved dir
 				if (isParentDir(edit.oldUri, link.href.path)) {
-					const relative = path.relative(edit.oldUri.path, link.href.path.path);
+					const relative = path.posix.relative(edit.oldUri.path, link.href.path.path);
 					const newUri = edit.newUri.with({
-						path: path.join(edit.newUri.path, relative)
+						path: path.posix.join(edit.newUri.path, relative)
 					});
 
 					if (this.addLinkRenameEdit(docUri, link, newUri, builder)) {

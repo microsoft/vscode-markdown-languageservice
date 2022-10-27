@@ -84,8 +84,9 @@ suite('Workspace Cache', () => {
 		}
 	}));
 
-	test('Should cancel computation when document changes', withStore(async (_store) => {
-		const doc = new InMemoryDocument(workspacePath('doc.md'), 'abc');
+	test('Should cancel computation when document is deleted', withStore(async (_store) => {
+		const docUri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(docUri, 'abc');
 		const workspace = new InMemoryWorkspace([doc]);
 
 		let didCancel = false;
@@ -98,10 +99,8 @@ suite('Workspace Cache', () => {
 
 		const req = cache.getForDocs([doc]); // Trigger compute
 
-		// Update doc should cancel pending compute
-		doc.updateContent('xyz');
-		workspace.updateDocument(doc);
-
+		// Delete doc should cancel pending compute
+		workspace.deleteDocument(docUri);
 
 		assert.deepStrictEqual(await req, ['cancelled']);
 		assert.deepStrictEqual(didCancel, true);

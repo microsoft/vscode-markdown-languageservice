@@ -256,12 +256,12 @@ export function getLinkRenameText(workspace: IWorkspace, source: MdLinkSource, n
 			return undefined;
 		}
 
-		return '/' + path.relative(root.resource.toString(true), newPath.toString(true));
+		return '/' + path.posix.relative(root.resource.path, newPath.path);
 	}
 
 	const rootDir = Utils.dirname(source.resource);
 	if (rootDir.scheme === newPath.scheme && rootDir.scheme !== Schemes.untitled) {
-		let newLink = path.relative(rootDir.toString(true), newPath.toString(true));
+		let newLink = path.posix.relative(rootDir.path, newPath.path);
 		if (preferDotSlash && !(newLink.startsWith('../') || newLink.startsWith('..\\'))) {
 			newLink = './' + newLink;
 		}

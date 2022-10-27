@@ -12,7 +12,7 @@ import { joinLines, withStore, workspacePath } from './util';
 
 suite('Workspace Cache', () => {
 
-	test('Entries should return basic value', withStore(async (_store) => {		
+	test('Entries should return basic value', withStore(async (_store) => {
 		const uri = workspacePath('doc.md');
 		const contents = joinLines(
 			`# hello!`
@@ -82,5 +82,28 @@ suite('Workspace Cache', () => {
 			assert.deepStrictEqual(entires[0][0].toString(), uri.toString());
 			assert.deepStrictEqual(entires[0][1], newContents);
 		}
+	}));
+
+	test('Should cancel computation when document changes', withStore(async (_store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), 'abc');
+		const workspace = new InMemoryWorkspace([doc]);
+
+		let didCancel = false;
+		const cache = new MdWorkspaceInfoCache<string>(workspace, (_doc, token) => {
+			return new Promise<string>(resolve => token.onCancellationRequested(() => {
+				didCancel = true;
+				return resolve('cancelled');
+			}));
+		});
+
+		const req = cache.getForDocs([doc]); // Trigger compute
+
+		// Update doc should cancel pending compute
+		doc.updateContent('xyz');
+		workspace.updateDocument(doc);
+
+
+		assert.deepStrictEqual(await req, ['cancelled']);
+		assert.deepStrictEqual(didCancel, true);
 	}));
 });

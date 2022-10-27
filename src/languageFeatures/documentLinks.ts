@@ -15,7 +15,6 @@ import { translatePosition } from '../types/position';
 import { makeRange, rangeContains } from '../types/range';
 import { getLine, ITextDocument } from '../types/textDocument';
 import { coalesce } from '../util/arrays';
-import { noopToken } from '../util/cancellation';
 import { Disposable } from '../util/dispose';
 import { r } from '../util/string';
 import { tryDecodeUri } from '../util/uri';
@@ -327,8 +326,14 @@ const definitionPattern = /^([\t ]*\[(?!\^)((?:\\\]|[^\]])+)\]:\s*)([^<]\S*|<[^>
 const inlineCodePattern = /(^|[^`])(`+)((?:.+?|.*?(?:(?:\r?\n).+?)*?)(?:\r?\n)?\2)(?:$|[^`])/gm;
 
 class NoLinkRanges {
-	public static async compute(tokenizer: IMdParser, document: ITextDocument): Promise<NoLinkRanges> {
+	private static readonly empty = new NoLinkRanges([], new Map());
+
+	public static async compute(tokenizer: IMdParser, document: ITextDocument, token: CancellationToken): Promise<NoLinkRanges> {
 		const tokens = await tokenizer.tokenize(document);
+		if (token.isCancellationRequested) {
+			return NoLinkRanges.empty;
+		}
+
 		const multiline = tokens.filter(t => (t.type === 'code_block' || t.type === 'fence' || t.type === 'html_block') && !!t.map).map(t => t.map) as [number, number][];
 
 		const inlineRanges = new Map</* line number */ number, lsp.Range[]>();
@@ -360,7 +365,7 @@ class NoLinkRanges {
 		/**
 		 * Inline code spans where links should not be detected
 		 */
-		public readonly inline: Map</* line number */ number, lsp.Range[]>
+		public readonly inline: ReadonlyMap</* line number */ number, lsp.Range[]>
 	) { }
 
 	contains(position: lsp.Position): boolean {
@@ -403,7 +408,7 @@ export class MdLinkComputer {
 	) { }
 
 	public async getAllLinks(document: ITextDocument, token: CancellationToken): Promise<MdLink[]> {
-		const noLinkRanges = await NoLinkRanges.compute(this.tokenizer, document);
+		const noLinkRanges = await NoLinkRanges.compute(this.tokenizer, document, token);
 		if (token.isCancellationRequested) {
 			return [];
 		}
@@ -681,10 +686,10 @@ export class MdLinkProvider extends Disposable {
 	) {
 		super();
 		this._linkComputer = new MdLinkComputer(tokenizer, _workspace);
-		this._linkCache = this._register(new MdDocumentInfoCache(this._workspace, async doc => {
+		this._linkCache = this._register(new MdDocumentInfoCache(this._workspace, async (doc, token) => {
 			logger.log(LogLevel.Debug, 'LinkProvider', `compute - ${doc.uri}`);
 
-			const links = await this._linkComputer.getAllLinks(doc, noopToken);
+			const links = await this._linkComputer.getAllLinks(doc, token);
 			return {
 				links,
 				definitions: new LinkDefinitionSet(links),
@@ -790,8 +795,12 @@ export class MdLinkProvider extends Disposable {
 
 		// Try navigating to header in file
 		const doc = await this._workspace.openMarkdownDocument(target);
+		if (token.isCancellationRequested) {
+			return { kind: 'file', uri: target };
+		}
+
 		if (doc) {
-			const toc = await this._tocProvider.getForContainingDoc(doc);
+			const toc = await this._tocProvider.getForContainingDoc(doc, token);
 			const entry = toc.lookup(linkFragment);
 			if (entry) {
 				return { kind: 'file', uri: URI.parse(entry.headerLocation.uri), position: entry.headerLocation.range.start, fragment: linkFragment };
@@ -892,14 +901,14 @@ export function createWorkspaceLinkCache(
 	workspace: IWorkspace,
 ) {
 	const linkComputer = new MdLinkComputer(parser, workspace);
-	return new MdWorkspaceInfoCache(workspace, doc => linkComputer.getAllLinks(doc, noopToken));
+	return new MdWorkspaceInfoCache(workspace, (doc, token) => linkComputer.getAllLinks(doc, token));
 }
 
-export function looksLikeLinkToDoc(configuration: LsConfiguration, href: InternalHref, targetDoc: URI): boolean {
-	if (href.path.fsPath === targetDoc.fsPath) {
+export function looksLikeLinkToResource(configuration: LsConfiguration, href: InternalHref, targetResource: URI): boolean {
+	if (href.path.fsPath === targetResource.fsPath) {
 		return true;
 	}
 
 	return configuration.markdownFileExtensions.some(ext =>
-		href.path.with({ path: href.path.path + '.' + ext }).fsPath === targetDoc.fsPath);
+		href.path.with({ path: href.path.path + '.' + ext }).fsPath === targetResource.fsPath);
 }

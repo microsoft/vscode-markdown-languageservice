@@ -279,7 +279,7 @@ export class MdPathCompletionProvider {
 	}
 
 	private async *provideHeaderSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, insertionRange: lsp.Range, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
-		const toc = await TableOfContents.createForContainingDoc(this.parser, this.workspace, document);
+		const toc = await TableOfContents.createForContainingDoc(this.parser, this.workspace, document, token);
 		if (token.isCancellationRequested) {
 			return;
 		}

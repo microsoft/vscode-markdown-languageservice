@@ -6,7 +6,6 @@
 import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { ITextDocument } from '../types/textDocument';
-import { noopToken } from '../util/cancellation';
 import { Disposable } from '../util/dispose';
 import { IWorkspace } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
@@ -22,7 +21,7 @@ export class MdWorkspaceSymbolProvider extends Disposable {
 	) {
 		super();
 
-		this._cache = this._register(new MdWorkspaceInfoCache(workspace, doc => this.provideDocumentSymbolInformation(doc, noopToken)));
+		this._cache = this._register(new MdWorkspaceInfoCache(workspace, (doc, token) => this.provideDocumentSymbolInformation(doc, token)));
 	}
 
 	public async provideWorkspaceSymbols(query: string, token: CancellationToken): Promise<lsp.WorkspaceSymbol[]> {

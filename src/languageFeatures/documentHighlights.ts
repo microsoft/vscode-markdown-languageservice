@@ -12,7 +12,7 @@ import { translatePosition } from '../types/position';
 import { modifyRange, rangeContains } from '../types/range';
 import { ITextDocument } from '../types/textDocument';
 import { tryAppendMarkdownFileExtension } from '../workspace';
-import { HrefKind, InternalHref, looksLikeLinkToDoc, MdLink, MdLinkKind, MdLinkProvider } from './documentLinks';
+import { HrefKind, InternalHref, looksLikeLinkToResource, MdLink, MdLinkKind, MdLinkProvider } from './documentLinks';
 import { getFilePathRange } from './rename';
 
 export class MdDocumentHighlightProvider {
@@ -104,7 +104,7 @@ export class MdDocumentHighlightProvider {
 		}
 
 		for (const link of links) {
-			if (link.href.kind === HrefKind.Internal && looksLikeLinkToDoc(this.configuration, link.href, targetDoc)) {
+			if (link.href.kind === HrefKind.Internal && looksLikeLinkToResource(this.configuration, link.href, targetDoc)) {
 				if (link.source.fragmentRange && link.href.fragment.toLowerCase() === fragment) {
 					yield {
 						range: modifyRange(link.source.fragmentRange, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 })),
@@ -118,7 +118,7 @@ export class MdDocumentHighlightProvider {
 	private *getHighlightsForLinkPath(path: URI, links: readonly MdLink[]): Iterable<lsp.DocumentHighlight> {
 		const targetDoc = tryAppendMarkdownFileExtension(this.configuration, path) ?? path;
 		for (const link of links) {
-			if (link.href.kind === HrefKind.Internal && looksLikeLinkToDoc(this.configuration, link.href, targetDoc)) {
+			if (link.href.kind === HrefKind.Internal && looksLikeLinkToResource(this.configuration, link.href, targetDoc)) {
 				yield {
 					range: getFilePathRange(link),
 					kind: lsp.DocumentHighlightKind.Read,

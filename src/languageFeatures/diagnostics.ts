@@ -356,6 +356,10 @@ export class DiagnosticComputer {
 					}
 
 					const resolvedHrefPath = await statLinkToMarkdownFile(this.configuration, this.workspace, path, statCache);
+					if (token.isCancellationRequested) {
+						return;
+					}
+
 					if (!resolvedHrefPath) {
 						for (const link of links) {
 							if (!this.isIgnoredLink(options, link.source.pathText)) {
@@ -376,6 +380,10 @@ export class DiagnosticComputer {
 						const fragmentLinks = links.filter(x => x.fragment);
 						if (fragmentLinks.length) {
 							const toc = await this.tocProvider.get(resolvedHrefPath);
+							if (token.isCancellationRequested) {
+								return;
+							}
+							
 							for (const link of fragmentLinks) {
 								// Don't validate line number links
 								if (parseLocationInfoFromFragment(link.fragment)) {

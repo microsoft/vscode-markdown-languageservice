@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.0-alpha.8 October 28, 2022
+- Fix file rename incorrectly updating `[text](#headers)` style headers.
+
 ## 0.2.0-alpha.7 October 26, 2022
 - Fix more edge cases around directory renames.
 

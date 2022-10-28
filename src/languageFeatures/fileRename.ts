@@ -172,6 +172,11 @@ export class MdFileRenameProvider extends Disposable {
 		if (link.href.kind !== HrefKind.Internal) {
 			return false;
 		}
+		
+		if (link.source.hrefText.startsWith('#')) {
+			// No rewrite needed as we are referencing the current doc implicitly
+			return false;
+		}
 
 		if (link.source.hrefText.startsWith('/')) {
 			// We likely don't need to update anything since an absolute path is used

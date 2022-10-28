@@ -490,6 +490,9 @@ suite('File Rename', () => {
 			`[abc](../old)`,
 			`[abc](/old)`,
 			`[abc](/old/)`,
+			``, // Own header links should not get rewritten here
+			`# header`,
+			`[text](#header)`,
 		));
 
 		const workspace = store.add(new InMemoryWorkspace([
@@ -513,6 +516,40 @@ suite('File Rename', () => {
 				lsp.TextEdit.replace(makeRange(5, 6, 5, 12), './'),
 				lsp.TextEdit.replace(makeRange(6, 6, 6, 10), '/new/old'),
 				lsp.TextEdit.replace(makeRange(7, 6, 7, 11), '/new/old'),
+			]
+		});
+	}));
+
+	test('Should not rewrite fragment links to self', withStore(async (store) => {
+		// Create workspace state after the rename
+		const newDocUri = workspacePath('sub', 'newReadme.md');
+		const newDoc = new InMemoryDocument(newDocUri, joinLines(
+			`# Header`,
+			`[abc](#header)`, // No change
+			`[abc](oldReadme.md#header)`, // Needs rewrite
+			`[abc](./oldReadme.md#header)`, // Needs rewrite
+			``,
+			`[def1]: #header`, // No change
+			`[def2]: oldReadme.md#header`, // Needs rewrite
+			`[def3]: ./oldReadme.md#header`, // Needs rewrite
+		));
+
+		const workspace = store.add(new InMemoryWorkspace([
+			newDoc,
+		]));
+
+		const response = await getFileRenameEdits(store, [
+			{ oldUri: workspacePath('oldReadme.md'), newUri: newDocUri },
+		], workspace);
+
+		assertEditsEqual(response!.edit, {
+			// Here we need to be using the new path to 'doc'
+			uri: newDocUri, edits: [
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 18), 'newReadme.md'),
+				lsp.TextEdit.replace(makeRange(3, 6, 3, 20), './newReadme.md'),
+
+				lsp.TextEdit.replace(makeRange(6, 8, 6, 20), 'newReadme.md'),
+				lsp.TextEdit.replace(makeRange(7, 8, 7, 22), './newReadme.md'),
 			]
 		});
 	}));

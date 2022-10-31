@@ -65,12 +65,12 @@ export abstract class Disposable {
 }
 
 export class DisposableStore extends Disposable {
-	private readonly items = new Set<IDisposable>();
+	private readonly _items = new Set<IDisposable>();
 
 	public override dispose() {
 		super.dispose();
-		disposeAll(this.items);
-		this.items.clear();
+		disposeAll(this._items);
+		this._items.clear();
 	}
 
 	public add<T extends IDisposable>(item: T): T {
@@ -78,7 +78,7 @@ export class DisposableStore extends Disposable {
 			console.warn('Adding to disposed store. Item will be leaked');
 		}
 
-		this.items.add(item);
+		this._items.add(item);
 		return item;
 	}
 }

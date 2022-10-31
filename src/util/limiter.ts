@@ -22,14 +22,14 @@ interface ITask<T> {
 export class Limiter<T> {
 
 	private _size = 0;
-	private runningPromises: number;
-	private readonly maxDegreeOfParalellism: number;
-	private readonly outstandingPromises: ILimitedTaskFactory<T>[];
+	private _runningPromises: number;
+	private readonly _maxDegreeOfParalellism: number;
+	private readonly _outstandingPromises: ILimitedTaskFactory<T>[];
 
 	constructor(maxDegreeOfParalellism: number) {
-		this.maxDegreeOfParalellism = maxDegreeOfParalellism;
-		this.outstandingPromises = [];
-		this.runningPromises = 0;
+		this._maxDegreeOfParalellism = maxDegreeOfParalellism;
+		this._outstandingPromises = [];
+		this._runningPromises = 0;
 	}
 
 	get size(): number {
@@ -40,28 +40,28 @@ export class Limiter<T> {
 		this._size++;
 
 		return new Promise<T>((c, e) => {
-			this.outstandingPromises.push({ factory, c, e });
-			this.consume();
+			this._outstandingPromises.push({ factory, c, e });
+			this._consume();
 		});
 	}
 
-	private consume(): void {
-		while (this.outstandingPromises.length && this.runningPromises < this.maxDegreeOfParalellism) {
-			const iLimitedTask = this.outstandingPromises.shift()!;
-			this.runningPromises++;
+	private _consume(): void {
+		while (this._outstandingPromises.length && this._runningPromises < this._maxDegreeOfParalellism) {
+			const iLimitedTask = this._outstandingPromises.shift()!;
+			this._runningPromises++;
 
 			const promise = iLimitedTask.factory();
 			promise.then(iLimitedTask.c, iLimitedTask.e);
-			promise.then(() => this.consumed(), () => this.consumed());
+			promise.then(() => this._consumed(), () => this._consumed());
 		}
 	}
 
-	private consumed(): void {
+	private _consumed(): void {
 		this._size--;
-		this.runningPromises--;
+		this._runningPromises--;
 
-		if (this.outstandingPromises.length > 0) {
-			this.consume();
+		if (this._outstandingPromises.length > 0) {
+			this._consume();
 		}
 	}
 }

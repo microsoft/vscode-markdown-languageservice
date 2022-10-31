@@ -16,24 +16,24 @@ const rangeLimit = 5000;
 export class MdFoldingProvider {
 
 	constructor(
-		private readonly parser: IMdParser,
-		private readonly tocProvider: MdTableOfContentsProvider,
-		private readonly logger: ILogger,
+		private readonly _parser: IMdParser,
+		private readonly _tocProvider: MdTableOfContentsProvider,
+		private readonly _logger: ILogger,
 	) { }
 
 	public async provideFoldingRanges(document: ITextDocument, token: CancellationToken): Promise<lsp.FoldingRange[]> {
-		this.logger.log(LogLevel.Debug, 'MdFoldingProvider', `provideFoldingRanges — ${document.uri} ${document.version}`);
+		this._logger.log(LogLevel.Debug, 'MdFoldingProvider', `provideFoldingRanges — ${document.uri} ${document.version}`);
 
 		const foldables = await Promise.all([
-			this.getRegions(document, token),
-			this.getHeaderFoldingRanges(document, token),
-			this.getBlockFoldingRanges(document, token)
+			this._getRegions(document, token),
+			this._getHeaderFoldingRanges(document, token),
+			this._getBlockFoldingRanges(document, token)
 		]);
 		return foldables.flat().slice(0, rangeLimit);
 	}
 
-	private async getRegions(document: ITextDocument, token: CancellationToken): Promise<lsp.FoldingRange[]> {
-		const tokens = await this.parser.tokenize(document);
+	private async _getRegions(document: ITextDocument, token: CancellationToken): Promise<lsp.FoldingRange[]> {
+		const tokens = await this._parser.tokenize(document);
 		if (token.isCancellationRequested) {
 			return [];
 		}
@@ -56,8 +56,8 @@ export class MdFoldingProvider {
 			.filter((region: lsp.FoldingRange | null): region is lsp.FoldingRange => !!region);
 	}
 
-	private async getHeaderFoldingRanges(document: ITextDocument, token: CancellationToken): Promise<lsp.FoldingRange[]> {
-		const toc = await this.tocProvider.getForDocument(document);
+	private async _getHeaderFoldingRanges(document: ITextDocument, token: CancellationToken): Promise<lsp.FoldingRange[]> {
+		const toc = await this._tocProvider.getForDocument(document);
 		if (token.isCancellationRequested) {
 			return [];
 		}
@@ -71,8 +71,8 @@ export class MdFoldingProvider {
 		});
 	}
 
-	private async getBlockFoldingRanges(document: ITextDocument, token: CancellationToken): Promise<lsp.FoldingRange[]> {
-		const tokens = await this.parser.tokenize(document);
+	private async _getBlockFoldingRanges(document: ITextDocument, token: CancellationToken): Promise<lsp.FoldingRange[]> {
+		const tokens = await this._parser.tokenize(document);
 		if (token.isCancellationRequested) {
 			return [];
 		}
@@ -84,11 +84,11 @@ export class MdFoldingProvider {
 			if (isEmptyOrWhitespace(getLine(document, end)) && end >= start + 1) {
 				end = end - 1;
 			}
-			return { startLine: start, endLine: end, kind: this.getFoldingRangeKind(listItem) };
+			return { startLine: start, endLine: end, kind: this._getFoldingRangeKind(listItem) };
 		});
 	}
 
-	private getFoldingRangeKind(listItem: Token): lsp.FoldingRangeKind | undefined {
+	private _getFoldingRangeKind(listItem: Token): lsp.FoldingRangeKind | undefined {
 		return listItem.type === 'html_block' && listItem.content.startsWith('<!--')
 			? lsp.FoldingRangeKind.Comment
 			: undefined;

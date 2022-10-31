@@ -17,7 +17,7 @@ export class MdWorkspaceSymbolProvider extends Disposable {
 
 	public constructor(
 		workspace: IWorkspace,
-		private readonly symbolProvider: MdDocumentSymbolProvider,
+		private readonly _symbolProvider: MdDocumentSymbolProvider,
 	) {
 		super();
 
@@ -35,14 +35,14 @@ export class MdWorkspaceSymbolProvider extends Disposable {
 	}
 
 	public async provideDocumentSymbolInformation(document: ITextDocument, token: CancellationToken): Promise<lsp.SymbolInformation[]> {
-		const docSymbols = await this.symbolProvider.provideDocumentSymbols(document, {}, token);
+		const docSymbols = await this._symbolProvider.provideDocumentSymbols(document, {}, token);
 		if (token.isCancellationRequested) {
 			return [];
 		}
-		return Array.from(this.toSymbolInformation(document.uri, docSymbols));
+		return Array.from(this._toSymbolInformation(document.uri, docSymbols));
 	}
 
-	private *toSymbolInformation(uri: string, docSymbols: lsp.DocumentSymbol[]): Iterable<lsp.SymbolInformation> {
+	private *_toSymbolInformation(uri: string, docSymbols: lsp.DocumentSymbol[]): Iterable<lsp.SymbolInformation> {
 		for (const symbol of docSymbols) {
 			yield {
 				name: symbol.name,
@@ -50,7 +50,7 @@ export class MdWorkspaceSymbolProvider extends Disposable {
 				location: { uri, range: symbol.selectionRange }
 			};
 			if (symbol.children) {
-				yield* this.toSymbolInformation(uri, symbol.children);
+				yield* this._toSymbolInformation(uri, symbol.children);
 			}
 		}
 	}

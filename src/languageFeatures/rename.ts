@@ -39,7 +39,7 @@ export class RenameNotSupportedAtLocationError extends Error {
 
 export class MdRenameProvider extends Disposable {
 
-	private cachedRefs?: {
+	private _cachedRefs?: {
 		readonly resource: URI;
 		readonly version: number;
 		readonly position: lsp.Position;
@@ -49,19 +49,19 @@ export class MdRenameProvider extends Disposable {
 
 
 	public constructor(
-		private readonly configuration: LsConfiguration,
-		private readonly workspace: IWorkspace,
-		private readonly referencesProvider: MdReferencesProvider,
-		private readonly slugifier: ISlugifier,
-		private readonly logger: ILogger,
+		private readonly _configuration: LsConfiguration,
+		private readonly _workspace: IWorkspace,
+		private readonly _referencesProvider: MdReferencesProvider,
+		private readonly _slugifier: ISlugifier,
+		private readonly _logger: ILogger,
 	) {
 		super();
 	}
 
 	public async prepareRename(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<undefined | { range: lsp.Range; placeholder: string }> {
-		this.logger.log(LogLevel.Trace, 'RenameProvider', `prepareRename — ${document.uri} ${document.version}`);
+		this._logger.log(LogLevel.Trace, 'RenameProvider', `prepareRename — ${document.uri} ${document.version}`);
 
-		const allRefsInfo = await this.getAllReferences(document, position, token);
+		const allRefsInfo = await this._getAllReferences(document, position, token);
 		if (token.isCancellationRequested) {
 			return undefined;
 		}
@@ -90,7 +90,7 @@ export class MdRenameProvider extends Disposable {
 				// See if we are renaming the fragment or the path
 				const { fragmentRange } = triggerRef.link.source;
 				if (fragmentRange && rangeContains(fragmentRange, position)) {
-					const declaration = this.findHeaderDeclaration(allRefsInfo.references);
+					const declaration = this._findHeaderDeclaration(allRefsInfo.references);
 					return {
 						range: fragmentRange,
 						placeholder: declaration ? declaration.headerText : document.getText(fragmentRange),
@@ -106,14 +106,14 @@ export class MdRenameProvider extends Disposable {
 		}
 	}
 
-	private findHeaderDeclaration(references: readonly MdReference[]): MdHeaderReference | undefined {
+	private _findHeaderDeclaration(references: readonly MdReference[]): MdHeaderReference | undefined {
 		return references.find(ref => ref.isDefinition && ref.kind === MdReferenceKind.Header) as MdHeaderReference | undefined;
 	}
 
 	public async provideRenameEdits(document: ITextDocument, position: lsp.Position, newName: string, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined> {
-		this.logger.log(LogLevel.Trace, 'RenameProvider', `provideRenameEdits — ${document.uri} ${document.version}`);
+		this._logger.log(LogLevel.Trace, 'RenameProvider', `provideRenameEdits — ${document.uri} ${document.version}`);
 
-		const allRefsInfo = await this.getAllReferences(document, position, token);
+		const allRefsInfo = await this._getAllReferences(document, position, token);
 		if (token.isCancellationRequested || !allRefsInfo || !allRefsInfo.references.length) {
 			return undefined;
 		}
@@ -123,26 +123,26 @@ export class MdRenameProvider extends Disposable {
 		if (triggerRef.kind === MdReferenceKind.Link && (
 			(triggerRef.link.kind === MdLinkKind.Definition && rangeContains(triggerRef.link.ref.range, position)) || triggerRef.link.href.kind === HrefKind.Reference
 		)) {
-			return this.renameReferenceLinks(allRefsInfo, newName);
+			return this._renameReferenceLinks(allRefsInfo, newName);
 		} else if (triggerRef.kind === MdReferenceKind.Link && triggerRef.link.href.kind === HrefKind.External) {
-			return this.renameExternalLink(allRefsInfo, newName);
+			return this._renameExternalLink(allRefsInfo, newName);
 		} else if (triggerRef.kind === MdReferenceKind.Header || (triggerRef.kind === MdReferenceKind.Link && triggerRef.link.source.fragmentRange && rangeContains(triggerRef.link.source.fragmentRange, position) && (triggerRef.link.kind === MdLinkKind.Definition || triggerRef.link.kind === MdLinkKind.Link && triggerRef.link.href.kind === HrefKind.Internal))) {
-			return this.renameFragment(allRefsInfo, newName);
+			return this._renameFragment(allRefsInfo, newName);
 		} else if (triggerRef.kind === MdReferenceKind.Link && !(triggerRef.link.source.fragmentRange && rangeContains(triggerRef.link.source.fragmentRange, position)) && (triggerRef.link.kind === MdLinkKind.Link || triggerRef.link.kind === MdLinkKind.Definition) && triggerRef.link.href.kind === HrefKind.Internal) {
-			return this.renameFilePath(triggerRef.link.source.resource, triggerRef.link.href, allRefsInfo, newName);
+			return this._renameFilePath(triggerRef.link.source.resource, triggerRef.link.href, allRefsInfo, newName);
 		}
 
 		return undefined;
 	}
 
-	private async renameFilePath(triggerDocument: URI, triggerHref: InternalHref, allRefsInfo: MdReferencesResponse, newName: string): Promise<lsp.WorkspaceEdit> {
+	private async _renameFilePath(triggerDocument: URI, triggerHref: InternalHref, allRefsInfo: MdReferencesResponse, newName: string): Promise<lsp.WorkspaceEdit> {
 		const builder = new WorkspaceEditBuilder();
 
-		const targetUri = await statLinkToMarkdownFile(this.configuration, this.workspace, triggerHref.path) ?? triggerHref.path;
+		const targetUri = await statLinkToMarkdownFile(this._configuration, this._workspace, triggerHref.path) ?? triggerHref.path;
 
-		const rawNewFilePath = resolveInternalDocumentLink(triggerDocument, newName, this.workspace);
+		const rawNewFilePath = resolveInternalDocumentLink(triggerDocument, newName, this._workspace);
 		if (!rawNewFilePath) {
-			return builder.getEdit();
+			return builder.renameFragment();
 		}
 
 		let resolvedNewFilePath = rawNewFilePath.resource;
@@ -151,13 +151,13 @@ export class MdRenameProvider extends Disposable {
 			// tack on a .md file extension
 			if (Utils.extname(targetUri)) {
 				resolvedNewFilePath = resolvedNewFilePath.with({
-					path: resolvedNewFilePath.path + '.' + (this.configuration.markdownFileExtensions[0] ?? defaultMarkdownFileExtension)
+					path: resolvedNewFilePath.path + '.' + (this._configuration.markdownFileExtensions[0] ?? defaultMarkdownFileExtension)
 				});
 			}
 		}
 
 		// First rename the file
-		if (await this.workspace.stat(targetUri)) {
+		if (await this._workspace.stat(targetUri)) {
 			builder.renameFile(targetUri, resolvedNewFilePath);
 		}
 
@@ -165,16 +165,16 @@ export class MdRenameProvider extends Disposable {
 		for (const ref of allRefsInfo.references) {
 			if (ref.kind === MdReferenceKind.Link) {
 				// Try to preserve style of existing links
-				const newLinkText = getLinkRenameText(this.workspace, ref.link.source, rawNewFilePath.resource, newName.startsWith('./') || newName.startsWith('.\\'));
+				const newLinkText = getLinkRenameText(this._workspace, ref.link.source, rawNewFilePath.resource, newName.startsWith('./') || newName.startsWith('.\\'));
 				builder.replace(ref.link.source.resource, getFilePathRange(ref.link), encodeURI((newLinkText ?? newName).replace(/\\/g, '/')));
 			}
 		}
 
-		return builder.getEdit();
+		return builder.renameFragment();
 	}
 
-	private renameFragment(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
-		const slug = this.slugifier.fromHeading(newName).value;
+	private _renameFragment(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
+		const slug = this._slugifier.fromHeading(newName).value;
 
 		const builder = new WorkspaceEditBuilder();
 		for (const ref of allRefsInfo.references) {
@@ -188,20 +188,20 @@ export class MdRenameProvider extends Disposable {
 					break;
 			}
 		}
-		return builder.getEdit();
+		return builder.renameFragment();
 	}
 
-	private renameExternalLink(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
+	private _renameExternalLink(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
 		const builder = new WorkspaceEditBuilder();
 		for (const ref of allRefsInfo.references) {
 			if (ref.kind === MdReferenceKind.Link) {
 				builder.replace(ref.link.source.resource, ref.location.range, newName);
 			}
 		}
-		return builder.getEdit();
+		return builder.renameFragment();
 	}
 
-	private renameReferenceLinks(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
+	private _renameReferenceLinks(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
 		const builder = new WorkspaceEditBuilder();
 
 		for (const ref of allRefsInfo.references) {
@@ -214,21 +214,21 @@ export class MdRenameProvider extends Disposable {
 			}
 		}
 
-		return builder.getEdit();
+		return builder.renameFragment();
 	}
 
-	private async getAllReferences(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<MdReferencesResponse | undefined> {
+	private async _getAllReferences(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<MdReferencesResponse | undefined> {
 		const version = document.version;
 
-		if (this.cachedRefs
-			&& this.cachedRefs.resource.fsPath === URI.parse(document.uri).fsPath
-			&& this.cachedRefs.version === document.version
-			&& arePositionsEqual(this.cachedRefs.position, position)
+		if (this._cachedRefs
+			&& this._cachedRefs.resource.fsPath === URI.parse(document.uri).fsPath
+			&& this._cachedRefs.version === document.version
+			&& arePositionsEqual(this._cachedRefs.position, position)
 		) {
-			return this.cachedRefs;
+			return this._cachedRefs;
 		}
 
-		const references = await this.referencesProvider.getReferencesAtPosition(document, position, token);
+		const references = await this._referencesProvider.getReferencesAtPosition(document, position, token);
 		if (token.isCancellationRequested) {
 			return;
 		}
@@ -238,14 +238,14 @@ export class MdRenameProvider extends Disposable {
 			return undefined;
 		}
 
-		this.cachedRefs = {
+		this._cachedRefs = {
 			resource: URI.parse(document.uri),
 			version,
 			position,
 			references,
 			triggerRef
 		};
-		return this.cachedRefs;
+		return this._cachedRefs;
 	}
 }
 

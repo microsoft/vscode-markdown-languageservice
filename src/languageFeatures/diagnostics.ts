@@ -156,10 +156,10 @@ class FileLinkMap {
 export class DiagnosticComputer {
 
 	constructor(
-		private readonly configuration: LsConfiguration,
-		private readonly workspace: IWorkspace,
-		private readonly linkProvider: MdLinkProvider,
-		private readonly tocProvider: MdTableOfContentsProvider,
+		private readonly _configuration: LsConfiguration,
+		private readonly _workspace: IWorkspace,
+		private readonly _linkProvider: MdLinkProvider,
+		private readonly _tocProvider: MdTableOfContentsProvider,
 	) { }
 
 	public async compute(
@@ -171,7 +171,7 @@ export class DiagnosticComputer {
 		readonly links: readonly MdLink[];
 		readonly statCache: ResourceMap<{ readonly exists: boolean }>;
 	}> {
-		const { links, definitions } = await this.linkProvider.getLinks(doc);
+		const { links, definitions } = await this._linkProvider.getLinks(doc);
 		const statCache = new ResourceMap<{ readonly exists: boolean }>();
 		if (token.isCancellationRequested) {
 			return { links, diagnostics: [], statCache };
@@ -184,22 +184,22 @@ export class DiagnosticComputer {
 			links: links,
 			statCache,
 			diagnostics: (await Promise.all([
-				this.validateFileLinks(options, links, statCache, token),
-				this.validateFragmentLinks(doc, options, links, token),
-				Array.from(this.validateReferenceLinks(options, links, definitions)),
-				Array.from(this.validateUnusedLinkDefinitions(options, links)),
-				Array.from(this.validateDuplicateLinkDefinitions(options, links)),
+				this._validateFileLinks(options, links, statCache, token),
+				this._validateFragmentLinks(doc, options, links, token),
+				Array.from(this._validateReferenceLinks(options, links, definitions)),
+				Array.from(this._validateUnusedLinkDefinitions(options, links)),
+				Array.from(this._validateDuplicateLinkDefinitions(options, links)),
 			])).flat()
 		};
 	}
 
-	private async validateFragmentLinks(doc: ITextDocument, options: DiagnosticOptions, links: readonly MdLink[], token: CancellationToken): Promise<lsp.Diagnostic[]> {
+	private async _validateFragmentLinks(doc: ITextDocument, options: DiagnosticOptions, links: readonly MdLink[], token: CancellationToken): Promise<lsp.Diagnostic[]> {
 		const severity = toSeverity(options.validateFragmentLinks);
 		if (typeof severity === 'undefined') {
 			return [];
 		}
 
-		const toc = await this.tocProvider.getForDocument(doc);
+		const toc = await this._tocProvider.getForDocument(doc);
 		if (token.isCancellationRequested) {
 			return [];
 		}
@@ -218,7 +218,7 @@ export class DiagnosticComputer {
 					continue;
 				}
 
-				if (!this.isIgnoredLink(options, link.source.hrefText)) {
+				if (!this._isIgnoredLink(options, link.source.hrefText)) {
 					diagnostics.push({
 						code: DiagnosticCode.link_noSuchHeaderInOwnFile,
 						message: localize('invalidHeaderLink', 'No header found: \'{0}\'', link.href.fragment),
@@ -235,7 +235,7 @@ export class DiagnosticComputer {
 		return diagnostics;
 	}
 
-	private *validateReferenceLinks(options: DiagnosticOptions, links: readonly MdLink[], definitions: LinkDefinitionSet): Iterable<lsp.Diagnostic> {
+	private *_validateReferenceLinks(options: DiagnosticOptions, links: readonly MdLink[], definitions: LinkDefinitionSet): Iterable<lsp.Diagnostic> {
 		const severity = toSeverity(options.validateReferences);
 		if (typeof severity === 'undefined') {
 			return [];
@@ -256,7 +256,7 @@ export class DiagnosticComputer {
 		}
 	}
 
-	private *validateUnusedLinkDefinitions(options: DiagnosticOptions, links: readonly MdLink[]): Iterable<lsp.Diagnostic> {
+	private *_validateUnusedLinkDefinitions(options: DiagnosticOptions, links: readonly MdLink[]): Iterable<lsp.Diagnostic> {
 		const errorSeverity = toSeverity(options.validateUnusedLinkDefinitions);
 		if (typeof errorSeverity === 'undefined') {
 			return;
@@ -285,7 +285,7 @@ export class DiagnosticComputer {
 		}
 	}
 	
-	private *validateDuplicateLinkDefinitions(options: DiagnosticOptions, links: readonly MdLink[]): Iterable<lsp.Diagnostic> {
+	private *_validateDuplicateLinkDefinitions(options: DiagnosticOptions, links: readonly MdLink[]): Iterable<lsp.Diagnostic> {
 		const errorSeverity = toSeverity(options.validateDuplicateLinkDefinitions);
 		if (typeof errorSeverity === 'undefined') {
 			return;
@@ -327,7 +327,7 @@ export class DiagnosticComputer {
 		}
 	}
 
-	private async validateFileLinks(
+	private async _validateFileLinks(
 		options: DiagnosticOptions,
 		links: readonly MdLink[],
 		statCache: ResourceMap<{ readonly exists: boolean }>,
@@ -355,14 +355,14 @@ export class DiagnosticComputer {
 						return;
 					}
 
-					const resolvedHrefPath = await statLinkToMarkdownFile(this.configuration, this.workspace, path, statCache);
+					const resolvedHrefPath = await statLinkToMarkdownFile(this._configuration, this._workspace, path, statCache);
 					if (token.isCancellationRequested) {
 						return;
 					}
 
 					if (!resolvedHrefPath) {
 						for (const link of links) {
-							if (!this.isIgnoredLink(options, link.source.pathText)) {
+							if (!this._isIgnoredLink(options, link.source.pathText)) {
 								diagnostics.push({
 									code: DiagnosticCode.link_noSuchFile,
 									message: localize('invalidPathLink', 'File does not exist at path: {0}', path.fsPath),
@@ -375,11 +375,11 @@ export class DiagnosticComputer {
 								});
 							}
 						}
-					} else if (typeof fragmentErrorSeverity !== 'undefined' && this.isMarkdownPath(resolvedHrefPath)) {
+					} else if (typeof fragmentErrorSeverity !== 'undefined' && this._isMarkdownPath(resolvedHrefPath)) {
 						// Validate each of the links to headers in the file
 						const fragmentLinks = links.filter(x => x.fragment);
 						if (fragmentLinks.length) {
-							const toc = await this.tocProvider.get(resolvedHrefPath);
+							const toc = await this._tocProvider.get(resolvedHrefPath);
 							if (token.isCancellationRequested) {
 								return;
 							}
@@ -390,7 +390,7 @@ export class DiagnosticComputer {
 									continue;
 								}
 
-								if (!toc.lookup(link.fragment) && !this.isIgnoredLink(options, link.source.pathText) && !this.isIgnoredLink(options, link.source.hrefText)) {
+								if (!toc.lookup(link.fragment) && !this._isIgnoredLink(options, link.source.pathText) && !this._isIgnoredLink(options, link.source.hrefText)) {
 									const range = (link.source.fragmentRange && modifyRange(link.source.fragmentRange, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 }), undefined)) ?? link.source.hrefRange;
 									diagnostics.push({
 										code: DiagnosticCode.link_noSuchHeaderInFile,
@@ -411,11 +411,11 @@ export class DiagnosticComputer {
 		return diagnostics;
 	}
 
-	private isMarkdownPath(resolvedHrefPath: URI) {
-		return this.workspace.hasMarkdownDocument(resolvedHrefPath) || looksLikeMarkdownPath(this.configuration, resolvedHrefPath);
+	private _isMarkdownPath(resolvedHrefPath: URI) {
+		return this._workspace.hasMarkdownDocument(resolvedHrefPath) || looksLikeMarkdownPath(this._configuration, resolvedHrefPath);
 	}
 
-	private isIgnoredLink(options: DiagnosticOptions, link: string): boolean {
+	private _isIgnoredLink(options: DiagnosticOptions, link: string): boolean {
 		return options.ignoreLinks.some(glob => picomatch.isMatch(link, glob));
 	}
 }
@@ -479,7 +479,7 @@ class FileLinkState extends Disposable {
 	}>();
 
 	constructor(
-		readonly _workspace: IWorkspaceWithWatching
+		private readonly _workspace: IWorkspaceWithWatching
 	) {
 		super();
 	}
@@ -512,7 +512,7 @@ class FileLinkState extends Disposable {
 			let entry = this._linkedToFile.get(path);
 			if (!entry) {
 				entry = {
-					watcher: this.startWatching(path),
+					watcher: this._startWatching(path),
 					documents: new ResourceMap(),
 					exists
 				};
@@ -543,10 +543,10 @@ class FileLinkState extends Disposable {
 		return { exists: entry.exists };
 	}
 
-	private startWatching(path: URI): IDisposable {
+	private _startWatching(path: URI): IDisposable {
 		const watcher = this._workspace.watchFile(path, { ignoreChange: true });
-		const deleteReg = watcher.onDidDelete((resource: URI) => this.onLinkedResourceChanged(resource, false));
-		const createReg = watcher.onDidCreate((resource: URI) => this.onLinkedResourceChanged(resource, true));
+		const deleteReg = watcher.onDidDelete((resource: URI) => this._onLinkedResourceChanged(resource, false));
+		const createReg = watcher.onDidCreate((resource: URI) => this._onLinkedResourceChanged(resource, true));
 		return {
 			dispose: () => {
 				watcher.dispose();
@@ -556,7 +556,7 @@ class FileLinkState extends Disposable {
 		};
 	}
 
-	private onLinkedResourceChanged(resource: URI, exists: boolean) {
+	private _onLinkedResourceChanged(resource: URI, exists: boolean) {
 		const entry = this._linkedToFile.get(resource);
 		if (entry) {
 			entry.exists = exists;

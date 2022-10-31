@@ -18,31 +18,31 @@ import { getFilePathRange } from './rename';
 export class MdDocumentHighlightProvider {
 
 	constructor(
-		private readonly configuration: LsConfiguration,
-		private readonly tocProvider: MdTableOfContentsProvider,
-		private readonly linkProvider: MdLinkProvider,
+		private readonly _configuration: LsConfiguration,
+		private readonly _tocProvider: MdTableOfContentsProvider,
+		private readonly _linkProvider: MdLinkProvider,
 	) { }
 
 	public async getDocumentHighlights(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<lsp.DocumentHighlight[]> {
-		const toc = await this.tocProvider.getForDocument(document);
+		const toc = await this._tocProvider.getForDocument(document);
 		if (token.isCancellationRequested) {
 			return [];
 		}
 
-		const { links } = await this.linkProvider.getLinks(document);
+		const { links } = await this._linkProvider.getLinks(document);
 		if (token.isCancellationRequested) {
 			return [];
 		}
 
 		const header = toc.entries.find(entry => entry.line === position.line);
 		if (header) {
-			return [...this.getHighlightsForHeader(document, header, links, toc)];
+			return [...this._getHighlightsForHeader(document, header, links, toc)];
 		}
 
-		return [...this.getHighlightsForLinkAtPosition(document, position, links, toc)];
+		return [...this._getHighlightsForLinkAtPosition(document, position, links, toc)];
 	}
 
-	private *getHighlightsForHeader(document: ITextDocument, header: TocEntry, links: readonly MdLink[], toc: TableOfContents): Iterable<lsp.DocumentHighlight> {
+	private *_getHighlightsForHeader(document: ITextDocument, header: TocEntry, links: readonly MdLink[], toc: TableOfContents): Iterable<lsp.DocumentHighlight> {
 		yield { range: header.headerLocation.range, kind: lsp.DocumentHighlightKind.Write };
 
 		const docUri = document.uri.toString();
@@ -60,7 +60,7 @@ export class MdDocumentHighlightProvider {
 		}
 	}
 
-	private getHighlightsForLinkAtPosition(document: ITextDocument, position: lsp.Position, links: readonly MdLink[], toc: TableOfContents): Iterable<lsp.DocumentHighlight> {
+	private _getHighlightsForLinkAtPosition(document: ITextDocument, position: lsp.Position, links: readonly MdLink[], toc: TableOfContents): Iterable<lsp.DocumentHighlight> {
 		const link = links.find(link => rangeContains(link.source.hrefRange, position) || (link.kind === MdLinkKind.Definition && rangeContains(link.ref.range, position)));
 		if (!link) {
 			return [];
@@ -68,28 +68,28 @@ export class MdDocumentHighlightProvider {
 
 		if (link.kind === MdLinkKind.Definition && rangeContains(link.ref.range, position)) {
 			// We are on the reference text inside the link definition
-			return this.getHighlightsForReference(link.ref.text, links);
+			return this._getHighlightsForReference(link.ref.text, links);
 		}
 
 		switch (link.href.kind) {
 			case HrefKind.Reference: {
-				return this.getHighlightsForReference(link.href.ref, links);
+				return this._getHighlightsForReference(link.href.ref, links);
 			}
 			case HrefKind.Internal: {
 				if (link.source.fragmentRange && rangeContains(link.source.fragmentRange, position)) {
-					return this.getHighlightsForLinkFragment(document, link.href, links, toc);
+					return this._getHighlightsForLinkFragment(document, link.href, links, toc);
 				}
 
-				return this.getHighlightsForLinkPath(link.href.path, links);
+				return this._getHighlightsForLinkPath(link.href.path, links);
 			}
 			case HrefKind.External: {
-				return this.getHighlightsForExternalLink(link.href.uri, links);
+				return this._getHighlightsForExternalLink(link.href.uri, links);
 			}
 		}
 	}
 
-	private *getHighlightsForLinkFragment(document: ITextDocument, href: InternalHref, links: readonly MdLink[], toc: TableOfContents): Iterable<lsp.DocumentHighlight> {
-		const targetDoc = tryAppendMarkdownFileExtension(this.configuration, href.path);
+	private *_getHighlightsForLinkFragment(document: ITextDocument, href: InternalHref, links: readonly MdLink[], toc: TableOfContents): Iterable<lsp.DocumentHighlight> {
+		const targetDoc = tryAppendMarkdownFileExtension(this._configuration, href.path);
 		if (!targetDoc) {
 			return;
 		}
@@ -104,7 +104,7 @@ export class MdDocumentHighlightProvider {
 		}
 
 		for (const link of links) {
-			if (link.href.kind === HrefKind.Internal && looksLikeLinkToResource(this.configuration, link.href, targetDoc)) {
+			if (link.href.kind === HrefKind.Internal && looksLikeLinkToResource(this._configuration, link.href, targetDoc)) {
 				if (link.source.fragmentRange && link.href.fragment.toLowerCase() === fragment) {
 					yield {
 						range: modifyRange(link.source.fragmentRange, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 })),
@@ -115,10 +115,10 @@ export class MdDocumentHighlightProvider {
 		}
 	}
 
-	private *getHighlightsForLinkPath(path: URI, links: readonly MdLink[]): Iterable<lsp.DocumentHighlight> {
-		const targetDoc = tryAppendMarkdownFileExtension(this.configuration, path) ?? path;
+	private *_getHighlightsForLinkPath(path: URI, links: readonly MdLink[]): Iterable<lsp.DocumentHighlight> {
+		const targetDoc = tryAppendMarkdownFileExtension(this._configuration, path) ?? path;
 		for (const link of links) {
-			if (link.href.kind === HrefKind.Internal && looksLikeLinkToResource(this.configuration, link.href, targetDoc)) {
+			if (link.href.kind === HrefKind.Internal && looksLikeLinkToResource(this._configuration, link.href, targetDoc)) {
 				yield {
 					range: getFilePathRange(link),
 					kind: lsp.DocumentHighlightKind.Read,
@@ -127,7 +127,7 @@ export class MdDocumentHighlightProvider {
 		}
 	}
 
-	private *getHighlightsForExternalLink(uri: URI, links: readonly MdLink[]): Iterable<lsp.DocumentHighlight> {
+	private *_getHighlightsForExternalLink(uri: URI, links: readonly MdLink[]): Iterable<lsp.DocumentHighlight> {
 		for (const link of links) {
 			if (link.href.kind === HrefKind.External && link.href.uri.toString() === uri.toString()) {
 				yield {
@@ -138,7 +138,7 @@ export class MdDocumentHighlightProvider {
 		}
 	}
 
-	private *getHighlightsForReference(ref: string, links: readonly MdLink[]): Iterable<lsp.DocumentHighlight> {
+	private *_getHighlightsForReference(ref: string, links: readonly MdLink[]): Iterable<lsp.DocumentHighlight> {
 		for (const link of links) {
 			if (link.kind === MdLinkKind.Definition && link.ref.text === ref) {
 				yield {

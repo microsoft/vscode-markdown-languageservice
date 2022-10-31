@@ -1,38 +1,14 @@
 # Changelog
 
-## 0.2.0-alpha.8 October 28, 2022
-- Fix file rename incorrectly updating `[text](#headers)` style headers.
-
-## 0.2.0-alpha.7 October 26, 2022
-- Fix more edge cases around directory renames.
-
-## 0.2.0-alpha.6 October 25, 2022
-- Don't add extra `./` on file rename edits.
-- Fixed renaming using old file name in edit.
-- Fix rename should use renamed file names.
-
-## 0.2.0-alpha.5 October 24, 2022
-- Fix document highlights for image links.
-- Make document highlights work for external links.
-
-## 0.2.0-alpha.4 October 24, 2022
-- Fix document highlights for links to headers in other files.
-
-## 0.2.0-alpha.3 October 21, 2022
-- Fix detection of reference links with images.
-- Extract link definition should prefer inner links if on nested links.
-- Remove unused link definition now deletes entire line instead of leaving blank line.
-
-## 0.2.0-alpha.2 October 13, 2022
-- Fix reference links shorthand for names with spaces.
-- Fix reference links references should be case in-sensitive.
-- Fix reference links should resolve to first matching link definition.
-
-## 0.2.0-alpha.1 October 5, 2022
+## 0.2.0 October 31, 2022
 - Added diagnostics for unused link definitions.
 - Added diagnostics for duplicated link definitions.
 - Added quick fixes for removing duplicate / unused link definitions.
 - Added document highlight provider.
+- Polish Update links on file rename.
+- Fix detection of reference link shorthand for names with spaces.
+- Fix reference links references should be case in-sensitive.
+- Fix reference links should resolve to first matching link definition.
 
 ## 0.1.0 September 28, 2022
 - Added `getCodeActions` to get code actions.

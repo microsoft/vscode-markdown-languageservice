@@ -84,7 +84,7 @@ Currently supported language features:
 	- Unused link definitions.
 	- Duplicate link definitions.
 
-- Update links on file rename (experimental)
+- Update links on file rename
 
 	Generate an edit that updates all links when a file/directory in the workspace is renamed or moved.
 

@@ -8,40 +8,40 @@ import { URI } from 'vscode-uri';
 
 export class WorkspaceEditBuilder {
 
-	private readonly changes: { [uri: lsp.DocumentUri]: lsp.TextEdit[]; } = {};
-	private readonly documentChanges: Array<lsp.CreateFile | lsp.RenameFile | lsp.DeleteFile> = [];
+	private readonly _changes: { [uri: lsp.DocumentUri]: lsp.TextEdit[]; } = {};
+	private readonly _documentChanges: Array<lsp.CreateFile | lsp.RenameFile | lsp.DeleteFile> = [];
 
 	replace(resource: URI, range: lsp.Range, newText: string): void {
-		this.addEdit(resource, lsp.TextEdit.replace(range, newText));
+		this._addEdit(resource, lsp.TextEdit.replace(range, newText));
 	}
 
 	insert(resource: URI, position: lsp.Position, newText: string): void {
-		this.addEdit(resource, lsp.TextEdit.insert(position, newText));
+		this._addEdit(resource, lsp.TextEdit.insert(position, newText));
 	}
 
-	private addEdit(resource: URI, edit: lsp.TextEdit): void {
+	private _addEdit(resource: URI, edit: lsp.TextEdit): void {
 		const resourceKey = resource.toString();
-		let edits = this.changes![resourceKey];
+		let edits = this._changes![resourceKey];
 		if (!edits) {
 			edits = [];
-			this.changes![resourceKey] = edits;
+			this._changes![resourceKey] = edits;
 		}
 
 		edits.push(edit);
 	}
 
-	getEdit(): lsp.WorkspaceEdit {
+	renameFragment(): lsp.WorkspaceEdit {
 		// We need to convert changes into `documentChanges` or else they get dropped
-		const textualChanges = Object.entries(this.changes).map(([uri, edits]): lsp.TextDocumentEdit => {
+		const textualChanges = Object.entries(this._changes).map(([uri, edits]): lsp.TextDocumentEdit => {
 			return lsp.TextDocumentEdit.create({ uri, version: null }, edits);
 		});
 
 		return {
-			documentChanges: [...textualChanges, ...this.documentChanges],
+			documentChanges: [...textualChanges, ...this._documentChanges],
 		};
 	}
 
 	renameFile(targetUri: URI, resolvedNewFilePath: URI) {
-		this.documentChanges.push(lsp.RenameFile.create(targetUri.toString(), resolvedNewFilePath.toString()));
+		this._documentChanges.push(lsp.RenameFile.create(targetUri.toString(), resolvedNewFilePath.toString()));
 	}
 }

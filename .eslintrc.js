@@ -14,6 +14,21 @@ module.exports = {
 		'@typescript-eslint/no-unused-vars': 0,
 		'no-useless-escape': 0,
 		'semi': 1,
-		'quotes': [1, 'single', { allowTemplateLiterals: true }]
+		'quotes': [1, 'single', { allowTemplateLiterals: true }],
+		'@typescript-eslint/naming-convention': [
+			'warn',
+			{
+				'selector': 'default',
+				'modifiers': ['private'],
+				'format': null,
+				'leadingUnderscore': 'require'
+			},
+			{
+				'selector': 'default',
+				'modifiers': ['public'],
+				'format': null,
+				'leadingUnderscore': 'forbid'
+			}
+		],
 	},
 };

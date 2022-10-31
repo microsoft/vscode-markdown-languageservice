@@ -64,7 +64,7 @@ export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatch
 		}
 
 		const pathPrefix = resource.fsPath + (resource.fsPath.endsWith('/') || resource.fsPath.endsWith('\\') ? '' : path.sep);
-		const allPaths = this.getAllKnownFilePaths();
+		const allPaths = this._getAllKnownFilePaths();
 		if (allPaths.some(path => path.startsWith(pathPrefix))) {
 			return { isDirectory: true };
 		}
@@ -91,7 +91,7 @@ export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatch
 	public async readDirectory(resource: URI): Promise<[string, FileStat][]> {
 		const files = new Map<string, FileStat>();
 		const pathPrefix = resource.fsPath + (resource.fsPath.endsWith('/') || resource.fsPath.endsWith('\\') ? '' : path.sep);
-		const allPaths = this.getAllKnownFilePaths();
+		const allPaths = this._getAllKnownFilePaths();
 		for (const path of allPaths) {
 			if (path.startsWith(pathPrefix)) {
 				const parts = path.slice(pathPrefix.length).split(/\/|\\/g);
@@ -110,7 +110,7 @@ export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatch
 	private readonly _onDidDeleteMarkdownDocumentEmitter = this._register(new Emitter<URI>());
 	public onDidDeleteMarkdownDocument = this._onDidDeleteMarkdownDocumentEmitter.event;
 
-	private getAllKnownFilePaths(): string[] {
+	private _getAllKnownFilePaths(): string[] {
 		return [
 			...Array.from(this._documents.values(), doc => URI.parse(doc.uri).fsPath),
 			...Array.from(this._additionalFiles.keys(), uri => uri.fsPath),

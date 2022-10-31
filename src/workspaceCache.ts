@@ -28,13 +28,13 @@ export class MdDocumentInfoCache<T> extends Disposable {
 	private readonly _loadingDocuments = new ResourceMap<Promise<ITextDocument | undefined>>();
 
 	public constructor(
-		private readonly workspace: IWorkspace,
-		private readonly getValue: (document: ITextDocument, token: CancellationToken) => Promise<T>,
+		private readonly _workspace: IWorkspace,
+		private readonly _getValue: (document: ITextDocument, token: CancellationToken) => Promise<T>,
 	) {
 		super();
 
-		this._register(this.workspace.onDidChangeMarkdownDocument(doc => this.invalidate(doc)));
-		this._register(this.workspace.onDidDeleteMarkdownDocument(this.onDidDeleteDocument, this));
+		this._register(this._workspace.onDidChangeMarkdownDocument(doc => this._invalidate(doc)));
+		this._register(this._workspace.onDidDeleteMarkdownDocument(this._onDidDeleteDocument, this));
 	}
 
 	public async get(resource: URI): Promise<T | undefined> {
@@ -43,7 +43,7 @@ export class MdDocumentInfoCache<T> extends Disposable {
 			return existing.value.value;
 		}
 
-		const doc = await this.loadDocument(resource);
+		const doc = await this._loadDocument(resource);
 		if (!doc) {
 			return undefined;
 		}
@@ -54,7 +54,7 @@ export class MdDocumentInfoCache<T> extends Disposable {
 			return existing.value.value;
 		}
 
-		return this.resetEntry(doc)?.value;
+		return this._resetEntry(doc)?.value;
 	}
 
 	public async getForDocument(document: ITextDocument): Promise<T> {
@@ -62,16 +62,16 @@ export class MdDocumentInfoCache<T> extends Disposable {
 		if (existing) {
 			return existing.value.value;
 		}
-		return this.resetEntry(document).value;
+		return this._resetEntry(document).value;
 	}
 
-	private loadDocument(resource: URI): Promise<ITextDocument | undefined> {
+	private _loadDocument(resource: URI): Promise<ITextDocument | undefined> {
 		const existing = this._loadingDocuments.get(resource);
 		if (existing) {
 			return existing;
 		}
 
-		const p = this.workspace.openMarkdownDocument(resource);
+		const p = this._workspace.openMarkdownDocument(resource);
 		this._loadingDocuments.set(resource, p);
 		p.finally(() => {
 			this._loadingDocuments.delete(resource);
@@ -79,22 +79,22 @@ export class MdDocumentInfoCache<T> extends Disposable {
 		return p;
 	}
 
-	private resetEntry(document: ITextDocument): Lazy<Promise<T>> {
+	private _resetEntry(document: ITextDocument): Lazy<Promise<T>> {
 		// TODO: cancel old request?
 
 		const cts = new CancellationTokenSource();
-		const value = lazy(() => this.getValue(document, cts.token));
+		const value = lazy(() => this._getValue(document, cts.token));
 		this._cache.set(URI.parse(document.uri), { value, cts });
 		return value;
 	}
 
-	private invalidate(document: ITextDocument): void {
+	private _invalidate(document: ITextDocument): void {
 		if (this._cache.has(URI.parse(document.uri))) {
-			this.resetEntry(document);
+			this._resetEntry(document);
 		}
 	}
 
-	private onDidDeleteDocument(resource: URI) {
+	private _onDidDeleteDocument(resource: URI) {
 		const entry = this._cache.get(resource);
 		if (entry) {
 			entry.cts.cancel();
@@ -125,13 +125,13 @@ export class MdWorkspaceInfoCache<T> extends Disposable {
 	) {
 		super();
 
-		this._register(this._workspace.onDidChangeMarkdownDocument(this.onDidChangeDocument, this));
-		this._register(this._workspace.onDidCreateMarkdownDocument(this.onDidChangeDocument, this));
-		this._register(this._workspace.onDidDeleteMarkdownDocument(this.onDidDeleteDocument, this));
+		this._register(this._workspace.onDidChangeMarkdownDocument(this._onDidChangeDocument, this));
+		this._register(this._workspace.onDidCreateMarkdownDocument(this._onDidChangeDocument, this));
+		this._register(this._workspace.onDidDeleteMarkdownDocument(this._onDidDeleteDocument, this));
 	}
 
 	public async entries(): Promise<Array<[URI, T]>> {
-		await this.ensureInit();
+		await this._ensureInit();
 
 		return Promise.all(Array.from(this._cache.entries(), async ([k, v]) => {
 			return [k, await v.value.value];
@@ -139,37 +139,37 @@ export class MdWorkspaceInfoCache<T> extends Disposable {
 	}
 
 	public async values(): Promise<Array<T>> {
-		await this.ensureInit();
+		await this._ensureInit();
 		return Promise.all(Array.from(this._cache.entries(), x => x[1].value.value));
 	}
 
 	public async getForDocs(docs: readonly ITextDocument[]): Promise<T[]> {
 		for (const doc of docs) {
 			if (!this._cache.has(URI.parse(doc.uri))) {
-				this.update(doc);
+				this._update(doc);
 			}
 		}
 
 		return Promise.all(docs.map(doc => this._cache.get(URI.parse(doc.uri))!.value.value));
 	}
 
-	private async ensureInit(): Promise<void> {
+	private async _ensureInit(): Promise<void> {
 		if (!this._init) {
-			this._init = this.populateCache();
+			this._init = this._populateCache();
 		}
 		await this._init;
 	}
 
-	private async populateCache(): Promise<void> {
+	private async _populateCache(): Promise<void> {
 		const markdownDocuments = await this._workspace.getAllMarkdownDocuments();
 		for (const document of markdownDocuments) {
 			if (!this._cache.has(URI.parse(document.uri))) {
-				this.update(document);
+				this._update(document);
 			}
 		}
 	}
 
-	private update(document: ITextDocument): void {
+	private _update(document: ITextDocument): void {
 		// TODO: cancel old request?
 
 		const cts = new CancellationTokenSource();
@@ -179,11 +179,11 @@ export class MdWorkspaceInfoCache<T> extends Disposable {
 		});
 	}
 
-	private onDidChangeDocument(document: ITextDocument) {
-		this.update(document);
+	private _onDidChangeDocument(document: ITextDocument) {
+		this._update(document);
 	}
 
-	private onDidDeleteDocument(resource: URI) {
+	private _onDidDeleteDocument(resource: URI) {
 		const entry = this._cache.get(resource);
 		if (entry) {
 			entry.cts.cancel();

@@ -44,8 +44,6 @@ extends:
           - script: npm run compile
             displayName: Compile
 
-          - script: yarn compile
-
         testSteps:
           - script: npm test
             displayName: Test npm package

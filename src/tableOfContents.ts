@@ -10,7 +10,7 @@ import { ILogger, LogLevel } from './logging';
 import { IMdParser, Token } from './parser';
 import { githubSlugifier, ISlugifier, Slug } from './slugify';
 import { makeRange } from './types/range';
-import { getLine, ITextDocument } from './types/textDocument';
+import { getDocUri, getLine, ITextDocument } from './types/textDocument';
 import { Disposable } from './util/dispose';
 import { IWorkspace } from './workspace';
 import { MdDocumentInfoCache } from './workspaceCache';
@@ -73,7 +73,7 @@ export class TableOfContents {
 	}
 
 	public static async createForContainingDoc(parser: IMdParser, workspace: IWorkspace, document: ITextDocument, token: CancellationToken): Promise<TableOfContents> {
-		const context = workspace.getContainingDocument?.(URI.parse(document.uri));
+		const context = workspace.getContainingDocument?.(getDocUri(document));
 		if (context) {
 			const entries = (await Promise.all(Array.from(context.children, async cell => {
 				const doc = await workspace.openMarkdownDocument(cell.uri);
@@ -89,7 +89,7 @@ export class TableOfContents {
 	}
 
 	private static async _buildToc(parser: IMdParser, document: ITextDocument, token: CancellationToken): Promise<TocEntry[]> {
-		const docUri = URI.parse(document.uri);
+		const docUri = getDocUri(document);
 
 		const toc: TocEntry[] = [];
 		const tokens = await parser.tokenize(document);

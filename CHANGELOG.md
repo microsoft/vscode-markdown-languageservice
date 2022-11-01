@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.0-alpha.1 UNRELEASED
+- Added optional `$uri` property on `ITextDocument` which lets implementers provide an actual uri instead of a string. This helps reduce the number of calls to `URI.parse`.
+
 ## 0.2.0 October 31, 2022
 - Added diagnostics for unused link definitions.
 - Added diagnostics for duplicated link definitions.

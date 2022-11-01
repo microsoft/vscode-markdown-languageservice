@@ -12,7 +12,7 @@ import { IMdParser } from '../parser';
 import { TableOfContents } from '../tableOfContents';
 import { translatePosition } from '../types/position';
 import { makeRange } from '../types/range';
-import { getLine, ITextDocument } from '../types/textDocument';
+import { getDocUri, getLine, ITextDocument } from '../types/textDocument';
 import { Schemes } from '../util/schemes';
 import { r } from '../util/string';
 import { FileStat, getWorkspaceFolder, IWorkspace, openLinkToMarkdownFile } from '../workspace';
@@ -375,6 +375,6 @@ export class MdPathCompletionProvider {
 	}
 
 	private _getFileUriOfTextDocument(document: ITextDocument): URI {
-		return this._workspace.getContainingDocument?.(URI.parse(document.uri))?.uri ?? URI.parse(document.uri);
+		return this._workspace.getContainingDocument?.(getDocUri(document))?.uri ?? getDocUri(document);
 	}
 }

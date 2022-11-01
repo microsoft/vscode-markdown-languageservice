@@ -12,7 +12,7 @@ import { LsConfiguration } from '../config';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { translatePosition } from '../types/position';
 import { modifyRange } from '../types/range';
-import { ITextDocument } from '../types/textDocument';
+import { getDocUri, ITextDocument } from '../types/textDocument';
 import { Disposable, IDisposable } from '../util/dispose';
 import { looksLikeMarkdownPath } from '../util/file';
 import { Limiter } from '../util/limiter';
@@ -178,7 +178,7 @@ export class DiagnosticComputer {
 		}
 
 		// Current doc always implicitly exists
-		statCache.set(URI.parse(doc.uri), { exists: true });
+		statCache.set(getDocUri(doc), { exists: true });
 
 		return {
 			links: links,
@@ -626,14 +626,12 @@ export class DiagnosticsManager extends Disposable implements IPullDiagnosticsMa
 	}
 
 	public async computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]> {
-		const uri = URI.parse(doc.uri);
-
 		const results = await this._computer.compute(doc, options, token);
 		if (token.isCancellationRequested) {
 			return [];
 		}
 
-		this._linkWatcher.updateLinksForDocument(uri, results.links, results.statCache);
+		this._linkWatcher.updateLinksForDocument(getDocUri(doc), results.links, results.statCache);
 		return results.diagnostics;
 	}
 

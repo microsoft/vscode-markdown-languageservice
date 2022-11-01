@@ -11,7 +11,7 @@ import { IMdParser } from '../parser';
 import { MdTableOfContentsProvider, TocEntry } from '../tableOfContents';
 import { translatePosition } from '../types/position';
 import { areRangesEqual, modifyRange, rangeContains } from '../types/range';
-import { ITextDocument } from '../types/textDocument';
+import { getDocUri, ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
 import { looksLikeMarkdownPath } from '../util/file';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
@@ -137,7 +137,7 @@ export class MdReferencesProvider extends Disposable {
 
 		for (const link of links) {
 			if (link.href.kind === HrefKind.Internal
-				&& looksLikeLinkToResource(this._configuration, link.href, URI.parse(document.uri))
+				&& looksLikeLinkToResource(this._configuration, link.href, getDocUri(document))
 				&& this._parser.slugifier.fromHeading(link.href.fragment).value === header.slug.value
 			) {
 				references.push({
@@ -163,7 +163,7 @@ export class MdReferencesProvider extends Disposable {
 			if (link.kind === MdLinkKind.Definition) {
 				// We could be in either the ref name or the definition
 				if (rangeContains(link.ref.range, position)) {
-					return Array.from(this._getReferencesToLinkReference(docLinks, link.ref.text, { resource: URI.parse(document.uri), range: link.ref.range }));
+					return Array.from(this._getReferencesToLinkReference(docLinks, link.ref.text, { resource: getDocUri(document), range: link.ref.range }));
 				} else if (rangeContains(link.source.hrefRange, position)) {
 					return this._getReferencesToLink(docLinks, link, position, token);
 				}

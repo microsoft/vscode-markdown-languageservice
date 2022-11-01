@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Position, Range } from 'vscode-languageserver-types';
+import { URI } from 'vscode-uri';
 import { makeRange } from './range';
 
 /**
@@ -14,6 +15,11 @@ export interface ITextDocument {
 	 * The uri of the document, as a string.
 	 */
 	readonly uri: string;
+
+	/**
+	 * The uri of the document, as a URI. 
+	 */
+	readonly $uri?: URI;
 	
 	/**
 	 * Version number of the document's content. 
@@ -40,4 +46,8 @@ export interface ITextDocument {
 
 export function getLine(doc: ITextDocument, line: number): string {
 	return doc.getText(makeRange(line, 0, line, Number.MAX_VALUE)).replace(/\r?\n$/, '');
+}
+
+export function getDocUri(doc: ITextDocument): URI {
+	return doc.$uri ?? URI.parse(doc.uri);
 }

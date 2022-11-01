@@ -12,7 +12,7 @@ import { ILogger, LogLevel } from '../logging';
 import { ISlugifier } from '../slugify';
 import { arePositionsEqual, translatePosition } from '../types/position';
 import { modifyRange, rangeContains } from '../types/range';
-import { ITextDocument } from '../types/textDocument';
+import { getDocUri, ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
 import { WorkspaceEditBuilder } from '../util/editBuilder';
 import { Schemes } from '../util/schemes';
@@ -221,7 +221,7 @@ export class MdRenameProvider extends Disposable {
 		const version = document.version;
 
 		if (this._cachedRefs
-			&& this._cachedRefs.resource.fsPath === URI.parse(document.uri).fsPath
+			&& this._cachedRefs.resource.fsPath === getDocUri(document).fsPath
 			&& this._cachedRefs.version === document.version
 			&& arePositionsEqual(this._cachedRefs.position, position)
 		) {
@@ -239,7 +239,7 @@ export class MdRenameProvider extends Disposable {
 		}
 
 		this._cachedRefs = {
-			resource: URI.parse(document.uri),
+			resource: getDocUri(document),
 			version,
 			position,
 			references,

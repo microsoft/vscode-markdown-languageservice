@@ -12,6 +12,7 @@ export class InMemoryDocument implements ITextDocument {
 
 	private _doc: TextDocument;
 
+	public readonly $uri: URI;
 	public readonly uri: string;
 
 	constructor(
@@ -19,9 +20,10 @@ export class InMemoryDocument implements ITextDocument {
 		contents: string,
 		public version = 0,
 	) {
+		this.$uri = uri;
 		this.uri = uri.toString();
 
-		this._doc = TextDocument.create(uri.toString(), 'markdown', version, contents);
+		this._doc = TextDocument.create(this.uri, 'markdown', version, contents);
 	}
 
 	get lineCount(): number {
@@ -38,7 +40,7 @@ export class InMemoryDocument implements ITextDocument {
 
 	updateContent(newContent: string) {
 		++this.version;
-		this._doc = TextDocument.create(this.uri.toString(), 'markdown', this.version, newContent);
+		this._doc = TextDocument.create(this.uri, 'markdown', this.version, newContent);
 	}
 
 	applyEdits(textEdits: lsp.TextEdit[]): string {

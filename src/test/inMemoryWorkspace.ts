@@ -7,7 +7,7 @@ import * as assert from 'assert';
 import * as path from 'path';
 import { Emitter } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
-import { ITextDocument } from '../types/textDocument';
+import { getDocUri, ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
 import { ResourceMap } from '../util/resourceMap';
 import { FileStat, FileWatcherOptions, IFileSystemWatcher, IWorkspaceWithWatching } from '../workspace';
@@ -46,7 +46,7 @@ export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatch
 
 		for (const doc of documents) {
 			if (doc instanceof InMemoryDocument) {
-				this._documents.set(URI.parse(doc.uri), doc);
+				this._documents.set(getDocUri(doc), doc);
 			} else {
 				this._additionalFiles.set(doc);
 			}
@@ -112,20 +112,20 @@ export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatch
 
 	private _getAllKnownFilePaths(): string[] {
 		return [
-			...Array.from(this._documents.values(), doc => URI.parse(doc.uri).fsPath),
+			...Array.from(this._documents.values(), doc => getDocUri(doc).fsPath),
 			...Array.from(this._additionalFiles.keys(), uri => uri.fsPath),
 		];
 	}
 
 	public updateDocument(document: ITextDocument) {
-		this._documents.set(URI.parse(document.uri), document);
+		this._documents.set(getDocUri(document), document);
 		this._onDidChangeMarkdownDocumentEmitter.fire(document);
 	}
 
 	public createDocument(document: ITextDocument) {
-		assert.ok(!this._documents.has(URI.parse(document.uri)));
+		assert.ok(!this._documents.has(getDocUri(document)));
 
-		this._documents.set(URI.parse(document.uri), document);
+		this._documents.set(getDocUri(document), document);
 		this._onDidCreateMarkdownDocumentEmitter.fire(document);
 	}
 

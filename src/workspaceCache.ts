@@ -5,7 +5,7 @@
 
 import { CancellationToken, CancellationTokenSource } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
-import { ITextDocument } from './types/textDocument';
+import { getDocUri, ITextDocument } from './types/textDocument';
 import { Disposable } from './util/dispose';
 import { lazy, Lazy } from './util/lazy';
 import { ResourceMap } from './util/resourceMap';
@@ -58,7 +58,7 @@ export class MdDocumentInfoCache<T> extends Disposable {
 	}
 
 	public async getForDocument(document: ITextDocument): Promise<T> {
-		const existing = this._cache.get(URI.parse(document.uri));
+		const existing = this._cache.get(getDocUri(document));
 		if (existing) {
 			return existing.value.value;
 		}
@@ -84,12 +84,12 @@ export class MdDocumentInfoCache<T> extends Disposable {
 
 		const cts = new CancellationTokenSource();
 		const value = lazy(() => this._getValue(document, cts.token));
-		this._cache.set(URI.parse(document.uri), { value, cts });
+		this._cache.set(getDocUri(document), { value, cts });
 		return value;
 	}
 
 	private _invalidate(document: ITextDocument): void {
-		if (this._cache.has(URI.parse(document.uri))) {
+		if (this._cache.has(getDocUri(document))) {
 			this._resetEntry(document);
 		}
 	}
@@ -145,12 +145,12 @@ export class MdWorkspaceInfoCache<T> extends Disposable {
 
 	public async getForDocs(docs: readonly ITextDocument[]): Promise<T[]> {
 		for (const doc of docs) {
-			if (!this._cache.has(URI.parse(doc.uri))) {
+			if (!this._cache.has(getDocUri(doc))) {
 				this._update(doc);
 			}
 		}
 
-		return Promise.all(docs.map(doc => this._cache.get(URI.parse(doc.uri))!.value.value));
+		return Promise.all(docs.map(doc => this._cache.get(getDocUri(doc))!.value.value));
 	}
 
 	private async _ensureInit(): Promise<void> {
@@ -163,7 +163,7 @@ export class MdWorkspaceInfoCache<T> extends Disposable {
 	private async _populateCache(): Promise<void> {
 		const markdownDocuments = await this._workspace.getAllMarkdownDocuments();
 		for (const document of markdownDocuments) {
-			if (!this._cache.has(URI.parse(document.uri))) {
+			if (!this._cache.has(getDocUri(document))) {
 				this._update(document);
 			}
 		}
@@ -173,7 +173,7 @@ export class MdWorkspaceInfoCache<T> extends Disposable {
 		// TODO: cancel old request?
 
 		const cts = new CancellationTokenSource();
-		this._cache.set(URI.parse(document.uri), {
+		this._cache.set(getDocUri(document), {
 			value: lazy(() => this._getValue(document, cts.token)),
 			cts
 		});

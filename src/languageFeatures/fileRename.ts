@@ -7,7 +7,7 @@ import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { URI, Utils } from 'vscode-uri';
 import { isExcludedPath, LsConfiguration } from '../config';
-import { ITextDocument } from '../types/textDocument';
+import { getDocUri, ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
 import { WorkspaceEditBuilder } from '../util/editBuilder';
 import { looksLikeMarkdownPath } from '../util/file';
@@ -197,7 +197,7 @@ export class MdFileRenameProvider extends Disposable {
 			}
 		}
 
-		return this._addLinkRenameEdit(URI.parse(doc.uri), link, oldLink.resource, builder);
+		return this._addLinkRenameEdit(getDocUri(doc), link, oldLink.resource, builder);
 	}
 
 	/**

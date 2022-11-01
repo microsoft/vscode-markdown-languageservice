@@ -6,10 +6,9 @@
 import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import * as nls from 'vscode-nls';
-import { URI } from 'vscode-uri';
 import { comparePosition, translatePosition } from '../../types/position';
 import { makeRange, rangeIntersects } from '../../types/range';
-import { getLine, ITextDocument } from '../../types/textDocument';
+import { getDocUri, getLine, ITextDocument } from '../../types/textDocument';
 import { WorkspaceEditBuilder } from '../../util/editBuilder';
 import { ExternalHref, HrefKind, InternalHref, LinkDefinitionSet, MdDocumentLinksInfo, MdInlineLink, MdLink, MdLinkDefinition, MdLinkKind, MdLinkProvider } from '../documentLinks';
 import { getExistingDefinitionBlock } from '../organizeLinkDefs';
@@ -81,7 +80,7 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 
 	private _getExtractLinkAction(doc: ITextDocument, linkInfo: MdDocumentLinksInfo, targetLink: MdInlineLink<InternalHref | ExternalHref>): lsp.CodeAction {
 		const builder = new WorkspaceEditBuilder();
-		const resource = URI.parse(doc.uri);
+		const resource = getDocUri(doc);
 		const placeholder = this._getPlaceholder(linkInfo.definitions);
 
 		// Rewrite all inline occurrences of the link
@@ -110,7 +109,7 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 			command: {
 				command: 'vscodeMarkdownLanguageservice.rename',
 				title: 'Rename',
-				arguments: [URI.parse(doc.uri), renamePosition],
+				arguments: [getDocUri(doc), renamePosition],
 			}
 		};
 	}

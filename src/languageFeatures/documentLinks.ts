@@ -13,7 +13,7 @@ import { IMdParser } from '../parser';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { translatePosition } from '../types/position';
 import { makeRange, rangeContains } from '../types/range';
-import { getLine, ITextDocument } from '../types/textDocument';
+import { getDocUri, getLine, ITextDocument } from '../types/textDocument';
 import { coalesce } from '../util/arrays';
 import { Disposable } from '../util/dispose';
 import { r } from '../util/string';
@@ -205,7 +205,7 @@ function createMdLink(
 
 	let linkTarget: ExternalHref | InternalHref | undefined;
 	try {
-		linkTarget = createHref(URI.parse(document.uri), link, workspace);
+		linkTarget = createHref(getDocUri(document), link, workspace);
 	} catch {
 		return undefined;
 	}
@@ -229,7 +229,7 @@ function createMdLink(
 		href: linkTarget,
 		source: {
 			hrefText: link,
-			resource: URI.parse(document.uri),
+			resource: getDocUri(document),
 			range: { start: linkStart, end: linkEnd },
 			targetRange,
 			hrefRange,
@@ -449,7 +449,7 @@ export class MdLinkComputer {
 
 	private *_getAutoLinks(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
 		const text = document.getText();
-		const docUri = URI.parse(document.uri);
+		const docUri = getDocUri(document);
 		for (const match of text.matchAll(autoLinkPattern)) {
 			const linkOffset = (match.index ?? 0);
 			const linkStart = document.positionAt(linkOffset);
@@ -553,7 +553,7 @@ export class MdLinkComputer {
 				source: {
 					hrefText: reference,
 					pathText: reference,
-					resource: URI.parse(document.uri),
+					resource: getDocUri(document),
 					range: { start: linkStart, end: linkEnd },
 					targetRange: hrefRange,
 					hrefRange: hrefRange,
@@ -569,7 +569,7 @@ export class MdLinkComputer {
 
 	private *_getLinkDefinitions(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLinkDefinition> {
 		const text = document.getText();
-		const docUri = URI.parse(document.uri);
+		const docUri = getDocUri(document);
 		for (const match of text.matchAll(definitionPattern)) {
 			const offset = (match.index ?? 0);
 			const linkStart = document.positionAt(offset);

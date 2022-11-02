@@ -93,30 +93,40 @@ function tryDecodeUriComponent(str: string): string {
  */
 export class MdPathCompletionProvider {
 
+	readonly #configuration: LsConfiguration;
+	readonly #workspace: IWorkspace;
+	readonly #parser: IMdParser;
+	readonly #linkProvider: MdLinkProvider;
+
 	constructor(
-		private readonly _configuration: LsConfiguration,
-		private readonly _workspace: IWorkspace,
-		private readonly _parser: IMdParser,
-		private readonly _linkProvider: MdLinkProvider,
-	) { }
+		configuration: LsConfiguration,
+		workspace: IWorkspace,
+		parser: IMdParser,
+		linkProvider: MdLinkProvider,
+	) {
+		this.#configuration = configuration;
+		this.#workspace = workspace;
+		this.#parser = parser;
+		this.#linkProvider = linkProvider;
+	}
 
 	public async provideCompletionItems(document: ITextDocument, position: lsp.Position, _context: CompletionContext, token: CancellationToken): Promise<lsp.CompletionItem[]> {
-		const context = this._getPathCompletionContext(document, position);
+		const context = this.#getPathCompletionContext(document, position);
 		if (!context) {
 			return [];
 		}
 
 		const items: lsp.CompletionItem[] = [];
-		for await (const item of this._provideCompletionItems(document, position, context, token)) {
+		for await (const item of this.#provideCompletionItems(document, position, context, token)) {
 			items.push(item);
 		}
 		return items;
 	}
 
-	private async *_provideCompletionItems(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
+	async *#provideCompletionItems(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
 		switch (context.kind) {
 			case CompletionContextKind.ReferenceLink: {
-				yield* this._provideReferenceSuggestions(document, position, context, token);
+				yield* this.#provideReferenceSuggestions(document, position, context, token);
 				return;
 			}
 			case CompletionContextKind.LinkDefinition:
@@ -126,7 +136,7 @@ export class MdPathCompletionProvider {
 				// Add anchor #links in current doc
 				if (context.linkPrefix.length === 0 || isAnchorInCurrentDoc) {
 					const insertRange = makeRange(context.linkTextStartPosition, position);
-					yield* this._provideHeaderSuggestions(document, position, context, insertRange, token);
+					yield* this.#provideHeaderSuggestions(document, position, context, insertRange, token);
 				}
 
 				if (token.isCancellationRequested) {
@@ -135,9 +145,9 @@ export class MdPathCompletionProvider {
 
 				if (!isAnchorInCurrentDoc) {
 					if (context.anchorInfo) { // Anchor to a different document
-						const rawUri = this._resolveReference(document, context.anchorInfo.beforeAnchor);
+						const rawUri = this.#resolveReference(document, context.anchorInfo.beforeAnchor);
 						if (rawUri) {
-							const otherDoc = await openLinkToMarkdownFile(this._configuration, this._workspace, rawUri);
+							const otherDoc = await openLinkToMarkdownFile(this.#configuration, this.#workspace, rawUri);
 							if (token.isCancellationRequested) {
 								return;
 							}
@@ -145,11 +155,11 @@ export class MdPathCompletionProvider {
 							if (otherDoc) {
 								const anchorStartPosition = translatePosition(position, { characterDelta: -(context.anchorInfo.anchorPrefix.length + 1) });
 								const range = makeRange(anchorStartPosition, position);
-								yield* this._provideHeaderSuggestions(otherDoc, position, context, range, token);
+								yield* this.#provideHeaderSuggestions(otherDoc, position, context, range, token);
 							}
 						}
 					} else { // Normal path suggestions
-						yield* this._providePathSuggestions(document, position, context, token);
+						yield* this.#providePathSuggestions(document, position, context, token);
 					}
 				}
 
@@ -159,7 +169,7 @@ export class MdPathCompletionProvider {
 	}
 
 	/// [...](...|
-	private readonly _linkStartPattern = new RegExp(
+	readonly #linkStartPattern = new RegExp(
 		// text
 		r`\[` +
 		/**/r`(?:` +
@@ -174,22 +184,22 @@ export class MdPathCompletionProvider {
 	);
 
 	/// [...][...|
-	private readonly _referenceLinkStartPattern = /\[([^\]]*?)\]\[\s*([^\s\(\)]*)$/;
+	readonly #referenceLinkStartPattern = /\[([^\]]*?)\]\[\s*([^\s\(\)]*)$/;
 
 	/// [id]: |
-	private readonly _definitionPattern = /^\s*\[[\w\-]+\]:\s*([^\s]*)$/m;
+	readonly #definitionPattern = /^\s*\[[\w\-]+\]:\s*([^\s]*)$/m;
 
-	private _getPathCompletionContext(document: ITextDocument, position: lsp.Position): PathCompletionContext | undefined {
+	#getPathCompletionContext(document: ITextDocument, position: lsp.Position): PathCompletionContext | undefined {
 		const line = getLine(document, position.line);
 
 		const linePrefixText = line.slice(0, position.character);
 		const lineSuffixText = line.slice(position.character);
 
-		const linkPrefixMatch = linePrefixText.match(this._linkStartPattern);
+		const linkPrefixMatch = linePrefixText.match(this.#linkStartPattern);
 		if (linkPrefixMatch) {
 			const isAngleBracketLink = linkPrefixMatch[1].startsWith('<');
 			const prefix = linkPrefixMatch[1].slice(isAngleBracketLink ? 1 : 0);
-			if (this._refLooksLikeUrl(prefix)) {
+			if (this.#refLooksLikeUrl(prefix)) {
 				return undefined;
 			}
 
@@ -199,16 +209,16 @@ export class MdPathCompletionProvider {
 				linkPrefix: tryDecodeUriComponent(prefix),
 				linkTextStartPosition: translatePosition(position, { characterDelta: -prefix.length }),
 				linkSuffix: suffix ? suffix[0] : '',
-				anchorInfo: this._getAnchorContext(prefix),
+				anchorInfo: this.#getAnchorContext(prefix),
 				skipEncoding: isAngleBracketLink,
 			};
 		}
 
-		const definitionLinkPrefixMatch = linePrefixText.match(this._definitionPattern);
+		const definitionLinkPrefixMatch = linePrefixText.match(this.#definitionPattern);
 		if (definitionLinkPrefixMatch) {
 			const isAngleBracketLink = definitionLinkPrefixMatch[1].startsWith('<');
 			const prefix = definitionLinkPrefixMatch[1].slice(isAngleBracketLink ? 1 : 0);
-			if (this._refLooksLikeUrl(prefix)) {
+			if (this.#refLooksLikeUrl(prefix)) {
 				return undefined;
 			}
 
@@ -218,12 +228,12 @@ export class MdPathCompletionProvider {
 				linkPrefix: tryDecodeUriComponent(prefix),
 				linkTextStartPosition: translatePosition(position, { characterDelta: -prefix.length }),
 				linkSuffix: suffix ? suffix[0] : '',
-				anchorInfo: this._getAnchorContext(prefix),
+				anchorInfo: this.#getAnchorContext(prefix),
 				skipEncoding: isAngleBracketLink,
 			};
 		}
 
-		const referenceLinkPrefixMatch = linePrefixText.match(this._referenceLinkStartPattern);
+		const referenceLinkPrefixMatch = linePrefixText.match(this.#referenceLinkStartPattern);
 		if (referenceLinkPrefixMatch) {
 			const prefix = referenceLinkPrefixMatch[2];
 			const suffix = lineSuffixText.match(/^[^\]\s]*/);
@@ -241,11 +251,11 @@ export class MdPathCompletionProvider {
 	/**
 	 * Check if {@param ref} looks like a 'http:' style url.
 	 */
-	private _refLooksLikeUrl(prefix: string): boolean {
+	#refLooksLikeUrl(prefix: string): boolean {
 		return /^\s*[\w\d\-]+:/.test(prefix);
 	}
 
-	private _getAnchorContext(prefix: string): AnchorContext | undefined {
+	#getAnchorContext(prefix: string): AnchorContext | undefined {
 		const anchorMatch = prefix.match(/^(.*)#([\w\d\-]*)$/);
 		if (!anchorMatch) {
 			return undefined;
@@ -256,11 +266,11 @@ export class MdPathCompletionProvider {
 		};
 	}
 
-	private async *_provideReferenceSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
+	async *#provideReferenceSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
 		const insertionRange = makeRange(context.linkTextStartPosition, position);
 		const replacementRange = makeRange(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
 
-		const { definitions } = await this._linkProvider.getLinks(document);
+		const { definitions } = await this.#linkProvider.getLinks(document);
 		if (token.isCancellationRequested) {
 			return;
 		}
@@ -278,8 +288,8 @@ export class MdPathCompletionProvider {
 		}
 	}
 
-	private async *_provideHeaderSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, insertionRange: lsp.Range, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
-		const toc = await TableOfContents.createForContainingDoc(this._parser, this._workspace, document, token);
+	async *#provideHeaderSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, insertionRange: lsp.Range, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
+		const toc = await TableOfContents.createForContainingDoc(this.#parser, this.#workspace, document, token);
 		if (token.isCancellationRequested) {
 			return;
 		}
@@ -299,10 +309,10 @@ export class MdPathCompletionProvider {
 		}
 	}
 
-	private async *_providePathSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
+	async *#providePathSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
 		const valueBeforeLastSlash = context.linkPrefix.substring(0, context.linkPrefix.lastIndexOf('/') + 1); // keep the last slash
 
-		const parentDir = this._resolveReference(document, valueBeforeLastSlash || '.');
+		const parentDir = this.#resolveReference(document, valueBeforeLastSlash || '.');
 		if (!parentDir) {
 			return;
 		}
@@ -315,7 +325,7 @@ export class MdPathCompletionProvider {
 
 		let dirInfo: Iterable<readonly [string, FileStat]>;
 		try {
-			dirInfo = await this._workspace.readDirectory(parentDir);
+			dirInfo = await this.#workspace.readDirectory(parentDir);
 		} catch {
 			return;
 		}
@@ -326,7 +336,7 @@ export class MdPathCompletionProvider {
 
 		for (const [name, type] of dirInfo) {
 			const uri = Utils.joinPath(parentDir, name);
-			if (isExcludedPath(this._configuration, uri)) {
+			if (isExcludedPath(this.#configuration, uri)) {
 				continue;
 			}
 
@@ -345,22 +355,22 @@ export class MdPathCompletionProvider {
 		}
 	}
 
-	private _resolveReference(document: ITextDocument, ref: string): URI | undefined {
-		const docUri = this._getFileUriOfTextDocument(document);
+	#resolveReference(document: ITextDocument, ref: string): URI | undefined {
+		const docUri = this.#getFileUriOfTextDocument(document);
 
 		if (ref.startsWith('/')) {
-			const workspaceFolder = getWorkspaceFolder(this._workspace, docUri);
+			const workspaceFolder = getWorkspaceFolder(this.#workspace, docUri);
 			if (workspaceFolder) {
 				return Utils.joinPath(workspaceFolder, ref);
 			} else {
-				return this._resolvePath(docUri, ref.slice(1));
+				return this.#resolvePath(docUri, ref.slice(1));
 			}
 		}
 
-		return this._resolvePath(docUri, ref);
+		return this.#resolvePath(docUri, ref);
 	}
 
-	private _resolvePath(root: URI, ref: string): URI | undefined {
+	#resolvePath(root: URI, ref: string): URI | undefined {
 		try {
 			if (root.scheme === Schemes.file) {
 				return URI.file(resolve(dirname(root.fsPath), ref));
@@ -374,7 +384,7 @@ export class MdPathCompletionProvider {
 		}
 	}
 
-	private _getFileUriOfTextDocument(document: ITextDocument): URI {
-		return this._workspace.getContainingDocument?.(getDocUri(document))?.uri ?? getDocUri(document);
+	#getFileUriOfTextDocument(document: ITextDocument): URI {
+		return this.#workspace.getContainingDocument?.(getDocUri(document))?.uri ?? getDocUri(document);
 	}
 }

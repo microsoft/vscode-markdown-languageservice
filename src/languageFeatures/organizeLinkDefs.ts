@@ -12,12 +12,14 @@ import { HrefKind, MdLinkDefinition, MdLinkKind, MdLinkProvider } from './docume
 
 export class MdOrganizeLinkDefinitionProvider {
 
-	constructor(
-		private readonly _linkProvider: MdLinkProvider
-	) { }
+	readonly #linkProvider: MdLinkProvider;
+
+	constructor(linkProvider: MdLinkProvider) {
+		this.#linkProvider = linkProvider;
+	}
 
 	async getOrganizeLinkDefinitionEdits(doc: ITextDocument, options: { readonly removeUnused?: boolean }, token: CancellationToken): Promise<lsp.TextEdit[]> {
-		const links = await this._linkProvider.getLinks(doc);
+		const links = await this.#linkProvider.getLinks(doc);
 		if (token.isCancellationRequested) {
 			return [];
 		}
@@ -31,7 +33,7 @@ export class MdOrganizeLinkDefinitionProvider {
 		const edits: lsp.TextEdit[] = [];
 
 		// First replace all inline definitions that are not the definition block
-		for (const group of this._getDefinitionBlockGroups(doc, definitions)) {
+		for (const group of this.#getDefinitionBlockGroups(doc, definitions)) {
 			if (!existingDefBlockRange || group.startLine < existingDefBlockRange.startLine) {
 				// Don't replace trailing newline of last definition in group
 				edits.push({
@@ -74,7 +76,7 @@ export class MdOrganizeLinkDefinitionProvider {
 				range: makeRange(existingDefBlockRange.startLine, 0, existingDefBlockRange.endLine, getLine(doc, existingDefBlockRange.endLine).length)
 			});
 		} else {
-			const line = this._getLastNonWhitespaceLine(doc, definitions);
+			const line = this.#getLastNonWhitespaceLine(doc, definitions);
 			edits.push({
 				newText: (line === doc.lineCount - 1 ? '\n\n' : '\n') + defBlock,
 				range: makeRange(line + 1, 0, doc.lineCount, 0),
@@ -84,7 +86,7 @@ export class MdOrganizeLinkDefinitionProvider {
 		return edits;
 	}
 
-	private *_getDefinitionBlockGroups(doc: ITextDocument, definitions: readonly MdLinkDefinition[]): Iterable<{ readonly startLine: number, readonly endLine: number }> {
+	*#getDefinitionBlockGroups(doc: ITextDocument, definitions: readonly MdLinkDefinition[]): Iterable<{ readonly startLine: number, readonly endLine: number }> {
 		if (!definitions.length) {
 			return;
 		}
@@ -102,10 +104,10 @@ export class MdOrganizeLinkDefinitionProvider {
 		}
 
 		yield { startLine: startDef.source.range.start.line, endLine: endDef.source.range.start.line };
-		yield* this._getDefinitionBlockGroups(doc, definitions.slice(i + 1));
+		yield* this.#getDefinitionBlockGroups(doc, definitions.slice(i + 1));
 	}
 
-	private _getLastNonWhitespaceLine(doc: ITextDocument, orderedDefinitions: readonly MdLinkDefinition[]): number {
+	#getLastNonWhitespaceLine(doc: ITextDocument, orderedDefinitions: readonly MdLinkDefinition[]): number {
 		const lastDef = orderedDefinitions[orderedDefinitions.length - 1];
 		const textAfter = doc.getText(makeRange(lastDef.source.range.end.line + 1, 0, Infinity, 0));
 		const lines = textAfter.split(/\r\n|\n/g);

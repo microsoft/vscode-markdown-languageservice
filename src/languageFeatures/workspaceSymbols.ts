@@ -13,19 +13,21 @@ import { MdDocumentSymbolProvider } from './documentSymbols';
 
 export class MdWorkspaceSymbolProvider extends Disposable {
 
-	private readonly _cache: MdWorkspaceInfoCache<lsp.SymbolInformation[]>;
+	readonly #cache: MdWorkspaceInfoCache<lsp.SymbolInformation[]>;
+	readonly #symbolProvider: MdDocumentSymbolProvider;
 
 	public constructor(
 		workspace: IWorkspace,
-		private readonly _symbolProvider: MdDocumentSymbolProvider,
+		symbolProvider: MdDocumentSymbolProvider,
 	) {
 		super();
+		this.#symbolProvider = symbolProvider;
 
-		this._cache = this._register(new MdWorkspaceInfoCache(workspace, (doc, token) => this.provideDocumentSymbolInformation(doc, token)));
+		this.#cache = this._register(new MdWorkspaceInfoCache(workspace, (doc, token) => this.provideDocumentSymbolInformation(doc, token)));
 	}
 
 	public async provideWorkspaceSymbols(query: string, token: CancellationToken): Promise<lsp.WorkspaceSymbol[]> {
-		const allSymbols = await this._cache.values();
+		const allSymbols = await this.#cache.values();
 		if (token.isCancellationRequested) {
 			return [];
 		}
@@ -35,14 +37,14 @@ export class MdWorkspaceSymbolProvider extends Disposable {
 	}
 
 	public async provideDocumentSymbolInformation(document: ITextDocument, token: CancellationToken): Promise<lsp.SymbolInformation[]> {
-		const docSymbols = await this._symbolProvider.provideDocumentSymbols(document, {}, token);
+		const docSymbols = await this.#symbolProvider.provideDocumentSymbols(document, {}, token);
 		if (token.isCancellationRequested) {
 			return [];
 		}
-		return Array.from(this._toSymbolInformation(document.uri, docSymbols));
+		return Array.from(this.#toSymbolInformation(document.uri, docSymbols));
 	}
 
-	private *_toSymbolInformation(uri: string, docSymbols: lsp.DocumentSymbol[]): Iterable<lsp.SymbolInformation> {
+	*#toSymbolInformation(uri: string, docSymbols: lsp.DocumentSymbol[]): Iterable<lsp.SymbolInformation> {
 		for (const symbol of docSymbols) {
 			yield {
 				name: symbol.name,
@@ -50,7 +52,7 @@ export class MdWorkspaceSymbolProvider extends Disposable {
 				location: { uri, range: symbol.selectionRange }
 			};
 			if (symbol.children) {
-				yield* this._toSymbolInformation(uri, symbol.children);
+				yield* this.#toSymbolInformation(uri, symbol.children);
 			}
 		}
 	}

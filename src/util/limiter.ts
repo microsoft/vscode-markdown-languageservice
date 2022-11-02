@@ -21,47 +21,47 @@ interface ITask<T> {
  */
 export class Limiter<T> {
 
-	private _size = 0;
-	private _runningPromises: number;
-	private readonly _maxDegreeOfParalellism: number;
-	private readonly _outstandingPromises: ILimitedTaskFactory<T>[];
+	#size = 0;
+	#runningPromises: number;
+	readonly #maxDegreeOfParalellism: number;
+	readonly #outstandingPromises: ILimitedTaskFactory<T>[];
 
 	constructor(maxDegreeOfParalellism: number) {
-		this._maxDegreeOfParalellism = maxDegreeOfParalellism;
-		this._outstandingPromises = [];
-		this._runningPromises = 0;
+		this.#maxDegreeOfParalellism = maxDegreeOfParalellism;
+		this.#outstandingPromises = [];
+		this.#runningPromises = 0;
 	}
 
 	get size(): number {
-		return this._size;
+		return this.#size;
 	}
 
 	queue(factory: ITask<Promise<T>>): Promise<T> {
-		this._size++;
+		this.#size++;
 
 		return new Promise<T>((c, e) => {
-			this._outstandingPromises.push({ factory, c, e });
-			this._consume();
+			this.#outstandingPromises.push({ factory, c, e });
+			this.#consume();
 		});
 	}
 
-	private _consume(): void {
-		while (this._outstandingPromises.length && this._runningPromises < this._maxDegreeOfParalellism) {
-			const iLimitedTask = this._outstandingPromises.shift()!;
-			this._runningPromises++;
+	#consume(): void {
+		while (this.#outstandingPromises.length && this.#runningPromises < this.#maxDegreeOfParalellism) {
+			const iLimitedTask = this.#outstandingPromises.shift()!;
+			this.#runningPromises++;
 
 			const promise = iLimitedTask.factory();
 			promise.then(iLimitedTask.c, iLimitedTask.e);
-			promise.then(() => this._consumed(), () => this._consumed());
+			promise.then(() => this.#consumed(), () => this.#consumed());
 		}
 	}
 
-	private _consumed(): void {
-		this._size--;
-		this._runningPromises--;
+	#consumed(): void {
+		this.#size--;
+		this.#runningPromises--;
 
-		if (this._outstandingPromises.length > 0) {
-			this._consume();
+		if (this.#outstandingPromises.length > 0) {
+			this.#consume();
 		}
 	}
 }

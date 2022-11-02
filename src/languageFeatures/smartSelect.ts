@@ -15,42 +15,50 @@ import { isEmptyOrWhitespace } from '../util/string';
 
 export class MdSelectionRangeProvider {
 
+	readonly #parser: IMdParser;
+	readonly #tocProvider: MdTableOfContentsProvider;
+	readonly #logger: ILogger;
+
 	constructor(
-		private readonly _parser: IMdParser,
-		private readonly _tocProvider: MdTableOfContentsProvider,
-		private readonly _logger: ILogger,
-	) { }
+		parser: IMdParser,
+		tocProvider: MdTableOfContentsProvider,
+		logger: ILogger,
+	) {
+		this.#parser = parser;
+		this.#tocProvider = tocProvider;
+		this.#logger = logger;
+	}
 
 	public async provideSelectionRanges(document: ITextDocument, positions: Position[], token: CancellationToken): Promise<lsp.SelectionRange[] | undefined> {
-		this._logger.log(LogLevel.Debug, 'MdSelectionRangeProvider', `provideSelectionRanges — ${document.uri} ${document.version}`);
+		this.#logger.log(LogLevel.Debug, 'MdSelectionRangeProvider', `provideSelectionRanges — ${document.uri} ${document.version}`);
 
 		const promises = await Promise.all(positions.map((position) => {
-			return this._provideSelectionRange(document, position, token);
+			return this.#provideSelectionRange(document, position, token);
 		}));
 		return promises.filter(item => item !== undefined) as lsp.SelectionRange[];
 	}
 
-	private async _provideSelectionRange(document: ITextDocument, position: Position, token: CancellationToken): Promise<lsp.SelectionRange | undefined> {
-		const headerRange = await this._getHeaderSelectionRange(document, position);
+	async #provideSelectionRange(document: ITextDocument, position: Position, token: CancellationToken): Promise<lsp.SelectionRange | undefined> {
+		const headerRange = await this.#getHeaderSelectionRange(document, position);
 		if (token.isCancellationRequested) {
 			return;
 		}
 
-		const blockRange = await this._getBlockSelectionRange(document, position, headerRange);
+		const blockRange = await this.#getBlockSelectionRange(document, position, headerRange);
 		if (token.isCancellationRequested) {
 			return;
 		}
 
-		const inlineRange = await this._getInlineSelectionRange(document, position, blockRange);
+		const inlineRange = await this.#getInlineSelectionRange(document, position, blockRange);
 		return inlineRange || blockRange || headerRange;
 	}
 
-	private async _getInlineSelectionRange(document: ITextDocument, position: Position, blockRange?: lsp.SelectionRange): Promise<lsp.SelectionRange | undefined> {
+	async #getInlineSelectionRange(document: ITextDocument, position: Position, blockRange?: lsp.SelectionRange): Promise<lsp.SelectionRange | undefined> {
 		return createInlineRange(document, position, blockRange);
 	}
 
-	private async _getBlockSelectionRange(document: ITextDocument, position: Position, headerRange?: lsp.SelectionRange): Promise<lsp.SelectionRange | undefined> {
-		const tokens = await this._parser.tokenize(document);
+	async #getBlockSelectionRange(document: ITextDocument, position: Position, headerRange?: lsp.SelectionRange): Promise<lsp.SelectionRange | undefined> {
+		const tokens = await this.#parser.tokenize(document);
 		const blockTokens = getBlockTokensForPosition(tokens, position, headerRange);
 
 		if (blockTokens.length === 0) {
@@ -65,8 +73,8 @@ export class MdSelectionRangeProvider {
 		return currentRange;
 	}
 
-	private async _getHeaderSelectionRange(document: ITextDocument, position: Position): Promise<lsp.SelectionRange | undefined> {
-		const toc = await this._tocProvider.getForDocument(document);
+	async #getHeaderSelectionRange(document: ITextDocument, position: Position): Promise<lsp.SelectionRange | undefined> {
+		const toc = await this.#tocProvider.getForDocument(document);
 
 		const headerInfo = getHeadersForPosition(toc.entries, position);
 

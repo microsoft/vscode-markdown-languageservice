@@ -10,7 +10,7 @@ import { ITextDocument } from '../types/textDocument';
 
 export class InMemoryDocument implements ITextDocument {
 
-	private _doc: TextDocument;
+	#doc: TextDocument;
 
 	public readonly $uri: URI;
 	public readonly uri: string;
@@ -23,27 +23,27 @@ export class InMemoryDocument implements ITextDocument {
 		this.$uri = uri;
 		this.uri = uri.toString();
 
-		this._doc = TextDocument.create(this.uri, 'markdown', version, contents);
+		this.#doc = TextDocument.create(this.uri, 'markdown', version, contents);
 	}
 
 	get lineCount(): number {
-		return this._doc.lineCount;
+		return this.#doc.lineCount;
 	}
 
 	positionAt(offset: number): lsp.Position {
-		return this._doc.positionAt(offset);
+		return this.#doc.positionAt(offset);
 	}
 
 	getText(range?: lsp.Range): string {
-		return this._doc.getText(range);
+		return this.#doc.getText(range);
 	}
 
 	updateContent(newContent: string) {
 		++this.version;
-		this._doc = TextDocument.create(this.uri, 'markdown', this.version, newContent);
+		this.#doc = TextDocument.create(this.uri, 'markdown', this.version, newContent);
 	}
 
 	applyEdits(textEdits: lsp.TextEdit[]): string {
-		return TextDocument.applyEdits(this._doc, textEdits);
+		return TextDocument.applyEdits(this.#doc, textEdits);
 	}
 }

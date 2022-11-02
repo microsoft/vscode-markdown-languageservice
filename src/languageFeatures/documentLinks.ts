@@ -326,12 +326,12 @@ const definitionPattern = /^([\t ]*\[(?!\^)((?:\\\]|[^\]])+)\]:\s*)([^<]\S*|<[^>
 const inlineCodePattern = /(^|[^`])(`+)((?:.+?|.*?(?:(?:\r?\n).+?)*?)(?:\r?\n)?\2)(?:$|[^`])/gm;
 
 class NoLinkRanges {
-	private static readonly _empty = new NoLinkRanges([], new Map());
+	static readonly #empty = new NoLinkRanges([], new Map());
 
 	public static async compute(tokenizer: IMdParser, document: ITextDocument, token: CancellationToken): Promise<NoLinkRanges> {
 		const tokens = await tokenizer.tokenize(document);
 		if (token.isCancellationRequested) {
-			return NoLinkRanges._empty;
+			return NoLinkRanges.#empty;
 		}
 
 		const multiline = tokens.filter(t => (t.type === 'code_block' || t.type === 'fence' || t.type === 'html_block') && !!t.map).map(t => t.map) as [number, number][];
@@ -402,31 +402,37 @@ export type ResolvedDocumentLinkTarget =
  */
 export class MdLinkComputer {
 
+	readonly #tokenizer: IMdParser;
+	readonly #workspace: IWorkspace;
+
 	constructor(
-		private readonly _tokenizer: IMdParser,
-		private readonly _workspace: IWorkspace,
-	) { }
+		tokenizer: IMdParser,
+		workspace: IWorkspace,
+	) {
+		this.#tokenizer = tokenizer;
+		this.#workspace = workspace;
+	}
 
 	public async getAllLinks(document: ITextDocument, token: CancellationToken): Promise<MdLink[]> {
-		const noLinkRanges = await NoLinkRanges.compute(this._tokenizer, document, token);
+		const noLinkRanges = await NoLinkRanges.compute(this.#tokenizer, document, token);
 		if (token.isCancellationRequested) {
 			return [];
 		}
 
-		const inlineLinks = Array.from(this._getInlineLinks(document, noLinkRanges));
+		const inlineLinks = Array.from(this.#getInlineLinks(document, noLinkRanges));
 		return [
 			...inlineLinks,
-			...this._getReferenceLinks(document, noLinkRanges.concatInline(inlineLinks.map(x => x.source.range))),
-			...this._getLinkDefinitions(document, noLinkRanges),
-			...this._getAutoLinks(document, noLinkRanges),
+			...this.#getReferenceLinks(document, noLinkRanges.concatInline(inlineLinks.map(x => x.source.range))),
+			...this.#getLinkDefinitions(document, noLinkRanges),
+			...this.#getAutoLinks(document, noLinkRanges),
 		];
 	}
 
-	private *_getInlineLinks(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
+	*#getInlineLinks(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
 		const text = document.getText();
 		for (const match of text.matchAll(linkPattern)) {
 			const linkTextIncludingBrackets = match[1];
-			const matchLinkData = createMdLink(document, linkTextIncludingBrackets, match[2], match[3], match.index ?? 0, match[0], this._workspace);
+			const matchLinkData = createMdLink(document, linkTextIncludingBrackets, match[2], match[3], match.index ?? 0, match[0], this.#workspace);
 			if (matchLinkData && !noLinkRanges.contains(matchLinkData.source.hrefRange.start)) {
 				yield matchLinkData;
 
@@ -435,19 +441,19 @@ export class MdLinkComputer {
 					const linkText = linkTextIncludingBrackets.slice(1, -1);
 					const startOffset = (match.index ?? 0) + 1;
 					for (const innerMatch of linkText.matchAll(linkPattern)) {
-						const innerData = createMdLink(document, innerMatch[1], innerMatch[2], innerMatch[3], startOffset + (innerMatch.index ?? 0), innerMatch[0], this._workspace);
+						const innerData = createMdLink(document, innerMatch[1], innerMatch[2], innerMatch[3], startOffset + (innerMatch.index ?? 0), innerMatch[0], this.#workspace);
 						if (innerData) {
 							yield innerData;
 						}
 					}
 
-					yield* this._getReferenceLinksInText(document, linkText, startOffset, noLinkRanges);
+					yield* this.#getReferenceLinksInText(document, linkText, startOffset, noLinkRanges);
 				}
 			}
 		}
 	}
 
-	private *_getAutoLinks(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
+	*#getAutoLinks(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
 		const text = document.getText();
 		const docUri = getDocUri(document);
 		for (const match of text.matchAll(autoLinkPattern)) {
@@ -458,7 +464,7 @@ export class MdLinkComputer {
 			}
 
 			const link = match[1];
-			const linkTarget = createHref(docUri, link, this._workspace);
+			const linkTarget = createHref(docUri, link, this.#workspace);
 			if (!linkTarget) {
 				continue;
 			}
@@ -482,12 +488,12 @@ export class MdLinkComputer {
 		}
 	}
 
-	private _getReferenceLinks(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
+	#getReferenceLinks(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
 		const text = document.getText();
-		return this._getReferenceLinksInText(document, text, 0, noLinkRanges);
+		return this.#getReferenceLinksInText(document, text, 0, noLinkRanges);
 	}
 
-	private *_getReferenceLinksInText(document: ITextDocument, text: string, startingOffset: number, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
+	*#getReferenceLinksInText(document: ITextDocument, text: string, startingOffset: number, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
 		for (const match of text.matchAll(referenceLinkPattern)) {
 			const linkStartOffset = startingOffset + (match.index ?? 0) + match[1].length;
 			const linkStart = document.positionAt(linkStartOffset);
@@ -517,7 +523,7 @@ export class MdLinkComputer {
 				}
 				if (!match[0].startsWith('!')) {
 					// Also get links in text
-					yield* this._getReferenceLinksInText(document, match[3], linkStartOffset + 1, noLinkRanges);
+					yield* this.#getReferenceLinksInText(document, match[3], linkStartOffset + 1, noLinkRanges);
 				}
 
 				const pre = match[2];
@@ -567,7 +573,7 @@ export class MdLinkComputer {
 		}
 	}
 
-	private *_getLinkDefinitions(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLinkDefinition> {
+	*#getLinkDefinitions(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLinkDefinition> {
 		const text = document.getText();
 		const docUri = getDocUri(document);
 		for (const match of text.matchAll(definitionPattern)) {
@@ -583,7 +589,7 @@ export class MdLinkComputer {
 			const isAngleBracketLink = angleBracketLinkRe.test(rawLinkText);
 			const linkText = stripAngleBrackets(rawLinkText);
 
-			const target = createHref(docUri, linkText, this._workspace);
+			const target = createHref(docUri, linkText, this.#workspace);
 			if (!target) {
 				continue;
 			}
@@ -619,52 +625,52 @@ export interface MdDocumentLinksInfo {
 }
 
 export class ReferenceLinkMap<T> {
-	private readonly _map = new Map</* normalized ref */ string, T>();
+	readonly #map = new Map</* normalized ref */ string, T>();
 
 	public set(ref: string, link: T) {
-		this._map.set(this._normalizeRefName(ref), link);
+		this.#map.set(this.#normalizeRefName(ref), link);
 	}
 
 	public lookup(ref: string): T | undefined {
-		return this._map.get(this._normalizeRefName(ref));
+		return this.#map.get(this.#normalizeRefName(ref));
 	}
 
 	public has(ref: string): boolean {
-		return this._map.has(this._normalizeRefName(ref));
+		return this.#map.has(this.#normalizeRefName(ref));
 	}
 
 	public [Symbol.iterator](): Iterator<T> {
-		return this._map.values();
+		return this.#map.values();
 	}
 
 	/**
 	 * Normalizes a link reference. Link references are case-insensitive, so this lowercases the reference too so you can
 	 * correctly compare two normalized references.
 	 */
-	private _normalizeRefName(ref: string): string {
+	#normalizeRefName(ref: string): string {
 		return ref.normalize().trim().toLowerCase();
 	}
 }
 
 export class LinkDefinitionSet implements Iterable<MdLinkDefinition> {
-	private readonly _map = new ReferenceLinkMap<MdLinkDefinition>();
+	readonly #map = new ReferenceLinkMap<MdLinkDefinition>();
 
 	constructor(links: Iterable<MdLink>) {
 		for (const link of links) {
 			if (link.kind === MdLinkKind.Definition) {
-				if (!this._map.has(link.ref.text)) {
-					this._map.set(link.ref.text, link);
+				if (!this.#map.has(link.ref.text)) {
+					this.#map.set(link.ref.text, link);
 				}
 			}
 		}
 	}
 
 	public [Symbol.iterator](): Iterator<MdLinkDefinition> {
-		return this._map[Symbol.iterator]();
+		return this.#map[Symbol.iterator]();
 	}
 
 	public lookup(ref: string): MdLinkDefinition | undefined {
-		return this._map.lookup(ref);
+		return this.#map.lookup(ref);
 	}
 }
 
@@ -673,23 +679,31 @@ export class LinkDefinitionSet implements Iterable<MdLinkDefinition> {
  */
 export class MdLinkProvider extends Disposable {
 
-	private readonly _linkCache: MdDocumentInfoCache<MdDocumentLinksInfo>;
+	readonly #linkCache: MdDocumentInfoCache<MdDocumentLinksInfo>;
 
-	private readonly _linkComputer: MdLinkComputer;
+	readonly #linkComputer: MdLinkComputer;
+	readonly #config: LsConfiguration;
+	readonly #workspace: IWorkspace;
+	readonly #tocProvider: MdTableOfContentsProvider;
 
 	constructor(
-		private readonly _config: LsConfiguration,
+		config: LsConfiguration,
 		tokenizer: IMdParser,
-		private readonly _workspace: IWorkspace,
-		private readonly _tocProvider: MdTableOfContentsProvider,
+		workspace: IWorkspace,
+		tocProvider: MdTableOfContentsProvider,
 		logger: ILogger,
 	) {
 		super();
-		this._linkComputer = new MdLinkComputer(tokenizer, _workspace);
-		this._linkCache = this._register(new MdDocumentInfoCache(this._workspace, async (doc, token) => {
+
+		this.#config = config;
+		this.#workspace = workspace;
+		this.#tocProvider = tocProvider;
+
+		this.#linkComputer = new MdLinkComputer(tokenizer, this.#workspace);
+		this.#linkCache = this._register(new MdDocumentInfoCache(this.#workspace, async (doc, token) => {
 			logger.log(LogLevel.Debug, 'LinkProvider', `compute - ${doc.uri}`);
 
-			const links = await this._linkComputer.getAllLinks(doc, token);
+			const links = await this.#linkComputer.getAllLinks(doc, token);
 			return {
 				links,
 				definitions: new LinkDefinitionSet(links),
@@ -698,7 +712,7 @@ export class MdLinkProvider extends Disposable {
 	}
 
 	public getLinks(document: ITextDocument): Promise<MdDocumentLinksInfo> {
-		return this._linkCache.getForDocument(document);
+		return this.#linkCache.getForDocument(document);
 	}
 
 	public async provideDocumentLinks(document: ITextDocument, token: CancellationToken): Promise<lsp.DocumentLink[]> {
@@ -707,26 +721,26 @@ export class MdLinkProvider extends Disposable {
 			return [];
 		}
 
-		return coalesce(links.map(data => this._toValidDocumentLink(data, definitions)));
+		return coalesce(links.map(data => this.#toValidDocumentLink(data, definitions)));
 	}
 
 	public async resolveDocumentLink(link: lsp.DocumentLink, token: CancellationToken): Promise<lsp.DocumentLink | undefined> {
-		const href = this._reviveLinkHrefData(link);
+		const href = this.#reviveLinkHrefData(link);
 		if (!href) {
 			return undefined;
 		}
 
-		const target = await this._resolveInternalLinkTarget(href.path, href.fragment, token);
+		const target = await this.#resolveInternalLinkTarget(href.path, href.fragment, token);
 		switch (target.kind) {
 			case 'folder':
-				link.target = this._createCommandUri('revealInExplorer', href.path);
+				link.target = this.#createCommandUri('revealInExplorer', href.path);
 				break;
 			case 'external':
 				link.target = target.uri.toString(true);
 				break;
 			case 'file':
 				if (target.position) {
-					link.target = this._createOpenAtPosCommand(target.uri, target.position);
+					link.target = this.#createOpenAtPosCommand(target.uri, target.position);
 				} else {
 					link.target = target.uri.toString(true);
 				}
@@ -737,27 +751,27 @@ export class MdLinkProvider extends Disposable {
 	}
 
 	public async resolveLinkTarget(linkText: string, sourceDoc: URI, token: CancellationToken): Promise<ResolvedDocumentLinkTarget | undefined> {
-		const href = createHref(sourceDoc, linkText, this._workspace);
+		const href = createHref(sourceDoc, linkText, this.#workspace);
 		if (href?.kind !== HrefKind.Internal) {
 			return undefined;
 		}
 
-		const resolved = resolveInternalDocumentLink(sourceDoc, linkText, this._workspace);
+		const resolved = resolveInternalDocumentLink(sourceDoc, linkText, this.#workspace);
 		if (!resolved) {
 			return undefined;
 		}
 
-		return this._resolveInternalLinkTarget(resolved.resource, resolved.linkFragment, token);
+		return this.#resolveInternalLinkTarget(resolved.resource, resolved.linkFragment, token);
 	}
 
-	private async _resolveInternalLinkTarget(linkPath: URI, linkFragment: string, token: CancellationToken): Promise<ResolvedDocumentLinkTarget> {
+	async #resolveInternalLinkTarget(linkPath: URI, linkFragment: string, token: CancellationToken): Promise<ResolvedDocumentLinkTarget> {
 		let target = linkPath;
 
 		// If there's a containing document, don't bother with trying to resolve the
 		// link to a workspace file as one will not exist
-		const containingContext = this._workspace.getContainingDocument?.(target);
+		const containingContext = this.#workspace.getContainingDocument?.(target);
 		if (!containingContext) {
-			const stat = await this._workspace.stat(target);
+			const stat = await this.#workspace.stat(target);
 			if (stat?.isDirectory) {
 				return { kind: 'folder', uri: target };
 			}
@@ -769,9 +783,9 @@ export class MdLinkProvider extends Disposable {
 			if (!stat) {
 				// We don't think the file exists. If it doesn't already have an extension, try tacking on a `.md` and using that instead
 				let found = false;
-				const dotMdResource = tryAppendMarkdownFileExtension(this._config, target);
+				const dotMdResource = tryAppendMarkdownFileExtension(this.#config, target);
 				if (dotMdResource) {
-					if (await this._workspace.stat(dotMdResource)) {
+					if (await this.#workspace.stat(dotMdResource)) {
 						target = dotMdResource;
 						found = true;
 					}
@@ -794,13 +808,13 @@ export class MdLinkProvider extends Disposable {
 		}
 
 		// Try navigating to header in file
-		const doc = await this._workspace.openMarkdownDocument(target);
+		const doc = await this.#workspace.openMarkdownDocument(target);
 		if (token.isCancellationRequested) {
 			return { kind: 'file', uri: target };
 		}
 
 		if (doc) {
-			const toc = await this._tocProvider.getForContainingDoc(doc, token);
+			const toc = await this.#tocProvider.getForContainingDoc(doc, token);
 			const entry = toc.lookup(linkFragment);
 			if (entry) {
 				return { kind: 'file', uri: URI.parse(entry.headerLocation.uri), position: entry.headerLocation.range.start, fragment: linkFragment };
@@ -810,7 +824,7 @@ export class MdLinkProvider extends Disposable {
 		return { kind: 'file', uri: target };
 	}
 
-	private _reviveLinkHrefData(link: lsp.DocumentLink): { path: URI, fragment: string } | undefined {
+	#reviveLinkHrefData(link: lsp.DocumentLink): { path: URI, fragment: string } | undefined {
 		if (!link.data) {
 			return undefined;
 		}
@@ -823,7 +837,7 @@ export class MdLinkProvider extends Disposable {
 		return { path: URI.from(mdLink.href.path), fragment: mdLink.href.fragment };
 	}
 
-	private _toValidDocumentLink(link: MdLink, definitionSet: LinkDefinitionSet): lsp.DocumentLink | undefined {
+	#toValidDocumentLink(link: MdLink, definitionSet: LinkDefinitionSet): lsp.DocumentLink | undefined {
 		switch (link.href.kind) {
 			case HrefKind.External: {
 				return {
@@ -847,7 +861,7 @@ export class MdLinkProvider extends Disposable {
 					return undefined;
 				}
 
-				const target = this._createOpenAtPosCommand(link.source.resource, def.source.hrefRange.start);
+				const target = this.#createOpenAtPosCommand(link.source.resource, def.source.hrefRange.start);
 				return {
 					range: link.source.hrefRange,
 					tooltip: localize('tooltip.definition', 'Go to link definition'),
@@ -858,16 +872,16 @@ export class MdLinkProvider extends Disposable {
 		}
 	}
 
-	private _createCommandUri(command: string, ...args: any[]): string {
+	#createCommandUri(command: string, ...args: any[]): string {
 		return `command:${command}?${encodeURIComponent(JSON.stringify(args))}`;
 	}
 
-	private _createOpenAtPosCommand(resource: URI, pos: lsp.Position): string {
+	#createOpenAtPosCommand(resource: URI, pos: lsp.Position): string {
 		// If the resource itself already has a fragment, we need to handle opening specially 
 		// instead of using `file://path.md#L123` style uris
 		if (resource.fragment) {
 			// Match the args of `vscode.open`
-			return this._createCommandUri('vscodeMarkdownLanguageservice.open', resource, {
+			return this.#createCommandUri('vscodeMarkdownLanguageservice.open', resource, {
 				selection: makeRange(pos, pos),
 			});
 		}

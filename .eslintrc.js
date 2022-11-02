@@ -15,20 +15,12 @@ module.exports = {
 		'no-useless-escape': 0,
 		'semi': 1,
 		'quotes': [1, 'single', { allowTemplateLiterals: true }],
-		'@typescript-eslint/naming-convention': [
+		'no-restricted-syntax': [
 			'warn',
 			{
-				'selector': 'default',
-				'modifiers': ['private'],
-				'format': null,
-				'leadingUnderscore': 'require'
+				selector: ':matches(PropertyDefinition, TSParameterProperty, MethodDefinition[key.name!="constructor"])[accessibility="private"]',
+				message: 'Use #private instead',
 			},
-			{
-				'selector': 'default',
-				'modifiers': ['public'],
-				'format': null,
-				'leadingUnderscore': 'forbid'
-			}
 		],
 	},
-};
+}; 

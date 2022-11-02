@@ -20,11 +20,11 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 
 	public static readonly genericTitle = localize('genericTitle', 'Extract to link definition');
 
-	private static _kind = lsp.CodeActionKind.RefactorExtract + '.linkDefinition';
+	static #kind = lsp.CodeActionKind.RefactorExtract + '.linkDefinition';
 
 	public static readonly notOnLinkAction: lsp.CodeAction = {
 		title: MdExtractLinkDefinitionCodeActionProvider.genericTitle,
-		kind: MdExtractLinkDefinitionCodeActionProvider._kind,
+		kind: MdExtractLinkDefinitionCodeActionProvider.#kind,
 		disabled: {
 			reason: localize('disabled.notOnLink', 'Not on link'),
 		}
@@ -32,22 +32,24 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 
 	public static readonly alreadyRefLinkAction: lsp.CodeAction = {
 		title: MdExtractLinkDefinitionCodeActionProvider.genericTitle,
-		kind: MdExtractLinkDefinitionCodeActionProvider._kind,
+		kind: MdExtractLinkDefinitionCodeActionProvider.#kind,
 		disabled: {
 			reason: localize('disabled.alreadyRefLink', 'Link is already a reference'),
 		}
 	};
 
-	constructor(
-		private readonly _linkProvider: MdLinkProvider
-	) { }
+	readonly #linkProvider: MdLinkProvider;
+
+	constructor(linkProvider: MdLinkProvider) {
+		this.#linkProvider = linkProvider;
+	}
 
 	async getActions(doc: ITextDocument, range: lsp.Range, context: lsp.CodeActionContext, token: CancellationToken): Promise<lsp.CodeAction[]> {
-		if (!this._isEnabled(context)) {
+		if (!this.#isEnabled(context)) {
 			return [];
 		}
 
-		const linkInfo = await this._linkProvider.getLinks(doc);
+		const linkInfo = await this.#linkProvider.getLinks(doc);
 		if (token.isCancellationRequested) {
 			return [];
 		}
@@ -67,10 +69,10 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 			return [MdExtractLinkDefinitionCodeActionProvider.alreadyRefLinkAction];
 		}
 
-		return [this._getExtractLinkAction(doc, linkInfo, targetLink as MdInlineLink<InternalHref | ExternalHref>)];
+		return [this.#getExtractLinkAction(doc, linkInfo, targetLink as MdInlineLink<InternalHref | ExternalHref>)];
 	}
 
-	private _isEnabled(context: lsp.CodeActionContext): boolean {
+	#isEnabled(context: lsp.CodeActionContext): boolean {
 		if (typeof context.only === 'undefined') {
 			return true;
 		}
@@ -78,20 +80,20 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 		return context.only.some(kind => codeActionKindContains(lsp.CodeActionKind.Refactor, kind));
 	}
 
-	private _getExtractLinkAction(doc: ITextDocument, linkInfo: MdDocumentLinksInfo, targetLink: MdInlineLink<InternalHref | ExternalHref>): lsp.CodeAction {
+	#getExtractLinkAction(doc: ITextDocument, linkInfo: MdDocumentLinksInfo, targetLink: MdInlineLink<InternalHref | ExternalHref>): lsp.CodeAction {
 		const builder = new WorkspaceEditBuilder();
 		const resource = getDocUri(doc);
-		const placeholder = this._getPlaceholder(linkInfo.definitions);
+		const placeholder = this.#getPlaceholder(linkInfo.definitions);
 
 		// Rewrite all inline occurrences of the link
 		for (const link of linkInfo.links) {
-			if (link.kind === MdLinkKind.Link && this._matchesHref(targetLink.href, link)) {
+			if (link.kind === MdLinkKind.Link && this.#matchesHref(targetLink.href, link)) {
 				builder.replace(resource, link.source.targetRange, `[${placeholder}]`);
 			}
 		}
 
 		// And append new definition to link definition block
-		const definitionText = this._getLinkTargetText(doc, targetLink).trim();
+		const definitionText = this.#getLinkTargetText(doc, targetLink).trim();
 		const definitions = linkInfo.links.filter(link => link.kind === MdLinkKind.Definition) as MdLinkDefinition[];
 		const defBlock = getExistingDefinitionBlock(doc, definitions);
 		if (!defBlock) {
@@ -104,7 +106,7 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 		const renamePosition = translatePosition(targetLink.source.targetRange.start, { characterDelta: 1 });
 		return {
 			title: MdExtractLinkDefinitionCodeActionProvider.genericTitle,
-			kind: MdExtractLinkDefinitionCodeActionProvider._kind,
+			kind: MdExtractLinkDefinitionCodeActionProvider.#kind,
 			edit: builder.renameFragment(),
 			command: {
 				command: 'vscodeMarkdownLanguageservice.rename',
@@ -114,14 +116,14 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 		};
 	}
 
-	private _getLinkTargetText(doc: ITextDocument, link: MdInlineLink) {
+	#getLinkTargetText(doc: ITextDocument, link: MdInlineLink) {
 		const afterHrefRange = makeRange(
 			translatePosition(link.source.targetRange.start, { characterDelta: 1 }),
 			translatePosition(link.source.targetRange.end, { characterDelta: -1 }));
 		return doc.getText(afterHrefRange);
 	}
 
-	private _getPlaceholder(definitions: LinkDefinitionSet): string {
+	#getPlaceholder(definitions: LinkDefinitionSet): string {
 		const base = 'def';
 		for (let i = 1; ; ++i) {
 			const name = i === 1 ? base : `${base}${i}`;
@@ -131,7 +133,7 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 		}
 	}
 
-	private _matchesHref(href: InternalHref | ExternalHref, link: MdLink): boolean {
+	#matchesHref(href: InternalHref | ExternalHref, link: MdLink): boolean {
 		if (link.href.kind === HrefKind.External && href.kind === HrefKind.External) {
 			return link.href.uri.toString() === href.uri.toString();
 		}

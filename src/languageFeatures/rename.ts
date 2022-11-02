@@ -39,7 +39,7 @@ export class RenameNotSupportedAtLocationError extends Error {
 
 export class MdRenameProvider extends Disposable {
 
-	private _cachedRefs?: {
+	#cachedRefs?: {
 		readonly resource: URI;
 		readonly version: number;
 		readonly position: lsp.Position;
@@ -47,21 +47,32 @@ export class MdRenameProvider extends Disposable {
 		readonly references: MdReference[];
 	} | undefined;
 
+	readonly #configuration: LsConfiguration;
+	readonly #workspace: IWorkspace;
+	readonly #referencesProvider: MdReferencesProvider;
+	readonly #slugifier: ISlugifier;
+	readonly #logger: ILogger;
 
 	public constructor(
-		private readonly _configuration: LsConfiguration,
-		private readonly _workspace: IWorkspace,
-		private readonly _referencesProvider: MdReferencesProvider,
-		private readonly _slugifier: ISlugifier,
-		private readonly _logger: ILogger,
+		configuration: LsConfiguration,
+		workspace: IWorkspace,
+		referencesProvider: MdReferencesProvider,
+		slugifier: ISlugifier,
+		logger: ILogger,
 	) {
 		super();
+
+		this.#configuration = configuration;
+		this.#workspace = workspace;
+		this.#referencesProvider = referencesProvider;
+		this.#slugifier = slugifier;
+		this.#logger = logger;
 	}
 
 	public async prepareRename(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<undefined | { range: lsp.Range; placeholder: string }> {
-		this._logger.log(LogLevel.Trace, 'RenameProvider', `prepareRename — ${document.uri} ${document.version}`);
+		this.#logger.log(LogLevel.Trace, 'RenameProvider', `prepareRename — ${document.uri} ${document.version}`);
 
-		const allRefsInfo = await this._getAllReferences(document, position, token);
+		const allRefsInfo = await this.#getAllReferences(document, position, token);
 		if (token.isCancellationRequested) {
 			return undefined;
 		}
@@ -90,7 +101,7 @@ export class MdRenameProvider extends Disposable {
 				// See if we are renaming the fragment or the path
 				const { fragmentRange } = triggerRef.link.source;
 				if (fragmentRange && rangeContains(fragmentRange, position)) {
-					const declaration = this._findHeaderDeclaration(allRefsInfo.references);
+					const declaration = this.#findHeaderDeclaration(allRefsInfo.references);
 					return {
 						range: fragmentRange,
 						placeholder: declaration ? declaration.headerText : document.getText(fragmentRange),
@@ -106,14 +117,14 @@ export class MdRenameProvider extends Disposable {
 		}
 	}
 
-	private _findHeaderDeclaration(references: readonly MdReference[]): MdHeaderReference | undefined {
+	#findHeaderDeclaration(references: readonly MdReference[]): MdHeaderReference | undefined {
 		return references.find(ref => ref.isDefinition && ref.kind === MdReferenceKind.Header) as MdHeaderReference | undefined;
 	}
 
 	public async provideRenameEdits(document: ITextDocument, position: lsp.Position, newName: string, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined> {
-		this._logger.log(LogLevel.Trace, 'RenameProvider', `provideRenameEdits — ${document.uri} ${document.version}`);
+		this.#logger.log(LogLevel.Trace, 'RenameProvider', `provideRenameEdits — ${document.uri} ${document.version}`);
 
-		const allRefsInfo = await this._getAllReferences(document, position, token);
+		const allRefsInfo = await this.#getAllReferences(document, position, token);
 		if (token.isCancellationRequested || !allRefsInfo || !allRefsInfo.references.length) {
 			return undefined;
 		}
@@ -123,24 +134,24 @@ export class MdRenameProvider extends Disposable {
 		if (triggerRef.kind === MdReferenceKind.Link && (
 			(triggerRef.link.kind === MdLinkKind.Definition && rangeContains(triggerRef.link.ref.range, position)) || triggerRef.link.href.kind === HrefKind.Reference
 		)) {
-			return this._renameReferenceLinks(allRefsInfo, newName);
+			return this.#renameReferenceLinks(allRefsInfo, newName);
 		} else if (triggerRef.kind === MdReferenceKind.Link && triggerRef.link.href.kind === HrefKind.External) {
-			return this._renameExternalLink(allRefsInfo, newName);
+			return this.#renameExternalLink(allRefsInfo, newName);
 		} else if (triggerRef.kind === MdReferenceKind.Header || (triggerRef.kind === MdReferenceKind.Link && triggerRef.link.source.fragmentRange && rangeContains(triggerRef.link.source.fragmentRange, position) && (triggerRef.link.kind === MdLinkKind.Definition || triggerRef.link.kind === MdLinkKind.Link && triggerRef.link.href.kind === HrefKind.Internal))) {
-			return this._renameFragment(allRefsInfo, newName);
+			return this.#renameFragment(allRefsInfo, newName);
 		} else if (triggerRef.kind === MdReferenceKind.Link && !(triggerRef.link.source.fragmentRange && rangeContains(triggerRef.link.source.fragmentRange, position)) && (triggerRef.link.kind === MdLinkKind.Link || triggerRef.link.kind === MdLinkKind.Definition) && triggerRef.link.href.kind === HrefKind.Internal) {
-			return this._renameFilePath(triggerRef.link.source.resource, triggerRef.link.href, allRefsInfo, newName);
+			return this.#renameFilePath(triggerRef.link.source.resource, triggerRef.link.href, allRefsInfo, newName);
 		}
 
 		return undefined;
 	}
 
-	private async _renameFilePath(triggerDocument: URI, triggerHref: InternalHref, allRefsInfo: MdReferencesResponse, newName: string): Promise<lsp.WorkspaceEdit> {
+	async #renameFilePath(triggerDocument: URI, triggerHref: InternalHref, allRefsInfo: MdReferencesResponse, newName: string): Promise<lsp.WorkspaceEdit> {
 		const builder = new WorkspaceEditBuilder();
 
-		const targetUri = await statLinkToMarkdownFile(this._configuration, this._workspace, triggerHref.path) ?? triggerHref.path;
+		const targetUri = await statLinkToMarkdownFile(this.#configuration, this.#workspace, triggerHref.path) ?? triggerHref.path;
 
-		const rawNewFilePath = resolveInternalDocumentLink(triggerDocument, newName, this._workspace);
+		const rawNewFilePath = resolveInternalDocumentLink(triggerDocument, newName, this.#workspace);
 		if (!rawNewFilePath) {
 			return builder.renameFragment();
 		}
@@ -151,13 +162,13 @@ export class MdRenameProvider extends Disposable {
 			// tack on a .md file extension
 			if (Utils.extname(targetUri)) {
 				resolvedNewFilePath = resolvedNewFilePath.with({
-					path: resolvedNewFilePath.path + '.' + (this._configuration.markdownFileExtensions[0] ?? defaultMarkdownFileExtension)
+					path: resolvedNewFilePath.path + '.' + (this.#configuration.markdownFileExtensions[0] ?? defaultMarkdownFileExtension)
 				});
 			}
 		}
 
 		// First rename the file
-		if (await this._workspace.stat(targetUri)) {
+		if (await this.#workspace.stat(targetUri)) {
 			builder.renameFile(targetUri, resolvedNewFilePath);
 		}
 
@@ -165,7 +176,7 @@ export class MdRenameProvider extends Disposable {
 		for (const ref of allRefsInfo.references) {
 			if (ref.kind === MdReferenceKind.Link) {
 				// Try to preserve style of existing links
-				const newLinkText = getLinkRenameText(this._workspace, ref.link.source, rawNewFilePath.resource, newName.startsWith('./') || newName.startsWith('.\\'));
+				const newLinkText = getLinkRenameText(this.#workspace, ref.link.source, rawNewFilePath.resource, newName.startsWith('./') || newName.startsWith('.\\'));
 				builder.replace(ref.link.source.resource, getFilePathRange(ref.link), encodeURI((newLinkText ?? newName).replace(/\\/g, '/')));
 			}
 		}
@@ -173,8 +184,8 @@ export class MdRenameProvider extends Disposable {
 		return builder.renameFragment();
 	}
 
-	private _renameFragment(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
-		const slug = this._slugifier.fromHeading(newName).value;
+	#renameFragment(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
+		const slug = this.#slugifier.fromHeading(newName).value;
 
 		const builder = new WorkspaceEditBuilder();
 		for (const ref of allRefsInfo.references) {
@@ -191,7 +202,7 @@ export class MdRenameProvider extends Disposable {
 		return builder.renameFragment();
 	}
 
-	private _renameExternalLink(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
+	#renameExternalLink(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
 		const builder = new WorkspaceEditBuilder();
 		for (const ref of allRefsInfo.references) {
 			if (ref.kind === MdReferenceKind.Link) {
@@ -201,7 +212,7 @@ export class MdRenameProvider extends Disposable {
 		return builder.renameFragment();
 	}
 
-	private _renameReferenceLinks(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
+	#renameReferenceLinks(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
 		const builder = new WorkspaceEditBuilder();
 
 		for (const ref of allRefsInfo.references) {
@@ -217,18 +228,18 @@ export class MdRenameProvider extends Disposable {
 		return builder.renameFragment();
 	}
 
-	private async _getAllReferences(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<MdReferencesResponse | undefined> {
+	async #getAllReferences(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<MdReferencesResponse | undefined> {
 		const version = document.version;
 
-		if (this._cachedRefs
-			&& this._cachedRefs.resource.fsPath === getDocUri(document).fsPath
-			&& this._cachedRefs.version === document.version
-			&& arePositionsEqual(this._cachedRefs.position, position)
+		if (this.#cachedRefs
+			&& this.#cachedRefs.resource.fsPath === getDocUri(document).fsPath
+			&& this.#cachedRefs.version === document.version
+			&& arePositionsEqual(this.#cachedRefs.position, position)
 		) {
-			return this._cachedRefs;
+			return this.#cachedRefs;
 		}
 
-		const references = await this._referencesProvider.getReferencesAtPosition(document, position, token);
+		const references = await this.#referencesProvider.getReferencesAtPosition(document, position, token);
 		if (token.isCancellationRequested) {
 			return;
 		}
@@ -238,14 +249,14 @@ export class MdRenameProvider extends Disposable {
 			return undefined;
 		}
 
-		this._cachedRefs = {
+		this.#cachedRefs = {
 			resource: getDocUri(document),
 			version,
 			position,
 			references,
 			triggerRef
 		};
-		return this._cachedRefs;
+		return this.#cachedRefs;
 	}
 }
 

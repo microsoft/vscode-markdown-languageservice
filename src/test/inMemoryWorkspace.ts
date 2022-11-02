@@ -16,10 +16,10 @@ import { workspaceRoot } from './util';
 
 export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatching {
 
-	private readonly _documents = new ResourceMap<ITextDocument>(uri => uri.fsPath);
-	private readonly _additionalFiles = new ResourceMap<void>();
+	readonly #documents = new ResourceMap<ITextDocument>(uri => uri.fsPath);
+	readonly #additionalFiles = new ResourceMap<void>();
 
-	private readonly _watchers = new Set<{
+	readonly #watchers = new Set<{
 		readonly resource: URI;
 		readonly options: FileWatcherOptions;
 		readonly onDidChange: Emitter<URI>;
@@ -27,7 +27,7 @@ export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatch
 		readonly onDidDelete: Emitter<URI>;
 	}>();
 
-	private readonly _workspaceRoots: readonly URI[];
+	readonly #workspaceRoots: readonly URI[];
 
 	/**
 	 * List of calls to `stat`.
@@ -42,29 +42,29 @@ export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatch
 	) {
 		super();
 
-		this._workspaceRoots = options?.roots ?? [workspaceRoot];
+		this.#workspaceRoots = options?.roots ?? [workspaceRoot];
 
 		for (const doc of documents) {
 			if (doc instanceof InMemoryDocument) {
-				this._documents.set(getDocUri(doc), doc);
+				this.#documents.set(getDocUri(doc), doc);
 			} else {
-				this._additionalFiles.set(doc);
+				this.#additionalFiles.set(doc);
 			}
 		}
 	}
 
 	get workspaceFolders(): readonly URI[] {
-		return this._workspaceRoots;
+		return this.#workspaceRoots;
 	}
 
 	async stat(resource: URI): Promise<FileStat | undefined> {
 		this.statCallList.push(resource);
-		if (this._documents.has(resource) || this._additionalFiles.has(resource)) {
+		if (this.#documents.has(resource) || this.#additionalFiles.has(resource)) {
 			return { isDirectory: false };
 		}
 
 		const pathPrefix = resource.fsPath + (resource.fsPath.endsWith('/') || resource.fsPath.endsWith('\\') ? '' : path.sep);
-		const allPaths = this._getAllKnownFilePaths();
+		const allPaths = this.#getAllKnownFilePaths();
 		if (allPaths.some(path => path.startsWith(pathPrefix))) {
 			return { isDirectory: true };
 		}
@@ -73,7 +73,7 @@ export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatch
 	}
 
 	public values() {
-		return Array.from(this._documents.values());
+		return Array.from(this.#documents.values());
 	}
 
 	public async getAllMarkdownDocuments() {
@@ -81,17 +81,17 @@ export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatch
 	}
 
 	public async openMarkdownDocument(resource: URI): Promise<ITextDocument | undefined> {
-		return this._documents.get(resource);
+		return this.#documents.get(resource);
 	}
 
 	public hasMarkdownDocument(resolvedHrefPath: URI): boolean {
-		return this._documents.has(resolvedHrefPath);
+		return this.#documents.has(resolvedHrefPath);
 	}
 
 	public async readDirectory(resource: URI): Promise<[string, FileStat][]> {
 		const files = new Map<string, FileStat>();
 		const pathPrefix = resource.fsPath + (resource.fsPath.endsWith('/') || resource.fsPath.endsWith('\\') ? '' : path.sep);
-		const allPaths = this._getAllKnownFilePaths();
+		const allPaths = this.#getAllKnownFilePaths();
 		for (const path of allPaths) {
 			if (path.startsWith(pathPrefix)) {
 				const parts = path.slice(pathPrefix.length).split(/\/|\\/g);
@@ -101,32 +101,32 @@ export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatch
 		return Array.from(files.entries());
 	}
 
-	private readonly _onDidChangeMarkdownDocumentEmitter = this._register(new Emitter<ITextDocument>());
-	public onDidChangeMarkdownDocument = this._onDidChangeMarkdownDocumentEmitter.event;
+	readonly #onDidChangeMarkdownDocumentEmitter = this._register(new Emitter<ITextDocument>());
+	public onDidChangeMarkdownDocument = this.#onDidChangeMarkdownDocumentEmitter.event;
 
-	private readonly _onDidCreateMarkdownDocumentEmitter = this._register(new Emitter<ITextDocument>());
-	public onDidCreateMarkdownDocument = this._onDidCreateMarkdownDocumentEmitter.event;
+	readonly #onDidCreateMarkdownDocumentEmitter = this._register(new Emitter<ITextDocument>());
+	public onDidCreateMarkdownDocument = this.#onDidCreateMarkdownDocumentEmitter.event;
 
-	private readonly _onDidDeleteMarkdownDocumentEmitter = this._register(new Emitter<URI>());
-	public onDidDeleteMarkdownDocument = this._onDidDeleteMarkdownDocumentEmitter.event;
+	readonly #onDidDeleteMarkdownDocumentEmitter = this._register(new Emitter<URI>());
+	public onDidDeleteMarkdownDocument = this.#onDidDeleteMarkdownDocumentEmitter.event;
 
-	private _getAllKnownFilePaths(): string[] {
+	#getAllKnownFilePaths(): string[] {
 		return [
-			...Array.from(this._documents.values(), doc => getDocUri(doc).fsPath),
-			...Array.from(this._additionalFiles.keys(), uri => uri.fsPath),
+			...Array.from(this.#documents.values(), doc => getDocUri(doc).fsPath),
+			...Array.from(this.#additionalFiles.keys(), uri => uri.fsPath),
 		];
 	}
 
 	public updateDocument(document: ITextDocument) {
-		this._documents.set(getDocUri(document), document);
-		this._onDidChangeMarkdownDocumentEmitter.fire(document);
+		this.#documents.set(getDocUri(document), document);
+		this.#onDidChangeMarkdownDocumentEmitter.fire(document);
 	}
 
 	public createDocument(document: ITextDocument) {
-		assert.ok(!this._documents.has(getDocUri(document)));
+		assert.ok(!this.#documents.has(getDocUri(document)));
 
-		this._documents.set(getDocUri(document), document);
-		this._onDidCreateMarkdownDocumentEmitter.fire(document);
+		this.#documents.set(getDocUri(document), document);
+		this.#onDidCreateMarkdownDocumentEmitter.fire(document);
 	}
 
 	public watchFile(resource: URI, options: FileWatcherOptions): IFileSystemWatcher {
@@ -137,29 +137,29 @@ export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatch
 			onDidChange: new Emitter<URI>(),
 			onDidDelete: new Emitter<URI>(),
 		};
-		this._watchers.add(entry);
+		this.#watchers.add(entry);
 		return {
 			onDidCreate: entry.onDidCreate.event,
 			onDidChange: entry.onDidChange.event,
 			onDidDelete: entry.onDidDelete.event,
 			dispose: () => {
-				this._watchers.delete(entry);
+				this.#watchers.delete(entry);
 			}
 		};
 	}
 
 	public triggerFileDelete(resource: URI) {
-		for (const watcher of this._watchers) {
+		for (const watcher of this.#watchers) {
 			if (watcher.resource.toString() === resource.toString()) {
 				watcher.onDidDelete?.fire(watcher.resource);
 			}
 		}
 
-		this._additionalFiles.delete(resource);
+		this.#additionalFiles.delete(resource);
 	}
 
 	public deleteDocument(resource: URI) {
-		this._documents.delete(resource);
-		this._onDidDeleteMarkdownDocumentEmitter.fire(resource);
+		this.#documents.delete(resource);
+		this.#onDidDeleteMarkdownDocumentEmitter.fire(resource);
 	}
 }

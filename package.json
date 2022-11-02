@@ -39,7 +39,7 @@
     "api-extractor": "npx api-extractor run --local",
     "compile": "tsc -b tsconfig.json",
     "watch": "tsc -b tsconfig.json --watch",
-    "lint": "eslint 'src/**/*.ts'",
+    "lint": "eslint \"src/**/*.ts\"",
     "prepublishOnly": "npm run compile && npm run api-extractor",
     "test": "mocha 'out/test/**/*.test.js' --ui=tdd --timeout=2000 --exit"
   },

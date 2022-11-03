@@ -26,7 +26,14 @@ extends:
     npmPackages:
       - name: vscode-markdown-languageservice
 
-        buildPlatforms:
+        buildSteps:
+          - script: npm install
+            displayName: Install dependencies
+
+          - script: npm run compile
+            displayName: Compile
+
+        testPlatforms:
           - name: Linux
             nodeVersions:
               - 16.x
@@ -37,14 +44,13 @@ extends:
             nodeVersions:
               - 16.x
 
-        buildSteps:
+        testSteps:
           - script: npm install
             displayName: Install dependencies
 
           - script: npm run compile
             displayName: Compile
 
-        testSteps:
           - script: npm test
             displayName: Test npm package
 

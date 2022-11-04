@@ -16,7 +16,7 @@ export class MdWorkspaceSymbolProvider extends Disposable {
 	readonly #cache: MdWorkspaceInfoCache<lsp.SymbolInformation[]>;
 	readonly #symbolProvider: MdDocumentSymbolProvider;
 
-	public constructor(
+	constructor(
 		workspace: IWorkspace,
 		symbolProvider: MdDocumentSymbolProvider,
 	) {
@@ -33,7 +33,7 @@ export class MdWorkspaceSymbolProvider extends Disposable {
 		}
 
 		const normalizedQueryStr = query.toLowerCase();
-		return allSymbols.flat().filter(symbolInformation => symbolInformation.name.includes(normalizedQueryStr));
+		return allSymbols.flat().filter(symbolInformation => symbolInformation.name.toLowerCase().includes(normalizedQueryStr));
 	}
 
 	public async provideDocumentSymbolInformation(document: ITextDocument, token: CancellationToken): Promise<lsp.SymbolInformation[]> {

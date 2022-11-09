@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import * as picomatch from 'picomatch';
 import { CancellationToken, DiagnosticSeverity, Emitter, Event } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
-import * as nls from 'vscode-nls';
 import { URI } from 'vscode-uri';
 import { LsConfiguration } from '../config';
 import { MdTableOfContentsProvider } from '../tableOfContents';
@@ -19,8 +19,6 @@ import { Limiter } from '../util/limiter';
 import { ResourceMap } from '../util/resourceMap';
 import { FileStat, IWorkspace, IWorkspaceWithWatching, statLinkToMarkdownFile } from '../workspace';
 import { HrefKind, InternalHref, LinkDefinitionSet, MdLink, MdLinkDefinition, MdLinkKind, MdLinkProvider, MdLinkSource, parseLocationInfoFromFragment, ReferenceLinkMap } from './documentLinks';
-
-const localize = nls.loadMessageBundle();
 
 /**
  * The severity at which diagnostics are reported
@@ -231,7 +229,7 @@ export class DiagnosticComputer {
 				if (!this.#isIgnoredLink(options, link.source.hrefText)) {
 					diagnostics.push({
 						code: DiagnosticCode.link_noSuchHeaderInOwnFile,
-						message: localize('invalidHeaderLink', 'No header found: \'{0}\'', link.href.fragment),
+						message: l10n.t('No header found: \'{0}\'', link.href.fragment),
 						range: link.source.hrefRange,
 						severity,
 						data: {
@@ -255,7 +253,7 @@ export class DiagnosticComputer {
 			if (link.href.kind === HrefKind.Reference && !definitions.lookup(link.href.ref)) {
 				yield {
 					code: DiagnosticCode.link_noSuchReferences,
-					message: localize('invalidReferenceLink', 'No link definition found: \'{0}\'', link.href.ref),
+					message: l10n.t('No link definition found: \'{0}\'', link.href.ref),
 					range: link.source.hrefRange,
 					severity,
 					data: {
@@ -283,7 +281,7 @@ export class DiagnosticComputer {
 			if (link.kind === MdLinkKind.Definition && !usedRefs.lookup(link.ref.text)) {
 				yield {
 					code: DiagnosticCode.link_unusedDefinition,
-					message: localize('unusedLinkDefinition', 'Link definition is unused'),
+					message: l10n.t('Link definition is unused'),
 					range: link.source.range,
 					severity: errorSeverity,
 					tags: [
@@ -321,7 +319,7 @@ export class DiagnosticComputer {
 			for (const duplicateDef of defs) {
 				yield {
 					code: DiagnosticCode.link_duplicateDefinition,
-					message: localize('duplicateLinkDefinition', 'Link definition for \'{0}\' already exists', ref),
+					message: l10n.t('Link definition for \'{0}\' already exists', ref),
 					range: duplicateDef.ref.range,
 					severity: errorSeverity,
 					relatedInformation:
@@ -329,7 +327,7 @@ export class DiagnosticComputer {
 							.filter(x => x !== duplicateDef)
 							.map(def => lsp.DiagnosticRelatedInformation.create(
 								{ uri: def.source.resource.toString(), range: def.ref.range },
-								localize('duplicateLinkDefinitionRelated', 'Link is also defined here'),
+								l10n.t('Link is also defined here'),
 							)),
 					data: duplicateDef
 				};
@@ -375,7 +373,7 @@ export class DiagnosticComputer {
 							if (!this.#isIgnoredLink(options, link.source.pathText)) {
 								diagnostics.push({
 									code: DiagnosticCode.link_noSuchFile,
-									message: localize('invalidPathLink', 'File does not exist at path: {0}', path.fsPath),
+									message: l10n.t('File does not exist at path: {0}', path.fsPath),
 									range: link.source.hrefRange,
 									severity: pathErrorSeverity,
 									data: {
@@ -404,7 +402,7 @@ export class DiagnosticComputer {
 									const range = (link.source.fragmentRange && modifyRange(link.source.fragmentRange, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 }), undefined)) ?? link.source.hrefRange;
 									diagnostics.push({
 										code: DiagnosticCode.link_noSuchHeaderInFile,
-										message: localize('invalidLinkToHeaderInOtherFile', 'Header does not exist in file: {0}', link.fragment),
+										message: l10n.t('Header does not exist in file: {0}', link.fragment),
 										range: range,
 										severity: fragmentErrorSeverity,
 										data: {

@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import * as lsp from 'vscode-languageserver-types';
-import * as nls from 'vscode-nls';
 import { makeRange, rangeIntersects } from '../../types/range';
 import { getDocUri, ITextDocument } from '../../types/textDocument';
 import { WorkspaceEditBuilder } from '../../util/editBuilder';
@@ -12,12 +12,11 @@ import { DiagnosticCode } from '../diagnostics';
 import { MdLinkDefinition } from '../documentLinks';
 import { codeActionKindContains } from './util';
 
-const localize = nls.loadMessageBundle();
 
 export class MdRemoveLinkDefinitionCodeActionProvider {
 
-	static readonly #removeUnusedDefTitle = localize('removeUnusedTitle', 'Remove unused link definition');
-	static readonly #removeDuplicateDefTitle = localize('removeDuplicateTitle', 'Remove duplicate link definition');
+	static readonly #removeUnusedDefTitle = l10n.t('Remove unused link definition');
+	static readonly #removeDuplicateDefTitle = l10n.t('Remove duplicate link definition');
 
 	*getActions(doc: ITextDocument, range: lsp.Range, context: lsp.CodeActionContext): Iterable<lsp.CodeAction> {
 		if (!this.#isEnabled(context)) {

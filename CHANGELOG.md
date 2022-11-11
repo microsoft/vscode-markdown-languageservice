@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.0-alpha.2 UNRELEASED
+- Switch to `@vscode/l10n` for localization.
+
 ## 0.3.0-alpha.1 November 4, 2022
 - Added optional `$uri` property on `ITextDocument` which lets implementers provide an actual uri instead of a string. This helps reduce the number of calls to `URI.parse`.
 - Workspace symbol search should be case insensitive.

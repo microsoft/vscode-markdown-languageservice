@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
-import * as nls from 'vscode-nls';
 import { comparePosition, translatePosition } from '../../types/position';
 import { makeRange, rangeIntersects } from '../../types/range';
 import { getDocUri, getLine, ITextDocument } from '../../types/textDocument';
@@ -14,11 +14,9 @@ import { ExternalHref, HrefKind, InternalHref, LinkDefinitionSet, MdDocumentLink
 import { getExistingDefinitionBlock } from '../organizeLinkDefs';
 import { codeActionKindContains } from './util';
 
-const localize = nls.loadMessageBundle();
-
 export class MdExtractLinkDefinitionCodeActionProvider {
 
-	public static readonly genericTitle = localize('genericTitle', 'Extract to link definition');
+	public static readonly genericTitle = l10n.t('Extract to link definition');
 
 	static #kind = lsp.CodeActionKind.RefactorExtract + '.linkDefinition';
 
@@ -26,7 +24,7 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 		title: MdExtractLinkDefinitionCodeActionProvider.genericTitle,
 		kind: MdExtractLinkDefinitionCodeActionProvider.#kind,
 		disabled: {
-			reason: localize('disabled.notOnLink', 'Not on link'),
+			reason: l10n.t('Not on link'),
 		}
 	};
 
@@ -34,7 +32,7 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 		title: MdExtractLinkDefinitionCodeActionProvider.genericTitle,
 		kind: MdExtractLinkDefinitionCodeActionProvider.#kind,
 		disabled: {
-			reason: localize('disabled.alreadyRefLink', 'Link is already a reference'),
+			reason: l10n.t('Link is already a reference'),
 		}
 	};
 

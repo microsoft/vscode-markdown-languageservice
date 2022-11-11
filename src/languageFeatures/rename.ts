@@ -2,10 +2,10 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+import * as l10n from '@vscode/l10n';
 import * as path from 'path';
 import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
-import * as nls from 'vscode-nls';
 import { URI, Utils } from 'vscode-uri';
 import { defaultMarkdownFileExtension, LsConfiguration } from '../config';
 import { ILogger, LogLevel } from '../logging';
@@ -21,8 +21,6 @@ import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
 import { HrefKind, InternalHref, MdLink, MdLinkKind, MdLinkSource, resolveInternalDocumentLink } from './documentLinks';
 import { MdHeaderReference, MdReference, MdReferenceKind, MdReferencesProvider } from './references';
 
-const localize = nls.loadMessageBundle();
-
 export interface MdReferencesResponse {
 	readonly references: readonly MdReference[];
 	readonly triggerRef: MdReference;
@@ -33,7 +31,7 @@ export interface MdReferencesResponse {
  */
 export class RenameNotSupportedAtLocationError extends Error {
 	constructor() {
-		super(localize('rename.notSupported', 'Renaming is not supported here. Try renaming a header or link.'));
+		super(l10n.t('Renaming is not supported here. Try renaming a header or link.'));
 	}
 }
 

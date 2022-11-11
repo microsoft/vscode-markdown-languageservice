@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import type { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
-import * as nls from 'vscode-nls';
 import { URI, Utils } from 'vscode-uri';
 import { LsConfiguration } from '../config';
 import { ILogger, LogLevel } from '../logging';
@@ -21,7 +21,6 @@ import { tryDecodeUri } from '../util/uri';
 import { getWorkspaceFolder, IWorkspace, tryAppendMarkdownFileExtension } from '../workspace';
 import { MdDocumentInfoCache, MdWorkspaceInfoCache } from '../workspaceCache';
 
-const localize = nls.loadMessageBundle();
 
 export enum HrefKind {
 	External,
@@ -849,7 +848,7 @@ export class MdLinkProvider extends Disposable {
 				return {
 					range: link.source.hrefRange,
 					target: undefined, // Needs to be resolved later
-					tooltip: localize('tooltip.link', 'Follow link'),
+					tooltip: l10n.t('Follow link'),
 					data: link,
 				};
 			}
@@ -864,7 +863,7 @@ export class MdLinkProvider extends Disposable {
 				const target = this.#createOpenAtPosCommand(link.source.resource, def.source.hrefRange.start);
 				return {
 					range: link.source.hrefRange,
-					tooltip: localize('tooltip.definition', 'Go to link definition'),
+					tooltip: l10n.t('Go to link definition'),
 					target: target,
 					data: link
 				};

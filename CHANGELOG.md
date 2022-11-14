@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0-alpha.2 UNRELEASED
+## 0.3.0-alpha.2 November 14, 2022
 - Switch to `@vscode/l10n` for localization.
 
 ## 0.3.0-alpha.1 November 4, 2022

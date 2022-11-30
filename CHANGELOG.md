@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.0-alpha.3 November 30, 2022
+- Republish with missing types files.
+
 ## 0.3.0-alpha.2 November 14, 2022
 - Switch to `@vscode/l10n` for localization.
 

@@ -7,9 +7,10 @@ import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration } from '../config';
-import { InternalHref, MdLink, MdLinkComputer, MdLinkProvider } from '../languageFeatures/documentLinks';
+import { HrefKind, InternalHref, IMdLinkComputer, MdLink, MdLinkKind, MdLinkComputer, MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { makeRange } from '../types/range';
+import { ITextDocument } from '../types/textDocument';
 import { noopToken } from '../util/cancellation';
 import { ContainingDocumentContext, IWorkspace } from '../workspace';
 import { createNewMarkdownEngine } from './engine';
@@ -661,13 +662,13 @@ suite('Link provider', () => {
 
 	const testFile = workspacePath('x.md');
 
-	function getLinksForFile(fileContents: string) {
+	function getLinksForFile(fileContents: string, linkComputer?: IMdLinkComputer) {
 		const doc = new InMemoryDocument(testFile, fileContents);
 		const workspace = new InMemoryWorkspace([doc]);
 
 		const engine = createNewMarkdownEngine();
 		const tocProvider = new MdTableOfContentsProvider(engine, workspace, nulLogger);
-		const provider = new MdLinkProvider(getLsConfiguration({}), engine, workspace, tocProvider, nulLogger);
+		const provider = new MdLinkProvider(getLsConfiguration({}), workspace, linkComputer ?? new MdLinkComputer(engine, workspace), tocProvider, nulLogger);
 		return provider.provideDocumentLinks(doc, noopToken);
 	}
 
@@ -739,5 +740,35 @@ suite('Link provider', () => {
 			`[link](${exampleUrl})`
 		));
 		assert.strictEqual(links[0].target, exampleUrl);
+	});
+
+	test('Should work with a custom link computer', async () => {
+		class FakeMdLinkComputer implements IMdLinkComputer {
+			async getAllLinks(document: ITextDocument): Promise<MdLink[]> {
+				return [
+					{
+						kind: MdLinkKind.Link,
+						href: {
+							kind: HrefKind.External,
+							uri: URI.parse('http://example.com'),
+						},
+						source: {
+							hrefText: 'http://example.com',
+							resource: URI.parse(document.uri),
+							range: { start: { line: 0, character: 3 }, end: { line: 0, character: 11 } },
+							targetRange: { start: { line: 0, character: 7 }, end: { line: 0, character: 11 } },
+							hrefRange: { start: { line: 0, character: 8 }, end: { line: 0, character: 10 } },
+							fragmentRange: undefined,
+							pathText: ''
+						}
+					}
+				];
+			}
+		}
+
+		const links = await getLinksForFile('no actual links here', new FakeMdLinkComputer());
+		assertLinksEqual(links, [
+			makeRange(0, 8, 0, 10)
+		]);
 	});
 });

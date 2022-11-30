@@ -8,7 +8,7 @@ import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration } from '../config';
 import { MdDefinitionProvider } from '../languageFeatures/definitions';
-import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks';
+import { createWorkspaceLinkCache, MdLinkComputer } from '../languageFeatures/documentLinks';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { noopToken } from '../util/cancellation';
 import { DisposableStore } from '../util/dispose';
@@ -23,7 +23,8 @@ import { joinLines, withStore, workspacePath } from './util';
 function getDefinition(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position, workspace: IWorkspace) {
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-	const linkCache = store.add(createWorkspaceLinkCache(engine, workspace));
+	const linkComputer = new MdLinkComputer(engine, workspace);
+	const linkCache = store.add(createWorkspaceLinkCache(workspace, linkComputer));
 	const provider = new MdDefinitionProvider(getLsConfiguration({}), workspace, tocProvider, linkCache);
 	return provider.provideDefinition(doc, pos, noopToken);
 }

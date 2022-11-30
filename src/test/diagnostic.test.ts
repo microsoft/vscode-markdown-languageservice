@@ -7,7 +7,7 @@ import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-types';
 import { getLsConfiguration } from '../config';
 import { DiagnosticComputer, DiagnosticLevel, DiagnosticOptions, DiagnosticsManager } from '../languageFeatures/diagnostics';
-import { MdLinkProvider } from '../languageFeatures/documentLinks';
+import { MdLinkComputer, MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { comparePosition } from '../types/position';
 import { makeRange } from '../types/range';
@@ -25,7 +25,8 @@ async function getComputedDiagnostics(store: DisposableStore, doc: InMemoryDocum
 	const engine = createNewMarkdownEngine();
 	const config = getLsConfiguration({});
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-	const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
+	const linkComputer = new MdLinkComputer(engine, workspace);
+	const linkProvider = store.add(new MdLinkProvider(config, workspace, linkComputer, tocProvider, nulLogger));
 	const computer = new DiagnosticComputer(config, workspace, linkProvider, tocProvider);
 	return (
 		await computer.compute(doc, getDiagnosticsOptions(options), noopToken)
@@ -446,7 +447,8 @@ suite('Diagnostic Manager', () => {
 		const engine = createNewMarkdownEngine();
 		const config = getLsConfiguration({});
 		const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-		const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
+		const linkComputer = new MdLinkComputer(engine, workspace);
+		const linkProvider = store.add(new MdLinkProvider(config, workspace, linkComputer, tocProvider, nulLogger));
 		return store.add(new DiagnosticsManager(config, workspace, linkProvider, tocProvider));
 	}
 

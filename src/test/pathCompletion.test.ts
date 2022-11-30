@@ -8,7 +8,7 @@ import * as ls from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration, LsConfiguration } from '../config';
-import { MdLinkProvider } from '../languageFeatures/documentLinks';
+import { MdLinkComputer, MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdPathCompletionProvider } from '../languageFeatures/pathCompletions';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { noopToken } from '../util/cancellation';
@@ -28,7 +28,8 @@ async function getCompletionsAtCursor(store: DisposableStore, resource: URI, fil
 	const engine = createNewMarkdownEngine();
 	const ws = workspace ?? store.add(new InMemoryWorkspace([doc]));
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, ws, nulLogger));
-	const linkProvider = store.add(new MdLinkProvider(config, engine, ws, tocProvider, nulLogger));
+	const linkComputer = new MdLinkComputer(engine, ws);
+	const linkProvider = store.add(new MdLinkProvider(config, ws, linkComputer, tocProvider, nulLogger));
 	const provider = new MdPathCompletionProvider(config, ws, engine, linkProvider);
 	const cursorPositions = getCursorPositions(fileContents, doc);
 	const completions = await provider.provideCompletionItems(doc, cursorPositions[0], {

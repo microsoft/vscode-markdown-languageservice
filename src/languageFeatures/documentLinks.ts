@@ -396,10 +396,18 @@ export type ResolvedDocumentLinkTarget =
 	| { readonly kind: 'folder'; readonly uri: URI }
 	| { readonly kind: 'external'; readonly uri: URI };
 
+
+export interface IMdLinkComputer {
+	/**
+	 * Get complete list of links in the document.
+	 */
+	getAllLinks(document: ITextDocument, token: CancellationToken): Promise<MdLink[]>;
+}
+
 /**
  * Stateless object that extracts link information from markdown files.
  */
-export class MdLinkComputer {
+export class MdLinkComputer implements IMdLinkComputer {
 
 	readonly #tokenizer: IMdParser;
 	readonly #workspace: IWorkspace;
@@ -680,15 +688,15 @@ export class MdLinkProvider extends Disposable {
 
 	readonly #linkCache: MdDocumentInfoCache<MdDocumentLinksInfo>;
 
-	readonly #linkComputer: MdLinkComputer;
+	readonly #linkComputer: IMdLinkComputer;
 	readonly #config: LsConfiguration;
 	readonly #workspace: IWorkspace;
 	readonly #tocProvider: MdTableOfContentsProvider;
 
 	constructor(
 		config: LsConfiguration,
-		tokenizer: IMdParser,
 		workspace: IWorkspace,
+		linkComputer: IMdLinkComputer,
 		tocProvider: MdTableOfContentsProvider,
 		logger: ILogger,
 	) {
@@ -697,8 +705,8 @@ export class MdLinkProvider extends Disposable {
 		this.#config = config;
 		this.#workspace = workspace;
 		this.#tocProvider = tocProvider;
+		this.#linkComputer = linkComputer;
 
-		this.#linkComputer = new MdLinkComputer(tokenizer, this.#workspace);
 		this.#linkCache = this._register(new MdDocumentInfoCache(this.#workspace, async (doc, token) => {
 			logger.log(LogLevel.Debug, 'LinkProvider', `compute - ${doc.uri}`);
 
@@ -910,10 +918,9 @@ export function parseLocationInfoFromFragment(fragment: string): lsp.Position | 
 }
 
 export function createWorkspaceLinkCache(
-	parser: IMdParser,
 	workspace: IWorkspace,
+	linkComputer: IMdLinkComputer,
 ) {
-	const linkComputer = new MdLinkComputer(parser, workspace);
 	return new MdWorkspaceInfoCache(workspace, (doc, token) => linkComputer.getAllLinks(doc, token));
 }
 

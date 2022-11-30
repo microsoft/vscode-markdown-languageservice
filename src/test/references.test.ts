@@ -7,7 +7,7 @@ import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration } from '../config';
-import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks';
+import { createWorkspaceLinkCache, MdLinkComputer } from '../languageFeatures/documentLinks';
 import { MdReferencesProvider } from '../languageFeatures/references';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { comparePosition } from '../types/position';
@@ -24,7 +24,8 @@ import { joinLines, withStore, workspacePath, workspaceRoot } from './util';
 async function getReferences(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position, workspace: IWorkspace) {
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-	const linkCache = store.add(createWorkspaceLinkCache(engine, workspace));
+	const linkComputer = new MdLinkComputer(engine, workspace);
+	const linkCache = store.add(createWorkspaceLinkCache(workspace, linkComputer));
 	const provider = store.add(new MdReferencesProvider(getLsConfiguration({}), engine, workspace, tocProvider, linkCache, nulLogger));
 	const refs = await provider.provideReferences(doc, pos, { includeDeclaration: true }, noopToken);
 	return refs.sort((a, b) => {

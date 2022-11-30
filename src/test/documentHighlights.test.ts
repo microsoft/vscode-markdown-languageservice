@@ -7,7 +7,7 @@ import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-types';
 import { getLsConfiguration } from '../config';
 import { MdDocumentHighlightProvider } from '../languageFeatures/documentHighlights';
-import { MdLinkProvider } from '../languageFeatures/documentLinks';
+import { MdLinkComputer, MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { makeRange } from '../types/range';
 import { noopToken } from '../util/cancellation';
@@ -24,7 +24,8 @@ function getDocumentHighlights(store: DisposableStore, doc: InMemoryDocument, po
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const config = getLsConfiguration({});
-	const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
+	const linkComputer = new MdLinkComputer(engine, workspace);
+	const linkProvider = store.add(new MdLinkProvider(config, workspace, linkComputer, tocProvider, nulLogger));
 	const provider = new MdDocumentHighlightProvider(config, tocProvider, linkProvider);
 	return provider.getDocumentHighlights(doc, pos, noopToken);
 }

@@ -6,7 +6,7 @@ import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-types';
 import { IWorkspace } from '..';
 import { getLsConfiguration } from '../config';
-import { MdLinkProvider } from '../languageFeatures/documentLinks';
+import { MdLinkComputer, MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdDocumentSymbolProvider } from '../languageFeatures/documentSymbols';
 import { MdWorkspaceSymbolProvider } from '../languageFeatures/workspaceSymbols';
 import { MdTableOfContentsProvider } from '../tableOfContents';
@@ -21,7 +21,8 @@ import { joinLines, withStore, workspacePath } from './util';
 function getWorkspaceSymbols(store: DisposableStore, workspace: IWorkspace, query = ''): Promise<lsp.WorkspaceSymbol[]> {
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-	const linkProvider = store.add(new MdLinkProvider(getLsConfiguration({}), engine, workspace, tocProvider, nulLogger));
+	const linkComputer = new MdLinkComputer(engine, workspace);
+	const linkProvider = store.add(new MdLinkProvider(getLsConfiguration({}), workspace, linkComputer, tocProvider, nulLogger));
 	const symbolProvider = new MdDocumentSymbolProvider(tocProvider, linkProvider, nulLogger);
 	const workspaceSymbolProvider = store.add(new MdWorkspaceSymbolProvider(workspace, symbolProvider));
 	return workspaceSymbolProvider.provideWorkspaceSymbols(query, noopToken);

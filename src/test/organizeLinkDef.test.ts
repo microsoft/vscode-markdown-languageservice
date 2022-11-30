@@ -5,7 +5,7 @@
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-types';
 import { getLsConfiguration } from '../config';
-import { MdLinkProvider } from '../languageFeatures/documentLinks';
+import { MdLinkComputer, MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdOrganizeLinkDefinitionProvider } from '../languageFeatures/organizeLinkDefs';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { noopToken } from '../util/cancellation';
@@ -22,7 +22,8 @@ async function getOrganizeEdits(store: DisposableStore, doc: InMemoryDocument, r
 	const config = getLsConfiguration({});
 
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-	const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
+	const linkComputer = new MdLinkComputer(engine, workspace);
+	const linkProvider = store.add(new MdLinkProvider(config, workspace, linkComputer, tocProvider, nulLogger));
 	const organizer = new MdOrganizeLinkDefinitionProvider(linkProvider);
 	return organizer.getOrganizeLinkDefinitionEdits(doc, { removeUnused }, noopToken);
 }

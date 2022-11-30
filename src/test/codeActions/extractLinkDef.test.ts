@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-types';
-import { MdLinkProvider } from '../../languageFeatures/documentLinks';
+import { MdLinkComputer, MdLinkProvider } from '../../languageFeatures/documentLinks';
 import { MdExtractLinkDefinitionCodeActionProvider } from '../../languageFeatures/codeActions/extractLinkDef';
 import { MdTableOfContentsProvider } from '../../tableOfContents';
 import { noopToken } from '../../util/cancellation';
@@ -23,7 +23,8 @@ async function getActions(store: DisposableStore, doc: InMemoryDocument, pos: ls
 	const config = getLsConfiguration({});
 
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-	const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
+	const linkComputer = new MdLinkComputer(engine, workspace);
+	const linkProvider = store.add(new MdLinkProvider(config, workspace, linkComputer, tocProvider, nulLogger));
 	const provider = new MdExtractLinkDefinitionCodeActionProvider(linkProvider);
 	return provider.getActions(doc, makeRange(pos, pos), lsp.CodeActionContext.create([], undefined, undefined), noopToken);
 }

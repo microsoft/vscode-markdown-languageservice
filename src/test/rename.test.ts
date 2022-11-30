@@ -7,7 +7,7 @@ import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration } from '../config';
-import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks';
+import { createWorkspaceLinkCache, MdLinkComputer } from '../languageFeatures/documentLinks';
 import { MdReferencesProvider } from '../languageFeatures/references';
 import { MdRenameProvider } from '../languageFeatures/rename';
 import { githubSlugifier } from '../slugify';
@@ -30,7 +30,8 @@ function prepareRename(store: DisposableStore, doc: InMemoryDocument, pos: lsp.P
 	const config = getLsConfiguration({});
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-	const linkCache = store.add(createWorkspaceLinkCache(engine, workspace));
+	const linkComputer = new MdLinkComputer(engine, workspace);
+	const linkCache = store.add(createWorkspaceLinkCache(workspace, linkComputer));
 	const referenceComputer = store.add(new MdReferencesProvider(config, engine, workspace, tocProvider, linkCache, nulLogger));
 	const renameProvider = store.add(new MdRenameProvider(config, workspace, referenceComputer, githubSlugifier, nulLogger));
 	return renameProvider.prepareRename(doc, pos, noopToken);
@@ -43,7 +44,8 @@ function getRenameEdits(store: DisposableStore, doc: InMemoryDocument, pos: lsp.
 	const config = getLsConfiguration({});
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
-	const linkCache = store.add(createWorkspaceLinkCache(engine, workspace));
+	const linkComputer = new MdLinkComputer(engine, workspace);
+	const linkCache = store.add(createWorkspaceLinkCache(workspace, linkComputer));
 	const referencesProvider = store.add(new MdReferencesProvider(config, engine, workspace, tocProvider, linkCache, nulLogger));
 	const renameProvider = store.add(new MdRenameProvider(config, workspace, referencesProvider, githubSlugifier, nulLogger));
 	return renameProvider.provideRenameEdits(doc, pos, newName, noopToken);

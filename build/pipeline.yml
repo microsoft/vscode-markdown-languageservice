@@ -32,6 +32,9 @@ extends:
 
           - script: npm run compile
             displayName: Compile
+            
+          - script: npm run api-extractor
+            displayName: API Extractor
 
         testPlatforms:
           - name: Linux

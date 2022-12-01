@@ -23,4 +23,7 @@ module.exports = {
 			},
 		],
 	},
+	ignorePatterns: [
+		'types/**/*.d.ts'
+	]
 }; 

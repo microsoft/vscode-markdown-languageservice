@@ -3,5 +3,9 @@
 		"main"
 	],
 	"git.branchProtectionPrompt": "alwaysCommitToNewBranch",
-	"typescript.preferences.quoteStyle": "single"
+	"typescript.preferences.quoteStyle": "single",
+	"files.associations": {
+		"api-extractor.json": "jsonc",
+		"tsdoc-metadata.json": "jsonc"
+	}
 }

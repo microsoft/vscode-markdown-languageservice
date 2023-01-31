@@ -244,7 +244,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 
 	return Object.freeze<IMdLanguageService>({
 		dispose: () => {
-			linkCache.dispose(); 
+			linkCache.dispose();
 			tocProvider.dispose();
 			workspaceSymbolProvider.dispose();
 			linkProvider.dispose();
@@ -269,7 +269,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 		getRenameFilesInWorkspaceEdit: fileRenameProvider.getRenameFilesInWorkspaceEdit.bind(fileRenameProvider),
 		getCodeActions: async (doc: ITextDocument, range: lsp.Range, context: lsp.CodeActionContext, token: CancellationToken): Promise<lsp.CodeAction[]> => {
 			return (await Promise.all([
-				extractCodeActionProvider.getActions(doc, range, context, token), 
+				extractCodeActionProvider.getActions(doc, range, context, token),
 				Array.from(removeLinkDefinitionActionProvider.getActions(doc, range, context)),
 			])).flat();
 		},

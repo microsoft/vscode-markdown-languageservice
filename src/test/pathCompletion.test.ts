@@ -7,9 +7,9 @@ import * as assert from 'assert';
 import * as ls from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
-import { getLsConfiguration, LsConfiguration } from '../config';
+import { getLsConfiguration, LsConfiguration, PreferredMdPathExtensionStyle } from '../config';
 import { MdLinkProvider } from '../languageFeatures/documentLinks';
-import { MdPathCompletionOptions, MdPathCompletionProvider } from '../languageFeatures/pathCompletions';
+import { IncludeWorkspaceHeaderCompletions, MdPathCompletionOptions, MdPathCompletionProvider } from '../languageFeatures/pathCompletions';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { noopToken } from '../util/cancellation';
 import { DisposableStore } from '../util/dispose';
@@ -21,16 +21,14 @@ import { nulLogger } from './nulLogging';
 import { CURSOR, getCursorPositions, joinLines, withStore, workspacePath } from './util';
 
 
-async function getCompletionsAtCursor(store: DisposableStore, resource: URI, fileContents: string, workspace?: IWorkspace, configOverrides: Partial<LsConfiguration> = {}, context: Partial<MdPathCompletionOptions> = {}) {
-	const doc = new InMemoryDocument(resource, fileContents);
+async function getCompletionsAtCursor(store: DisposableStore, doc: InMemoryDocument, workspace: IWorkspace, configOverrides: Partial<LsConfiguration> = {}, context: Partial<MdPathCompletionOptions> = {}) {
 	const config = getLsConfiguration(configOverrides);
 
 	const engine = createNewMarkdownEngine();
-	const ws = workspace ?? store.add(new InMemoryWorkspace([doc]));
-	const tocProvider = store.add(new MdTableOfContentsProvider(engine, ws, nulLogger));
-	const linkProvider = store.add(new MdLinkProvider(config, engine, ws, tocProvider, nulLogger));
-	const provider = new MdPathCompletionProvider(config, ws, engine, linkProvider, tocProvider);
-	const cursorPositions = getCursorPositions(fileContents, doc);
+	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
+	const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
+	const provider = new MdPathCompletionProvider(config, workspace, engine, linkProvider, tocProvider);
+	const cursorPositions = getCursorPositions(doc.getText(), doc);
 
 	const completions = await provider.provideCompletionItems(doc, cursorPositions[0], {
 		triggerCharacter: undefined,
@@ -38,7 +36,16 @@ async function getCompletionsAtCursor(store: DisposableStore, resource: URI, fil
 		...context
 	}, noopToken);
 
-	return completions.sort((a, b) => (a.label as string).localeCompare(b.label as string));
+	return completions.sort((a, b) => {
+		return (a.sortText ?? a.label).localeCompare(b.sortText ?? b.label);
+	});
+}
+
+async function getCompletionsAtCursorForFileContents(store: DisposableStore, uri: URI, fileContents: string, workspace?: IWorkspace, configOverrides: Partial<LsConfiguration> = {}, context: Partial<MdPathCompletionOptions> = {}) {
+	const doc = new InMemoryDocument(uri, fileContents);
+	const ws = workspace ?? store.add(new InMemoryWorkspace([doc]));
+
+	return getCompletionsAtCursor(store, doc, ws, configOverrides, context);
 }
 
 function assertCompletionsEqual(actual: readonly lsp.CompletionItem[], expected: readonly { label: string; insertText?: string }[]) {
@@ -56,12 +63,12 @@ function assertCompletionsEqual(actual: readonly lsp.CompletionItem[], expected:
 suite('Path completions', () => {
 
 	test('Should not return anything when triggered in empty doc', withStore(async (store) => {
-		const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), `${CURSOR}`);
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), `${CURSOR}`);
 		assertCompletionsEqual(completions, []);
 	}));
 
 	test('Should return anchor completions', withStore(async (store) => {
-		const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 			`[](#${CURSOR}`,
 			``,
 			`# A b C`,
@@ -75,7 +82,7 @@ suite('Path completions', () => {
 	}));
 
 	test('Should not return suggestions for http links', withStore(async (store) => {
-		const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 			`[](http:${CURSOR}`,
 			``,
 			`# http`,
@@ -87,12 +94,12 @@ suite('Path completions', () => {
 	}));
 
 	test('Should return relative path suggestions', withStore(async (store) => {
-		const workspace = new InMemoryWorkspace([
+		const workspace = store.add(new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
 			new InMemoryDocument(workspacePath('sub', 'foo.md'), ''),
-		]);
-		const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+		]));
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 			`[](${CURSOR}`,
 			``,
 			`# A b C`,
@@ -107,13 +114,13 @@ suite('Path completions', () => {
 	}));
 
 	test('Should return relative path suggestions using ./', withStore(async (store) => {
-		const workspace = new InMemoryWorkspace([
+		const workspace = store.add(new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
 			new InMemoryDocument(workspacePath('sub', 'foo.md'), ''),
-		]);
+		]));
 
-		const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 			`[](./${CURSOR}`,
 			``,
 			`# A b C`,
@@ -127,13 +134,13 @@ suite('Path completions', () => {
 	}));
 
 	test('Should return absolute path suggestions using /', withStore(async (store) => {
-		const workspace = new InMemoryWorkspace([
+		const workspace = store.add(new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
 			new InMemoryDocument(workspacePath('sub', 'c.md'), ''),
-		]);
+		]));
 
-		const completions = await getCompletionsAtCursor(store, workspacePath('sub', 'new.md'), joinLines(
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('sub', 'new.md'), joinLines(
 			`[](/${CURSOR}`,
 			``,
 			`# A b C`,
@@ -147,7 +154,7 @@ suite('Path completions', () => {
 	}));
 
 	test('Should return anchor suggestions in other file', withStore(async (store) => {
-		const workspace = new InMemoryWorkspace([
+		const workspace = store.add(new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('b.md'), joinLines(
 				`# b`,
 				``,
@@ -155,8 +162,8 @@ suite('Path completions', () => {
 				``,
 				`# header1`,
 			)),
-		]);
-		const completions = await getCompletionsAtCursor(store, workspacePath('sub', 'new.md'), joinLines(
+		]));
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('sub', 'new.md'), joinLines(
 			`[](/b.md#${CURSOR}`,
 		), workspace);
 
@@ -167,7 +174,7 @@ suite('Path completions', () => {
 	}));
 
 	test('Should reference links for current file', withStore(async (store) => {
-		const completions = await getCompletionsAtCursor(store, workspacePath('sub', 'new.md'), joinLines(
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('sub', 'new.md'), joinLines(
 			`[][${CURSOR}`,
 			``,
 			`[ref-1]: bla`,
@@ -181,7 +188,7 @@ suite('Path completions', () => {
 	}));
 
 	test('Should complete headers in link definitions', withStore(async (store) => {
-		const completions = await getCompletionsAtCursor(store, workspacePath('sub', 'new.md'), joinLines(
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('sub', 'new.md'), joinLines(
 			`# a B c`,
 			`# x y    Z`,
 			`[ref-1]: ${CURSOR}`,
@@ -195,13 +202,13 @@ suite('Path completions', () => {
 	}));
 
 	test('Should complete relative paths in link definitions', withStore(async (store) => {
-		const workspace = new InMemoryWorkspace([
+		const workspace = store.add(new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
 			new InMemoryDocument(workspacePath('sub', 'c.md'), ''),
-		]);
+		]));
 
-		const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 			`# a B c`,
 			`[ref-1]: ${CURSOR}`,
 		), workspace);
@@ -215,13 +222,13 @@ suite('Path completions', () => {
 	}));
 
 	test('Should escape spaces in path names', withStore(async (store) => {
-		const workspace = new InMemoryWorkspace([
+		const workspace = store.add(new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
 			new InMemoryDocument(workspacePath('sub', 'file with space.md'), ''),
-		]);
+		]));
 
-		const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 			`[](./sub/${CURSOR})`
 		), workspace);
 
@@ -231,12 +238,12 @@ suite('Path completions', () => {
 	}));
 
 	test('Should support completions on angle bracket path with spaces', withStore(async (store) => {
-		const workspace = new InMemoryWorkspace([
+		const workspace = store.add(new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('sub with space', 'a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
-		]);
+		]));
 
-		const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 			`[](</sub with space/${CURSOR}`
 		), workspace);
 
@@ -246,12 +253,12 @@ suite('Path completions', () => {
 	}));
 
 	test('Should not escape spaces in path names that use angle brackets', withStore(async (store) => {
-		const workspace = new InMemoryWorkspace([
+		const workspace = store.add(new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('sub', 'file with space.md'), ''),
-		]);
+		]));
 
 		{
-			const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 				`[](<./sub/${CURSOR}`
 			), workspace);
 
@@ -260,7 +267,7 @@ suite('Path completions', () => {
 			]);
 		}
 		{
-			const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 				`[](<./sub/${CURSOR}>`
 			), workspace);
 
@@ -271,13 +278,13 @@ suite('Path completions', () => {
 	}));
 
 	test('Should complete paths for path with encoded spaces', withStore(async (store) => {
-		const workspace = new InMemoryWorkspace([
+		const workspace = store.add(new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
 			new InMemoryDocument(workspacePath('sub with space', 'file.md'), ''),
-		]);
+		]));
 
-		const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 			`[](./sub%20with%20space/${CURSOR})`
 		), workspace);
 
@@ -287,13 +294,13 @@ suite('Path completions', () => {
 	}));
 
 	test('Should complete definition path for path with encoded spaces', withStore(async (store) => {
-		const workspace = new InMemoryWorkspace([
+		const workspace = store.add(new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
 			new InMemoryDocument(workspacePath('sub with space', 'file.md'), ''),
-		]);
+		]));
 
-		const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 			`[def]: ./sub%20with%20space/${CURSOR}`
 		), workspace);
 
@@ -303,13 +310,13 @@ suite('Path completions', () => {
 	}));
 
 	test('Should support definition path with angle brackets', withStore(async (store) => {
-		const workspace = new InMemoryWorkspace([
+		const workspace = store.add(new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
 			new InMemoryDocument(workspacePath('sub with space', 'file.md'), ''),
-		]);
+		]));
 
-		const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 			`[def]: <./${CURSOR}>`
 		), workspace);
 
@@ -321,7 +328,7 @@ suite('Path completions', () => {
 	}));
 
 	test('Should return completions for links with square brackets', withStore(async (store) => {
-		const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 			`[x [y] z](#${CURSOR}`,
 			``,
 			`# A b C`,
@@ -333,14 +340,14 @@ suite('Path completions', () => {
 	}));
 
 	test('Should exclude completions for excluded paths', withStore(async (store) => {
-		const workspace = new InMemoryWorkspace([
+		const workspace = store.add(new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
 			new InMemoryDocument(workspacePath('.other.md'), ''),
 			new InMemoryDocument(workspacePath('sub', 'file.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
-		]);
+		]));
 
-		const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 			`[def]: ./${CURSOR}`
 		), workspace, {
 			excludePaths: [
@@ -356,17 +363,17 @@ suite('Path completions', () => {
 	}));
 
 	test('Should allowing configuring if md file suggestions include .md file extension', withStore(async (store) => {
-		const workspace = new InMemoryWorkspace([
+		const workspace = store.add(new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
 			new InMemoryDocument(workspacePath('sub', 'foo.md'), ''),
-		]);
+		]));
 
-		const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 			`[](./${CURSOR}`,
 			``,
 			`# A b C`,
-		), workspace, { preferredMdPathExtensionStyle: 'removeExtension' });
+		), workspace, { preferredMdPathExtensionStyle: PreferredMdPathExtensionStyle.removeExtension });
 
 		assertCompletionsEqual(completions, [
 			{ label: 'a' },
@@ -378,12 +385,12 @@ suite('Path completions', () => {
 	suite('Cross file header completions', () => {
 
 		test('Should return completions for headers in current doc', withStore(async (store) => {
-			const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 				`[](##${CURSOR}`,
 				``,
 				`# A b C`,
 				`# x y Z`,
-			), undefined, undefined, { includeWorkspaceHeaderCompletions: true });
+			), undefined, undefined, { includeWorkspaceHeaderCompletions: IncludeWorkspaceHeaderCompletions.onDoubleHash });
 
 			assertCompletionsEqual(completions, [
 				{ label: '#a-b-c' },
@@ -392,18 +399,18 @@ suite('Path completions', () => {
 		}));
 
 		test('Should return completions for headers across files in workspace', withStore(async (store) => {
-			const workspace = new InMemoryWorkspace([
+			const workspace = store.add(new InMemoryWorkspace([
 				new InMemoryDocument(workspacePath('a.md'), joinLines(
 					'# A b C',
 				)),
 				new InMemoryDocument(workspacePath('sub', 'b.md'), joinLines(
 					'# x Y z',
 				)),
-			]);
+			]));
 
-			const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 				`[](##${CURSOR}`,
-			), workspace, undefined, { includeWorkspaceHeaderCompletions: true });
+			), workspace, undefined, { includeWorkspaceHeaderCompletions: IncludeWorkspaceHeaderCompletions.onDoubleHash });
 
 			assertCompletionsEqual(completions, [
 				{ label: '#a-b-c', insertText: 'a.md#a-b-c' },
@@ -412,18 +419,18 @@ suite('Path completions', () => {
 		}));
 
 		test('Should use .. to access parent folders', withStore(async (store) => {
-			const workspace = new InMemoryWorkspace([
+			const workspace = store.add(new InMemoryWorkspace([
 				new InMemoryDocument(workspacePath('a.md'), joinLines(
 					'# A b C',
 				)),
 				new InMemoryDocument(workspacePath('sub', 'b.md'), joinLines(
 					'# x Y z',
 				)),
-			]);
+			]));
 
-			const completions = await getCompletionsAtCursor(store, workspacePath('sub', 'new.md'), joinLines(
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('sub', 'new.md'), joinLines(
 				`[](##${CURSOR}`,
-			), workspace, undefined, { includeWorkspaceHeaderCompletions: true });
+			), workspace, undefined, { includeWorkspaceHeaderCompletions: IncludeWorkspaceHeaderCompletions.onDoubleHash });
 
 			assertCompletionsEqual(completions, [
 				{ label: '#a-b-c', insertText: '../a.md#a-b-c' },
@@ -432,18 +439,18 @@ suite('Path completions', () => {
 		}));
 
 		test('Should encode spaces in folder paths', withStore(async (store) => {
-			const workspace = new InMemoryWorkspace([
+			const workspace = store.add(new InMemoryWorkspace([
 				new InMemoryDocument(workspacePath('a b.md'), joinLines(
 					'# A b C',
 				)),
 				new InMemoryDocument(workspacePath('sub space', 'other sub', 'c d.md'), joinLines(
 					'# x Y z',
 				)),
-			]);
+			]));
 
-			const completions = await getCompletionsAtCursor(store, workspacePath('other', 'new.md'), joinLines(
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('other', 'new.md'), joinLines(
 				`[](##${CURSOR}`,
-			), workspace, undefined, { includeWorkspaceHeaderCompletions: true });
+			), workspace, undefined, { includeWorkspaceHeaderCompletions: IncludeWorkspaceHeaderCompletions.onDoubleHash });
 
 			assertCompletionsEqual(completions, [
 				{ label: '#a-b-c', insertText: '../a%20b.md#a-b-c' },
@@ -452,35 +459,83 @@ suite('Path completions', () => {
 		}));
 
 		test('Should not be enabled by default', withStore(async (store) => {
-			const workspace = new InMemoryWorkspace([
+			const workspace = store.add(new InMemoryWorkspace([
 				new InMemoryDocument(workspacePath('a b.md'), joinLines(
 					'# A b C',
 				)),
 				new InMemoryDocument(workspacePath('sub space', 'other sub', 'c d.md'), joinLines(
 					'# x Y z',
 				)),
-			]);
+			]));
 
-			const completions = await getCompletionsAtCursor(store, workspacePath('other', 'new.md'), joinLines(
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('other', 'new.md'), joinLines(
 				`[](##${CURSOR}`,
 			), workspace, undefined, { includeWorkspaceHeaderCompletions: undefined });
 
 			assertCompletionsEqual(completions, []);
 		}));
 
+		test('Should not return completions on single hash if configured to only trigger on double hash', withStore(async (store) => {
+			const doc = new InMemoryDocument(workspacePath('other', 'new.md'), joinLines(
+				`# header`,
+				``,
+				`[](#${CURSOR}`,
+			));
+			const workspace = store.add(new InMemoryWorkspace([
+				doc,
+				new InMemoryDocument(workspacePath('a b.md'), joinLines(
+					'# A b C',
+				)),
+				new InMemoryDocument(workspacePath('sub space', 'other sub', 'c d.md'), joinLines(
+					'# x Y z',
+				)),
+			]));
+
+			const completions = await getCompletionsAtCursor(store, doc, workspace, undefined, { includeWorkspaceHeaderCompletions: IncludeWorkspaceHeaderCompletions.onDoubleHash });
+
+			assertCompletionsEqual(completions, [
+				{ label: '#header' }
+			]);
+		}));
+
+		test('Should return completions on single hash if configured to', withStore(async (store) => {
+			const doc = new InMemoryDocument(workspacePath('other', 'new.md'), joinLines(
+				`# header`,
+				``,
+				`[](#${CURSOR}`,
+			));
+			const workspace = store.add(new InMemoryWorkspace([
+				doc,
+				new InMemoryDocument(workspacePath('a.md'), joinLines(
+					'# A b C',
+				)),
+				new InMemoryDocument(workspacePath('sub','c.md'), joinLines(
+					'# x Y z', 
+				)),
+			]));
+
+			const completions = await getCompletionsAtCursor(store, doc, workspace, undefined, { includeWorkspaceHeaderCompletions: IncludeWorkspaceHeaderCompletions.onSingleOrDoubleHash });
+
+			assertCompletionsEqual(completions, [
+				{ label: '#header' },
+				{ label: '#a-b-c', insertText: '../a.md#a-b-c' },
+				{ label: '#x-y-z', insertText: '../sub/c.md#x-y-z' },
+			]);
+		}));
+
 		test('Should work in link definitions', withStore(async (store) => {
-			const workspace = new InMemoryWorkspace([
+			const workspace = store.add(new InMemoryWorkspace([
 				new InMemoryDocument(workspacePath('a.md'), joinLines(
 					'# A b C',
 				)),
 				new InMemoryDocument(workspacePath('sub', 'b.md'), joinLines(
 					'# x Y z',
 				)),
-			]);
+			]));
 
-			const completions = await getCompletionsAtCursor(store, workspacePath('sub', 'new.md'), joinLines(
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('sub', 'new.md'), joinLines(
 				`[ref]: ##${CURSOR}`,
-			), workspace, undefined, { includeWorkspaceHeaderCompletions: true });
+			), workspace, undefined, { includeWorkspaceHeaderCompletions: IncludeWorkspaceHeaderCompletions.onDoubleHash });
 
 			assertCompletionsEqual(completions, [
 				{ label: '#a-b-c', insertText: '../a.md#a-b-c' },
@@ -489,18 +544,18 @@ suite('Path completions', () => {
 		}));
 
 		test('Should skip encoding for angle bracket paths', withStore(async (store) => {
-			const workspace = new InMemoryWorkspace([
+			const workspace = store.add(new InMemoryWorkspace([
 				new InMemoryDocument(workspacePath('a b.md'), joinLines(
 					'# A b C',
 				)),
 				new InMemoryDocument(workspacePath('sub space', 'other sub', 'c d.md'), joinLines(
 					'# x Y z',
 				)),
-			]);
+			]));
 
-			const completions = await getCompletionsAtCursor(store, workspacePath('other', 'new.md'), joinLines(
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('other', 'new.md'), joinLines(
 				`[text](<##${CURSOR}`,
-			), workspace, undefined, { includeWorkspaceHeaderCompletions: true });
+			), workspace, undefined, { includeWorkspaceHeaderCompletions: IncludeWorkspaceHeaderCompletions.onDoubleHash });
 
 			assertCompletionsEqual(completions, [
 				{ label: '#a-b-c', insertText: '../a b.md#a-b-c' },
@@ -509,18 +564,18 @@ suite('Path completions', () => {
 		}));
 
 		test('Should allowing configuring if md file suggestions include .md file extension', withStore(async (store) => {
-			const workspace = new InMemoryWorkspace([
+			const workspace = store.add(new InMemoryWorkspace([
 				new InMemoryDocument(workspacePath('a.md'), joinLines(
 					'# A b C',
 				)),
 				new InMemoryDocument(workspacePath('sub', 'b.md'), joinLines(
 					'# x Y z',
 				)),
-			]);
+			]));
 
-			const completions = await getCompletionsAtCursor(store, workspacePath('sub', 'new.md'), joinLines(
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('sub', 'new.md'), joinLines(
 				`[](##${CURSOR}`,
-			), workspace, { preferredMdPathExtensionStyle: 'removeExtension' }, { includeWorkspaceHeaderCompletions: true });
+			), workspace, { preferredMdPathExtensionStyle: PreferredMdPathExtensionStyle.removeExtension }, { includeWorkspaceHeaderCompletions: IncludeWorkspaceHeaderCompletions.onDoubleHash });
 
 			assertCompletionsEqual(completions, [
 				{ label: '#a-b-c', insertText: '../a#a-b-c' },

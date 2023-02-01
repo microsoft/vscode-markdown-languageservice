@@ -28,11 +28,11 @@ import { MdTableOfContentsProvider } from './tableOfContents';
 import { ITextDocument } from './types/textDocument';
 import { isWorkspaceWithFileWatching, IWorkspace } from './workspace';
 
-export { LsConfiguration } from './config';
+export { LsConfiguration, PreferredMdPathExtensionStyle } from './config';
 export { DiagnosticCode, DiagnosticLevel, DiagnosticOptions, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
 export { ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks';
 export { FileRename } from './languageFeatures/fileRename';
-export { MdPathCompletionOptions as MdCompletionOptions } from './languageFeatures/pathCompletions';
+export { IncludeWorkspaceHeaderCompletions, MdPathCompletionOptions } from './languageFeatures/pathCompletions';
 export { RenameNotSupportedAtLocationError } from './languageFeatures/rename';
 export { ILogger, LogLevel } from './logging';
 export { IMdParser, Token } from './parser';

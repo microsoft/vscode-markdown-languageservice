@@ -9,7 +9,7 @@ import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration, LsConfiguration } from '../config';
 import { MdLinkProvider } from '../languageFeatures/documentLinks';
-import { MdPathCompletionProvider } from '../languageFeatures/pathCompletions';
+import { MdPathCompletionOptions, MdPathCompletionProvider } from '../languageFeatures/pathCompletions';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { noopToken } from '../util/cancellation';
 import { DisposableStore } from '../util/dispose';
@@ -21,7 +21,7 @@ import { nulLogger } from './nulLogging';
 import { CURSOR, getCursorPositions, joinLines, withStore, workspacePath } from './util';
 
 
-async function getCompletionsAtCursor(store: DisposableStore, resource: URI, fileContents: string, workspace?: IWorkspace, configOverrides: Partial<LsConfiguration> = {}) {
+async function getCompletionsAtCursor(store: DisposableStore, resource: URI, fileContents: string, workspace?: IWorkspace, configOverrides: Partial<LsConfiguration> = {}, context: Partial<MdPathCompletionOptions> = {}) {
 	const doc = new InMemoryDocument(resource, fileContents);
 	const config = getLsConfiguration(configOverrides);
 
@@ -29,11 +29,13 @@ async function getCompletionsAtCursor(store: DisposableStore, resource: URI, fil
 	const ws = workspace ?? store.add(new InMemoryWorkspace([doc]));
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, ws, nulLogger));
 	const linkProvider = store.add(new MdLinkProvider(config, engine, ws, tocProvider, nulLogger));
-	const provider = new MdPathCompletionProvider(config, ws, engine, linkProvider);
+	const provider = new MdPathCompletionProvider(config, ws, engine, linkProvider, tocProvider);
 	const cursorPositions = getCursorPositions(fileContents, doc);
+
 	const completions = await provider.provideCompletionItems(doc, cursorPositions[0], {
 		triggerCharacter: undefined,
 		triggerKind: ls.CompletionTriggerKind.Invoked,
+		...context
 	}, noopToken);
 
 	return completions.sort((a, b) => (a.label as string).localeCompare(b.label as string));
@@ -352,4 +354,118 @@ suite('Path completions', () => {
 			{ label: 'b.md', insertText: 'b.md' },
 		]);
 	}));
+
+	suite('Cross file header completions', () => {
+
+		test('Should return completions for headers in current doc', withStore(async (store) => {
+			const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+				`[](##${CURSOR}`,
+				``,
+				`# A b C`,
+				`# x y Z`,
+			), undefined, undefined, { includeWorkspaceHeaderCompletions: true });
+
+			assertCompletionsEqual(completions, [
+				{ label: '#a-b-c' },
+				{ label: '#x-y-z' },
+			]);
+		}));
+
+		test('Should return completions for headers across files in workspace', withStore(async (store) => {
+			const workspace = new InMemoryWorkspace([
+				new InMemoryDocument(workspacePath('a.md'), joinLines(
+					'# A b C',
+				)),
+				new InMemoryDocument(workspacePath('sub', 'b.md'), joinLines(
+					'# x Y z',
+				)),
+			]);
+
+			const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+				`[](##${CURSOR}`,
+			), workspace, undefined, { includeWorkspaceHeaderCompletions: true });
+
+			assertCompletionsEqual(completions, [
+				{ label: '#a-b-c', insertText: 'a.md#a-b-c' },
+				{ label: '#x-y-z', insertText: 'sub/b.md#x-y-z' },
+			]);
+		}));
+
+		test('Should use .. to access parent folders', withStore(async (store) => {
+			const workspace = new InMemoryWorkspace([
+				new InMemoryDocument(workspacePath('a.md'), joinLines(
+					'# A b C',
+				)),
+				new InMemoryDocument(workspacePath('sub', 'b.md'), joinLines(
+					'# x Y z',
+				)),
+			]);
+
+			const completions = await getCompletionsAtCursor(store, workspacePath('sub', 'new.md'), joinLines(
+				`[](##${CURSOR}`,
+			), workspace, undefined, { includeWorkspaceHeaderCompletions: true });
+
+			assertCompletionsEqual(completions, [
+				{ label: '#a-b-c', insertText: '../a.md#a-b-c' },
+				{ label: '#x-y-z', insertText: 'b.md#x-y-z' },
+			]);
+		}));
+
+		test('Should encode spaces in folder paths', withStore(async (store) => {
+			const workspace = new InMemoryWorkspace([
+				new InMemoryDocument(workspacePath('a b.md'), joinLines(
+					'# A b C',
+				)),
+				new InMemoryDocument(workspacePath('sub space', 'other sub', 'c d.md'), joinLines(
+					'# x Y z',
+				)),
+			]);
+
+			const completions = await getCompletionsAtCursor(store, workspacePath('other', 'new.md'), joinLines(
+				`[](##${CURSOR}`,
+			), workspace, undefined, { includeWorkspaceHeaderCompletions: true });
+
+			assertCompletionsEqual(completions, [
+				{ label: '#a-b-c', insertText: '../a%20b.md#a-b-c' },
+				{ label: '#x-y-z', insertText: '../sub%20space/other%20sub/c%20d.md#x-y-z' },
+			]);
+		}));
+
+		test('Should not be enabled by default', withStore(async (store) => {
+			const workspace = new InMemoryWorkspace([
+				new InMemoryDocument(workspacePath('a b.md'), joinLines(
+					'# A b C',
+				)),
+				new InMemoryDocument(workspacePath('sub space', 'other sub', 'c d.md'), joinLines(
+					'# x Y z',
+				)),
+			]);
+
+			const completions = await getCompletionsAtCursor(store, workspacePath('other', 'new.md'), joinLines(
+				`[](##${CURSOR}`,
+			), workspace, undefined, { includeWorkspaceHeaderCompletions: undefined });
+
+			assertCompletionsEqual(completions, []);
+		}));
+
+		test('Should work in link definitions', withStore(async (store) => {
+			const workspace = new InMemoryWorkspace([
+				new InMemoryDocument(workspacePath('a.md'), joinLines(
+					'# A b C',
+				)),
+				new InMemoryDocument(workspacePath('sub', 'b.md'), joinLines(
+					'# x Y z',
+				)),
+			]);
+
+			const completions = await getCompletionsAtCursor(store, workspacePath('sub', 'new.md'), joinLines(
+				`[ref]: ##${CURSOR}`,
+			), workspace, undefined, { includeWorkspaceHeaderCompletions: true });
+
+			assertCompletionsEqual(completions, [
+				{ label: '#a-b-c', insertText: '../a.md#a-b-c' },
+				{ label: '#x-y-z', insertText: 'b.md#x-y-z' },
+			]);
+		}));
+	});
 });

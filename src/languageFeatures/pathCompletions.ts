@@ -3,20 +3,23 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import { dirname, resolve } from 'path';
 import type { CancellationToken, CompletionContext } from 'vscode-languageserver-protocol';
 import * as lsp from 'vscode-languageserver-types';
 import { URI, Utils } from 'vscode-uri';
 import { isExcludedPath, LsConfiguration } from '../config';
 import { IMdParser } from '../parser';
-import { TableOfContents } from '../tableOfContents';
+import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOfContents';
 import { translatePosition } from '../types/position';
 import { makeRange } from '../types/range';
 import { getDocUri, getLine, ITextDocument } from '../types/textDocument';
 import { Schemes } from '../util/schemes';
 import { r } from '../util/string';
 import { FileStat, getWorkspaceFolder, IWorkspace, openLinkToMarkdownFile } from '../workspace';
+import { MdWorkspaceInfoCache } from '../workspaceCache';
 import { MdLinkProvider } from './documentLinks';
+import { computeRelativePath } from './rename';
 
 enum CompletionContextKind {
 	/** `[...](|)` */
@@ -89,6 +92,19 @@ function tryDecodeUriComponent(str: string): string {
 }
 
 /**
+ * Control the type of completions returned by a {@link MdPathCompletionProvider}.
+ */
+export interface MdPathCompletionOptions {
+	/**
+	 * Should header completions for other files in the workspace be returned when
+	 * you trigger completions on `##`?
+	 * 
+	 * Defaults to false (not returned).
+	 */
+	readonly includeWorkspaceHeaderCompletions?: boolean;
+}
+
+/**
  * Adds path completions in markdown files.
  */
 export class MdPathCompletionProvider {
@@ -98,32 +114,37 @@ export class MdPathCompletionProvider {
 	readonly #parser: IMdParser;
 	readonly #linkProvider: MdLinkProvider;
 
+	readonly #workspaceTocCache: MdWorkspaceInfoCache<TableOfContents>;
+
 	constructor(
 		configuration: LsConfiguration,
 		workspace: IWorkspace,
 		parser: IMdParser,
 		linkProvider: MdLinkProvider,
+		tocProvider: MdTableOfContentsProvider,
 	) {
 		this.#configuration = configuration;
 		this.#workspace = workspace;
 		this.#parser = parser;
 		this.#linkProvider = linkProvider;
+
+		this.#workspaceTocCache = new MdWorkspaceInfoCache(workspace, (doc) => tocProvider.getForDocument(doc));
 	}
 
-	public async provideCompletionItems(document: ITextDocument, position: lsp.Position, _context: CompletionContext, token: CancellationToken): Promise<lsp.CompletionItem[]> {
-		const context = this.#getPathCompletionContext(document, position);
-		if (!context) {
+	public async provideCompletionItems(document: ITextDocument, position: lsp.Position, context: CompletionContext & MdPathCompletionOptions, token: CancellationToken): Promise<lsp.CompletionItem[]> {
+		const pathContext = this.#getPathCompletionContext(document, position);
+		if (!pathContext) {
 			return [];
 		}
 
 		const items: lsp.CompletionItem[] = [];
-		for await (const item of this.#provideCompletionItems(document, position, context, token)) {
+		for await (const item of this.#provideCompletionItems(document, position, pathContext, context, token)) {
 			items.push(item);
 		}
 		return items;
 	}
 
-	async *#provideCompletionItems(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
+	async *#provideCompletionItems(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, options: MdPathCompletionOptions, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
 		switch (context.kind) {
 			case CompletionContextKind.ReferenceLink: {
 				yield* this.#provideReferenceSuggestions(document, position, context, token);
@@ -131,6 +152,12 @@ export class MdPathCompletionProvider {
 			}
 			case CompletionContextKind.LinkDefinition:
 			case CompletionContextKind.Link: {
+				if (options.includeWorkspaceHeaderCompletions && context.linkPrefix.startsWith('##')) {
+					const insertRange = makeRange(context.linkTextStartPosition, position);
+					yield* this.#provideWorkspaceHeaderSuggestions(document, position, context, insertRange, token);
+					return;
+				}
+
 				const isAnchorInCurrentDoc = context.anchorInfo && context.anchorInfo.beforeAnchor.length === 0;
 
 				// Add anchor #links in current doc
@@ -162,8 +189,6 @@ export class MdPathCompletionProvider {
 						yield* this.#providePathSuggestions(document, position, context, token);
 					}
 				}
-
-				return;
 			}
 		}
 	}
@@ -294,18 +319,56 @@ export class MdPathCompletionProvider {
 			return;
 		}
 
+		const replacementRange = makeRange(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
 		for (const entry of toc.entries) {
-			const replacementRange = makeRange(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
-			const label = '#' + decodeURIComponent(entry.slug.value);
-			yield {
-				kind: lsp.CompletionItemKind.Reference,
-				label,
-				textEdit: {
-					newText: label,
-					insert: insertionRange,
-					replace: replacementRange,
-				},
+			const completionItem = this.#createHeaderCompletion(entry, insertionRange, replacementRange);
+			completionItem.labelDetails = {
+
 			};
+			yield completionItem;
+		}
+	}
+
+	#createHeaderCompletion(entry: TocEntry, insertionRange: lsp.Range, replacementRange: lsp.Range, filePath = ''): lsp.CompletionItem {
+		const label = '#' + decodeURIComponent(entry.slug.value);
+		const newText = filePath + '#' + decodeURIComponent(entry.slug.value);
+		return {
+			kind: lsp.CompletionItemKind.Reference,
+			label,
+			textEdit: {
+				newText,
+				insert: insertionRange,
+				replace: replacementRange,
+			},
+		};
+	}
+
+	/**
+	 * Suggestions for headers across  all md files in the workspace
+	 */
+	async *#provideWorkspaceHeaderSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, insertionRange: lsp.Range, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
+		const tocs = await this.#workspaceTocCache.entries();
+		if (token.isCancellationRequested) {
+			return;
+		}
+
+		const replacementRange = makeRange(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
+		for (const [toDoc, toc] of tocs) {
+			const rawPath = toDoc.toString() === getDocUri(document).toString() ? '' : computeRelativePath(getDocUri(document), toDoc);
+			if (typeof rawPath === 'undefined') {
+				continue;
+			}
+
+			const path = context.skipEncoding ? rawPath : encodeURI(rawPath);
+			for (const entry of toc.entries) {
+				const completionItem = this.#createHeaderCompletion(entry, insertionRange, replacementRange, path);
+				completionItem.filterText = '#' + completionItem.label;
+				if (path) {
+					completionItem.detail = l10n.t(`Link to '# {0}' in '{1}'`, entry.text, path);
+					completionItem.labelDetails = { description: path };
+				}
+				yield completionItem;
+			}
 		}
 	}
 

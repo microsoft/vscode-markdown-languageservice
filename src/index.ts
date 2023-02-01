@@ -32,6 +32,7 @@ export { LsConfiguration } from './config';
 export { DiagnosticCode, DiagnosticLevel, DiagnosticOptions, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
 export { ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks';
 export { FileRename } from './languageFeatures/fileRename';
+export { MdPathCompletionOptions as MdCompletionOptions } from './languageFeatures/pathCompletions';
 export { RenameNotSupportedAtLocationError } from './languageFeatures/rename';
 export { ILogger, LogLevel } from './logging';
 export { IMdParser, Token } from './parser';
@@ -226,7 +227,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const smartSelectProvider = new MdSelectionRangeProvider(init.parser, tocProvider, logger);
 	const foldingProvider = new MdFoldingProvider(init.parser, tocProvider, logger);
 	const linkProvider = new MdLinkProvider(config, init.parser, init.workspace, tocProvider, logger);
-	const pathCompletionProvider = new MdPathCompletionProvider(config, init.workspace, init.parser, linkProvider);
+	const pathCompletionProvider = new MdPathCompletionProvider(config, init.workspace, init.parser, linkProvider, tocProvider);
 	const linkCache = createWorkspaceLinkCache(init.parser, init.workspace);
 	const referencesProvider = new MdReferencesProvider(config, init.parser, init.workspace, tocProvider, linkCache, logger);
 	const definitionsProvider = new MdDefinitionProvider(config, init.workspace, tocProvider, linkCache);
@@ -243,7 +244,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 
 	return Object.freeze<IMdLanguageService>({
 		dispose: () => {
-			linkCache.dispose(); 
+			linkCache.dispose();
 			tocProvider.dispose();
 			workspaceSymbolProvider.dispose();
 			linkProvider.dispose();

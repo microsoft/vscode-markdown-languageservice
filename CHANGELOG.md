@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.0-alpha.4 UNRELEASED
+- Add support for cross workspace header completions when triggered on `##`.
+
 ## 0.3.0-alpha.3 November 30, 2022
 - Republish with missing types files.
 

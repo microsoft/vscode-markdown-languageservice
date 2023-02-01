@@ -268,9 +268,13 @@ export function getLinkRenameText(workspace: IWorkspace, source: MdLinkSource, n
 		return '/' + path.posix.relative(root.resource.path, newPath.path);
 	}
 
-	const rootDir = Utils.dirname(source.resource);
-	if (rootDir.scheme === newPath.scheme && rootDir.scheme !== Schemes.untitled) {
-		let newLink = path.posix.relative(rootDir.path, newPath.path);
+	return computeRelativePath(source.resource, newPath, preferDotSlash);
+}
+
+export function computeRelativePath(fromDoc: URI, toDoc: URI, preferDotSlash = false): string | undefined {
+	if (fromDoc.scheme === toDoc.scheme && fromDoc.scheme !== Schemes.untitled) {
+		const rootDir = Utils.dirname(fromDoc);
+		let newLink = path.posix.relative(rootDir.path, toDoc.path);
 		if (preferDotSlash && !(newLink.startsWith('../') || newLink.startsWith('..\\'))) {
 			newLink = './' + newLink;
 		}

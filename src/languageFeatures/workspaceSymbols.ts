@@ -13,7 +13,7 @@ import { MdDocumentSymbolProvider } from './documentSymbols';
 
 export class MdWorkspaceSymbolProvider extends Disposable {
 
-	readonly #cache: MdWorkspaceInfoCache<lsp.SymbolInformation[]>;
+	readonly #cache: MdWorkspaceInfoCache<readonly lsp.SymbolInformation[]>;
 	readonly #symbolProvider: MdDocumentSymbolProvider;
 
 	constructor(
@@ -44,7 +44,7 @@ export class MdWorkspaceSymbolProvider extends Disposable {
 		return Array.from(this.#toSymbolInformation(document.uri, docSymbols));
 	}
 
-	*#toSymbolInformation(uri: string, docSymbols: lsp.DocumentSymbol[]): Iterable<lsp.SymbolInformation> {
+	*#toSymbolInformation(uri: string, docSymbols: readonly lsp.DocumentSymbol[]): Iterable<lsp.SymbolInformation> {
 		for (const symbol of docSymbols) {
 			yield {
 				name: symbol.name,

@@ -1,7 +1,8 @@
 # Changelog
 
-## 0.3.0-alpha.4 UNRELEASED
+## 0.3.0-alpha.4 February 1, 2023
 - Add support for cross workspace header completions when triggered on `##`.
+- Add `preferredMdPathExtensionStyle` configuration option to control if generated paths to Markdown files should include or drop the file extension.
 
 ## 0.3.0-alpha.3 November 30, 2022
 - Republish with missing types files.

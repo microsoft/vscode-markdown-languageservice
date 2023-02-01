@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import { dirname, resolve } from 'path';
+import { dirname, extname, resolve } from 'path';
 import type { CancellationToken, CompletionContext } from 'vscode-languageserver-protocol';
 import * as lsp from 'vscode-languageserver-types';
 import { URI, Utils } from 'vscode-uri';
@@ -14,12 +14,13 @@ import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOf
 import { translatePosition } from '../types/position';
 import { makeRange } from '../types/range';
 import { getDocUri, getLine, ITextDocument } from '../types/textDocument';
+import { looksLikeMarkdownFilePath } from '../util/file';
+import { computeRelativePath } from '../util/path';
 import { Schemes } from '../util/schemes';
 import { r } from '../util/string';
 import { FileStat, getWorkspaceFolder, IWorkspace, openLinkToMarkdownFile } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
 import { MdLinkProvider } from './documentLinks';
-import { computeRelativePath } from './rename';
 
 enum CompletionContextKind {
 	/** `[...](|)` */
@@ -359,7 +360,8 @@ export class MdPathCompletionProvider {
 				continue;
 			}
 
-			const path = context.skipEncoding ? rawPath : encodeURI(rawPath);
+			const normalizedPath = this.#normalizeFileNameCompletion(rawPath);
+			const path = context.skipEncoding ? normalizedPath : encodeURI(normalizedPath);
 			for (const entry of toc.entries) {
 				const completionItem = this.#createHeaderCompletion(entry, insertionRange, replacementRange, path);
 				completionItem.filterText = '#' + completionItem.label;
@@ -397,10 +399,15 @@ export class MdPathCompletionProvider {
 			return;
 		}
 
-		for (const [name, type] of dirInfo) {
+		// eslint-disable-next-line prefer-const
+		for (let [name, type] of dirInfo) {
 			const uri = Utils.joinPath(parentDir, name);
 			if (isExcludedPath(this.#configuration, uri)) {
 				continue;
+			}
+
+			if (!type.isDirectory) {
+				name = this.#normalizeFileNameCompletion(name);
 			}
 
 			const isDir = type.isDirectory;
@@ -416,6 +423,16 @@ export class MdPathCompletionProvider {
 				command: isDir ? { command: 'editor.action.triggerSuggest', title: '' } : undefined,
 			};
 		}
+	}
+
+	#normalizeFileNameCompletion(name: string): string {
+		if (this.#configuration.preferredMdPathExtensionStyle === 'removeExtension') {
+			if (looksLikeMarkdownFilePath(this.#configuration, name)) {
+				const ext = extname(name);
+				name = name.slice(0, -ext.length);
+			}
+		}
+		return name;
 	}
 
 	#resolveReference(document: ITextDocument, ref: string): URI | undefined {

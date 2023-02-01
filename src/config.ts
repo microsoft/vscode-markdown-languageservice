@@ -30,6 +30,19 @@ export interface LsConfiguration {
 	 * List of path globs that should be excluded from cross-file operations.
 	 */
 	readonly excludePaths: readonly string[];
+
+	/**
+	 * Preferred style for file paths to {@link markdownFileExtensions markdown files}.
+	 * 
+	 * This is used for paths added by the language service, such as for path completions and on file renames.
+	 * 
+	 * Valid values:
+	 * 
+	 * - `auto` — Try to maintain the existing of the path.
+	 * - `includeExtension` — Include the file extension when possible.
+	 * - `removeExtension` — Drop the file extension when possible.
+	 */
+	readonly preferredMdPathExtensionStyle?: 'auto' | 'includeExtension' | 'removeExtension';
 }
 
 export const defaultMarkdownFileExtension = 'md';

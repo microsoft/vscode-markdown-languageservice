@@ -355,6 +355,26 @@ suite('Path completions', () => {
 		]);
 	}));
 
+	test('Should allowing configuring if md file suggestions include .md file extension', withStore(async (store) => {
+		const workspace = new InMemoryWorkspace([
+			new InMemoryDocument(workspacePath('a.md'), ''),
+			new InMemoryDocument(workspacePath('b.md'), ''),
+			new InMemoryDocument(workspacePath('sub', 'foo.md'), ''),
+		]);
+
+		const completions = await getCompletionsAtCursor(store, workspacePath('new.md'), joinLines(
+			`[](./${CURSOR}`,
+			``,
+			`# A b C`,
+		), workspace, { preferredMdPathExtensionStyle: 'removeExtension' });
+
+		assertCompletionsEqual(completions, [
+			{ label: 'a' },
+			{ label: 'b' },
+			{ label: 'sub/' },
+		]);
+	}));
+
 	suite('Cross file header completions', () => {
 
 		test('Should return completions for headers in current doc', withStore(async (store) => {
@@ -485,6 +505,26 @@ suite('Path completions', () => {
 			assertCompletionsEqual(completions, [
 				{ label: '#a-b-c', insertText: '../a b.md#a-b-c' },
 				{ label: '#x-y-z', insertText: '../sub space/other sub/c d.md#x-y-z' },
+			]);
+		}));
+
+		test('Should allowing configuring if md file suggestions include .md file extension', withStore(async (store) => {
+			const workspace = new InMemoryWorkspace([
+				new InMemoryDocument(workspacePath('a.md'), joinLines(
+					'# A b C',
+				)),
+				new InMemoryDocument(workspacePath('sub', 'b.md'), joinLines(
+					'# x Y z',
+				)),
+			]);
+
+			const completions = await getCompletionsAtCursor(store, workspacePath('sub', 'new.md'), joinLines(
+				`[](##${CURSOR}`,
+			), workspace, { preferredMdPathExtensionStyle: 'removeExtension' }, { includeWorkspaceHeaderCompletions: true });
+
+			assertCompletionsEqual(completions, [
+				{ label: '#a-b-c', insertText: '../a#a-b-c' },
+				{ label: '#x-y-z', insertText: 'b#x-y-z' },
 			]);
 		}));
 	});

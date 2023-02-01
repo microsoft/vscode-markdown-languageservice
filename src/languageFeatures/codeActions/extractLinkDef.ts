@@ -105,7 +105,7 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 		return {
 			title: MdExtractLinkDefinitionCodeActionProvider.genericTitle,
 			kind: MdExtractLinkDefinitionCodeActionProvider.#kind,
-			edit: builder.renameFragment(),
+			edit: builder.getEdit(),
 			command: {
 				command: 'vscodeMarkdownLanguageservice.rename',
 				title: 'Rename',

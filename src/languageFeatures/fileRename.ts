@@ -10,11 +10,11 @@ import { isExcludedPath, LsConfiguration } from '../config';
 import { getDocUri, ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
 import { WorkspaceEditBuilder } from '../util/editBuilder';
-import { looksLikeMarkdownPath } from '../util/file';
+import { looksLikeMarkdownUri } from '../util/file';
 import { isParentDir } from '../util/path';
 import { IWorkspace } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
-import { HrefKind, MdLink, resolveInternalDocumentLink } from './documentLinks';
+import { HrefKind, InternalHref, MdLink, resolveInternalDocumentLink } from './documentLinks';
 import { MdReferenceKind, MdReferencesProvider } from './references';
 import { getFilePathRange, getLinkRenameText } from './rename';
 
@@ -69,7 +69,7 @@ export class MdFileRenameProvider extends Disposable {
 			}
 		}
 
-		return { participatingRenames, edit: builder.renameFragment() };
+		return { participatingRenames, edit: builder.getEdit() };
 	}
 
 	async #addSingleFileRenameEdits(edit: FileRename, allEdits: readonly FileRename[], builder: WorkspaceEditBuilder, token: CancellationToken): Promise<boolean> {
@@ -154,7 +154,7 @@ export class MdFileRenameProvider extends Disposable {
 	 * In this case we also need to update links within the file.
 	 */
 	async #tryAddEditsInSelf(edit: FileRename, allEdits: readonly FileRename[], builder: WorkspaceEditBuilder): Promise<boolean> {
-		if (!looksLikeMarkdownPath(this.#config, edit.newUri)) {
+		if (!looksLikeMarkdownUri(this.#config, edit.newUri)) {
 			return false;
 		}
 
@@ -241,14 +241,11 @@ export class MdFileRenameProvider extends Disposable {
 
 		let newFilePath = newUri;
 
-		// If the original markdown link did not use a file extension, remove ours too
-		if (!Utils.extname(link.href.path)) {
+		if (this.#shouldRemoveFileExtensionForRename(link.href, newUri)) {
 			const editExt = Utils.extname(newUri);
-			if (this.#config.markdownFileExtensions.includes(editExt.replace('.', ''))) {
-				newFilePath = newUri.with({
-					path: newUri.path.slice(0, newUri.path.length - editExt.length)
-				});
-			}
+			newFilePath = newUri.with({
+				path: newUri.path.slice(0, newUri.path.length - editExt.length)
+			});
 		}
 
 		const newLinkText = getLinkRenameText(this.#workspace, link.source, newFilePath, link.source.pathText.startsWith('.'));
@@ -257,5 +254,18 @@ export class MdFileRenameProvider extends Disposable {
 			return true;
 		}
 		return false;
+	}
+
+	#shouldRemoveFileExtensionForRename(originalHref: InternalHref, newUri: URI): boolean {
+		if (!looksLikeMarkdownUri(this.#config, newUri)) {
+			return false;
+		}
+
+		if (this.#config.preferredMdPathExtensionStyle === 'removeExtension') {
+			return true;
+		}
+
+		// If the original markdown link did not use a file extension, remove ours too
+		return !Utils.extname(originalHref.path);
 	}
 }

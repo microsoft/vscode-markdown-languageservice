@@ -14,7 +14,7 @@ import { translatePosition } from '../types/position';
 import { modifyRange } from '../types/range';
 import { getDocUri, ITextDocument } from '../types/textDocument';
 import { Disposable, IDisposable } from '../util/dispose';
-import { looksLikeMarkdownPath } from '../util/file';
+import { looksLikeMarkdownUri } from '../util/file';
 import { Limiter } from '../util/limiter';
 import { ResourceMap } from '../util/resourceMap';
 import { FileStat, IWorkspace, IWorkspaceWithWatching, statLinkToMarkdownFile } from '../workspace';
@@ -420,7 +420,7 @@ export class DiagnosticComputer {
 	}
 
 	#isMarkdownPath(resolvedHrefPath: URI) {
-		return this.#workspace.hasMarkdownDocument(resolvedHrefPath) || looksLikeMarkdownPath(this.#configuration, resolvedHrefPath);
+		return this.#workspace.hasMarkdownDocument(resolvedHrefPath) || looksLikeMarkdownUri(this.#configuration, resolvedHrefPath);
 	}
 
 	#isIgnoredLink(options: DiagnosticOptions, link: string): boolean {

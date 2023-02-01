@@ -13,7 +13,7 @@ import { translatePosition } from '../types/position';
 import { areRangesEqual, modifyRange, rangeContains } from '../types/range';
 import { getDocUri, ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
-import { looksLikeMarkdownPath } from '../util/file';
+import { looksLikeMarkdownUri } from '../util/file';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
 import { HrefKind, looksLikeLinkToResource, MdLink, MdLinkKind } from './documentLinks';
@@ -269,7 +269,7 @@ export class MdReferencesProvider extends Disposable {
 	}
 
 	#isMarkdownPath(resolvedHrefPath: URI) {
-		return this.#workspace.hasMarkdownDocument(resolvedHrefPath) || looksLikeMarkdownPath(this.#configuration, resolvedHrefPath);
+		return this.#workspace.hasMarkdownDocument(resolvedHrefPath) || looksLikeMarkdownUri(this.#configuration, resolvedHrefPath);
 	}
 
 	*#findLinksToFile(resource: URI, links: readonly MdLink[], sourceLink: MdLink | undefined): Iterable<MdReference> {

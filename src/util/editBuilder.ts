@@ -30,7 +30,7 @@ export class WorkspaceEditBuilder {
 		edits.push(edit);
 	}
 
-	renameFragment(): lsp.WorkspaceEdit {
+	getEdit(): lsp.WorkspaceEdit {
 		// We need to convert changes into `documentChanges` or else they get dropped
 		const textualChanges = Object.entries(this.#changes).map(([uri, edits]): lsp.TextDocumentEdit => {
 			return lsp.TextDocumentEdit.create({ uri, version: null }, edits);

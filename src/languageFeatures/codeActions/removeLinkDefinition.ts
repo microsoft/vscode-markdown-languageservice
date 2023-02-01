@@ -57,6 +57,6 @@ export class MdRemoveLinkDefinitionCodeActionProvider {
 		const range = definition.source.range;
 		builder.replace(getDocUri(doc), makeRange(range.start.line, 0, range.start.line + 1, 0), '');
 
-		return { title, kind: lsp.CodeActionKind.QuickFix, edit: builder.renameFragment() };
+		return { title, kind: lsp.CodeActionKind.QuickFix, edit: builder.getEdit() };
 	}
 }

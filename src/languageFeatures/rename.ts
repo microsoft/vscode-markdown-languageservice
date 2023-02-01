@@ -15,7 +15,7 @@ import { modifyRange, rangeContains } from '../types/range';
 import { getDocUri, ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
 import { WorkspaceEditBuilder } from '../util/editBuilder';
-import { Schemes } from '../util/schemes';
+import { computeRelativePath } from '../util/path';
 import { tryDecodeUri } from '../util/uri';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
 import { HrefKind, InternalHref, MdLink, MdLinkKind, MdLinkSource, resolveInternalDocumentLink } from './documentLinks';
@@ -138,20 +138,23 @@ export class MdRenameProvider extends Disposable {
 		} else if (triggerRef.kind === MdReferenceKind.Header || (triggerRef.kind === MdReferenceKind.Link && triggerRef.link.source.fragmentRange && rangeContains(triggerRef.link.source.fragmentRange, position) && (triggerRef.link.kind === MdLinkKind.Definition || triggerRef.link.kind === MdLinkKind.Link && triggerRef.link.href.kind === HrefKind.Internal))) {
 			return this.#renameFragment(allRefsInfo, newName);
 		} else if (triggerRef.kind === MdReferenceKind.Link && !(triggerRef.link.source.fragmentRange && rangeContains(triggerRef.link.source.fragmentRange, position)) && (triggerRef.link.kind === MdLinkKind.Link || triggerRef.link.kind === MdLinkKind.Definition) && triggerRef.link.href.kind === HrefKind.Internal) {
-			return this.#renameFilePath(triggerRef.link.source.resource, triggerRef.link.href, allRefsInfo, newName);
+			return this.#renameFilePath(triggerRef.link.source.resource, triggerRef.link.href, allRefsInfo, newName, token);
 		}
 
 		return undefined;
 	}
 
-	async #renameFilePath(triggerDocument: URI, triggerHref: InternalHref, allRefsInfo: MdReferencesResponse, newName: string): Promise<lsp.WorkspaceEdit> {
+	async #renameFilePath(triggerDocument: URI, triggerHref: InternalHref, allRefsInfo: MdReferencesResponse, newName: string, token: CancellationToken): Promise<lsp.WorkspaceEdit> {
 		const builder = new WorkspaceEditBuilder();
 
 		const targetUri = await statLinkToMarkdownFile(this.#configuration, this.#workspace, triggerHref.path) ?? triggerHref.path;
+		if (token.isCancellationRequested) {
+			return builder.getEdit();
+		}
 
 		const rawNewFilePath = resolveInternalDocumentLink(triggerDocument, newName, this.#workspace);
 		if (!rawNewFilePath) {
-			return builder.renameFragment();
+			return builder.getEdit();
 		}
 
 		let resolvedNewFilePath = rawNewFilePath.resource;
@@ -179,7 +182,7 @@ export class MdRenameProvider extends Disposable {
 			}
 		}
 
-		return builder.renameFragment();
+		return builder.getEdit();
 	}
 
 	#renameFragment(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
@@ -197,7 +200,7 @@ export class MdRenameProvider extends Disposable {
 					break;
 			}
 		}
-		return builder.renameFragment();
+		return builder.getEdit();
 	}
 
 	#renameExternalLink(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
@@ -207,7 +210,7 @@ export class MdRenameProvider extends Disposable {
 				builder.replace(ref.link.source.resource, ref.location.range, newName);
 			}
 		}
-		return builder.renameFragment();
+		return builder.getEdit();
 	}
 
 	#renameReferenceLinks(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
@@ -223,7 +226,7 @@ export class MdRenameProvider extends Disposable {
 			}
 		}
 
-		return builder.renameFragment();
+		return builder.getEdit();
 	}
 
 	async #getAllReferences(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<MdReferencesResponse | undefined> {
@@ -269,19 +272,6 @@ export function getLinkRenameText(workspace: IWorkspace, source: MdLinkSource, n
 	}
 
 	return computeRelativePath(source.resource, newPath, preferDotSlash);
-}
-
-export function computeRelativePath(fromDoc: URI, toDoc: URI, preferDotSlash = false): string | undefined {
-	if (fromDoc.scheme === toDoc.scheme && fromDoc.scheme !== Schemes.untitled) {
-		const rootDir = Utils.dirname(fromDoc);
-		let newLink = path.posix.relative(rootDir.path, toDoc.path);
-		if (preferDotSlash && !(newLink.startsWith('../') || newLink.startsWith('..\\'))) {
-			newLink = './' + newLink;
-		}
-		return newLink;
-	}
-
-	return undefined;
 }
 
 export function getFilePathRange(link: MdLink): lsp.Range {

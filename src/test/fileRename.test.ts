@@ -6,7 +6,7 @@
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
-import { getLsConfiguration } from '../config';
+import { getLsConfiguration, LsConfiguration } from '../config';
 import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks';
 import { FileRenameResponse, MdFileRenameProvider } from '../languageFeatures/fileRename';
 import { MdReferencesProvider } from '../languageFeatures/references';
@@ -24,13 +24,13 @@ import { assertRangeEqual, joinLines, withStore, workspacePath } from './util';
 /**
  * Get all the edits for a file rename.
  */
-function getFileRenameEdits(store: DisposableStore, edits: ReadonlyArray<{ oldUri: URI, newUri: URI }>, workspace: IWorkspace): Promise<FileRenameResponse | undefined> {
-	const config = getLsConfiguration({});
+function getFileRenameEdits(store: DisposableStore, edits: ReadonlyArray<{ oldUri: URI, newUri: URI }>, workspace: IWorkspace, configOverrides: Partial<LsConfiguration> = {}): Promise<FileRenameResponse | undefined> {
+	const config = getLsConfiguration(configOverrides);
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const linkCache = store.add(createWorkspaceLinkCache(engine, workspace));
 	const referencesProvider = store.add(new MdReferencesProvider(config, engine, workspace, tocProvider, linkCache, nulLogger));
-	const renameProvider = store.add(new MdFileRenameProvider(getLsConfiguration({}), workspace, linkCache, referencesProvider));
+	const renameProvider = store.add(new MdFileRenameProvider(config, workspace, linkCache, referencesProvider));
 	return renameProvider.getRenameFilesInWorkspaceEdit(edits, noopToken);
 }
 
@@ -114,7 +114,31 @@ suite('File Rename', () => {
 		});
 	}));
 
-	test('Rename file should preserve usage of file extensions', withStore(async (store) => {
+	test('Rename file should drop file extensions if it has been configured to', withStore(async (store) => {
+		const docUri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(docUri, joinLines(
+			`[abc](/old.md#frag)`,
+			`[abc](old.md#frag)`,
+			`[abc](./old.md#frag)`,
+			`[xyz]: ./old.md#frag`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const oldUri = workspacePath('old.md');
+		const newUri = workspacePath('new.md');
+
+		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace, { preferredMdPathExtensionStyle: 'removeExtension' });
+		assertEditsEqual(response!.edit, {
+			uri: docUri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 6, 0, 13), '/new'),
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 12), 'new'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 14), './new'),
+				lsp.TextEdit.replace(makeRange(3, 7, 3, 15), './new'),
+			]
+		});
+	}));
+
+	test('Rename file should preserve usage of file extensions by default', withStore(async (store) => {
 		const docUri = workspacePath('doc.md');
 		const doc = new InMemoryDocument(docUri, joinLines(
 			`[abc](/old#frag)`,

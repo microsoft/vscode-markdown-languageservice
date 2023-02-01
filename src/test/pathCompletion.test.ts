@@ -467,5 +467,25 @@ suite('Path completions', () => {
 				{ label: '#x-y-z', insertText: 'b.md#x-y-z' },
 			]);
 		}));
+
+		test('Should skip encoding for angle bracket paths', withStore(async (store) => {
+			const workspace = new InMemoryWorkspace([
+				new InMemoryDocument(workspacePath('a b.md'), joinLines(
+					'# A b C',
+				)),
+				new InMemoryDocument(workspacePath('sub space', 'other sub', 'c d.md'), joinLines(
+					'# x Y z',
+				)),
+			]);
+
+			const completions = await getCompletionsAtCursor(store, workspacePath('other', 'new.md'), joinLines(
+				`[text](<##${CURSOR}`,
+			), workspace, undefined, { includeWorkspaceHeaderCompletions: true });
+
+			assertCompletionsEqual(completions, [
+				{ label: '#a-b-c', insertText: '../a b.md#a-b-c' },
+				{ label: '#x-y-z', insertText: '../sub space/other sub/c d.md#x-y-z' },
+			]);
+		}));
 	});
 });

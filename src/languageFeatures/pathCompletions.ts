@@ -337,11 +337,12 @@ export class MdPathCompletionProvider {
 			yield {
 				kind: lsp.CompletionItemKind.Reference,
 				label: def.ref.text,
+				detail: l10n.t(`Reference link '{0}'`, def.ref.text),
 				textEdit: {
 					newText: def.ref.text,
 					insert: insertionRange,
 					replace: replacementRange,
-				}
+				},
 			};
 		}
 	}
@@ -368,12 +369,17 @@ export class MdPathCompletionProvider {
 		return {
 			kind: lsp.CompletionItemKind.Reference,
 			label,
+			detail: this.#ownHeaderEntryDetails(entry),
 			textEdit: {
 				newText,
 				insert: insertionRange,
 				replace: replacementRange,
 			},
 		};
+	}
+
+	#ownHeaderEntryDetails(entry: TocEntry): string | undefined {
+		return l10n.t(`Link to '{0}'`, '#'.repeat(entry.level) +  ' ' +entry.text);
 	}
 
 	/**
@@ -387,9 +393,9 @@ export class MdPathCompletionProvider {
 
 		const replacementRange = makeRange(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
 		for (const [toDoc, toc] of tocs) {
-			const isHeaderInDocument = toDoc.toString() === getDocUri(document).toString();
+			const isHeaderInCurrentDocument = toDoc.toString() === getDocUri(document).toString();
 
-			const rawPath = isHeaderInDocument ? '' : computeRelativePath(getDocUri(document), toDoc);
+			const rawPath = isHeaderInCurrentDocument ? '' : computeRelativePath(getDocUri(document), toDoc);
 			if (typeof rawPath === 'undefined') {
 				continue;
 			}
@@ -399,9 +405,11 @@ export class MdPathCompletionProvider {
 			for (const entry of toc.entries) {
 				const completionItem = this.#createHeaderCompletion(entry, insertionRange, replacementRange, path);
 				completionItem.filterText = '#' + completionItem.label;
-				completionItem.sortText = isHeaderInDocument ? sortTexts.localHeader : sortTexts.workspaceHeader;
+				completionItem.sortText = isHeaderInCurrentDocument ? sortTexts.localHeader : sortTexts.workspaceHeader;
 				
-				if (path) {
+				if (isHeaderInCurrentDocument) {
+					completionItem.detail = this.#ownHeaderEntryDetails(entry);
+				} else if (path) {
 					completionItem.detail = l10n.t(`Link to '# {0}' in '{1}'`, entry.text, path);
 					completionItem.labelDetails = { description: path };
 				}
@@ -448,9 +456,12 @@ export class MdPathCompletionProvider {
 
 			const isDir = type.isDirectory;
 			const newText = (context.skipEncoding ? name : encodeURIComponent(name)) + (isDir ? '/' : '');
+			const label = isDir ? name + '/' : name;
 			yield {
-				label: isDir ? name + '/' : name,
+				label: label,
 				kind: isDir ? lsp.CompletionItemKind.Folder : lsp.CompletionItemKind.File,
+				detail: l10n.t(`Link to '{0}'`, label),
+				documentation: isDir ? uri.path + '/' : uri.path,
 				textEdit: {
 					newText,
 					insert: insertRange,

@@ -458,7 +458,7 @@ export class MdPathCompletionProvider {
 			const newText = (context.skipEncoding ? name : encodeURIComponent(name)) + (isDir ? '/' : '');
 			const label = isDir ? name + '/' : name;
 			yield {
-				label: label,
+				label,
 				kind: isDir ? lsp.CompletionItemKind.Folder : lsp.CompletionItemKind.File,
 				detail: l10n.t(`Link to '{0}'`, label),
 				documentation: isDir ? uri.path + '/' : uri.path,

@@ -6,7 +6,7 @@
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
-import { getLsConfiguration, LsConfiguration } from '../config';
+import { getLsConfiguration, LsConfiguration, PreferredMdPathExtensionStyle } from '../config';
 import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks';
 import { FileRenameResponse, MdFileRenameProvider } from '../languageFeatures/fileRename';
 import { MdReferencesProvider } from '../languageFeatures/references';
@@ -127,7 +127,7 @@ suite('File Rename', () => {
 		const oldUri = workspacePath('old.md');
 		const newUri = workspacePath('new.md');
 
-		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace, { preferredMdPathExtensionStyle: 'removeExtension' });
+		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace, { preferredMdPathExtensionStyle: PreferredMdPathExtensionStyle.removeExtension });
 		assertEditsEqual(response!.edit, {
 			uri: docUri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 6, 0, 13), '/new'),

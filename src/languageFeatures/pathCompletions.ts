@@ -93,17 +93,46 @@ function tryDecodeUriComponent(str: string): string {
 }
 
 /**
+ * Controls if header completions for other files in the workspace be returned.
+ */
+export enum IncludeWorkspaceHeaderCompletions {
+	/**
+	 * Never return workspace header completions.
+	 */
+	never = 'never',
+
+	/**
+	 * Return workspace header completions after `##` is typed.
+	 * 
+	 * This lets the user signal 
+	 */
+	onDoubleHash = 'onDoubleHash',
+
+	/**
+	 * Return workspace header completions after either a single `#` is typed or after `##`
+	 * 
+	 * For a single hash, this means the workspace header completions will be returned along side the current file header completions.
+	 */
+	onSingleOrDoubleHash = 'onSingleOrDoubleHash',
+}
+
+/**
  * Control the type of completions returned by a {@link MdPathCompletionProvider}.
  */
 export interface MdPathCompletionOptions {
 	/**
 	 * Should header completions for other files in the workspace be returned when
-	 * you trigger completions on `##`?
+	 * you trigger completions.
 	 * 
-	 * Defaults to false (not returned).
+	 * Defaults to {@link IncludeWorkspaceHeaderCompletions.never never} (not returned).
 	 */
-	readonly includeWorkspaceHeaderCompletions?: boolean;
+	readonly includeWorkspaceHeaderCompletions?: IncludeWorkspaceHeaderCompletions;
 }
+
+const sortTexts = Object.freeze({
+	localHeader: '1',
+	workspaceHeader: '2',
+});
 
 /**
  * Adds path completions in markdown files.
@@ -153,7 +182,10 @@ export class MdPathCompletionProvider {
 			}
 			case CompletionContextKind.LinkDefinition:
 			case CompletionContextKind.Link: {
-				if (options.includeWorkspaceHeaderCompletions && context.linkPrefix.startsWith('##')) {
+				if (
+					(context.linkPrefix.startsWith('#') && options.includeWorkspaceHeaderCompletions === IncludeWorkspaceHeaderCompletions.onSingleOrDoubleHash) ||
+					(context.linkPrefix.startsWith('##') && (options.includeWorkspaceHeaderCompletions === IncludeWorkspaceHeaderCompletions.onDoubleHash || options.includeWorkspaceHeaderCompletions === IncludeWorkspaceHeaderCompletions.onSingleOrDoubleHash))
+				) {
 					const insertRange = makeRange(context.linkTextStartPosition, position);
 					yield* this.#provideWorkspaceHeaderSuggestions(document, position, context, insertRange, token);
 					return;
@@ -355,7 +387,9 @@ export class MdPathCompletionProvider {
 
 		const replacementRange = makeRange(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
 		for (const [toDoc, toc] of tocs) {
-			const rawPath = toDoc.toString() === getDocUri(document).toString() ? '' : computeRelativePath(getDocUri(document), toDoc);
+			const isHeaderInDocument = toDoc.toString() === getDocUri(document).toString();
+
+			const rawPath = isHeaderInDocument ? '' : computeRelativePath(getDocUri(document), toDoc);
 			if (typeof rawPath === 'undefined') {
 				continue;
 			}
@@ -365,6 +399,8 @@ export class MdPathCompletionProvider {
 			for (const entry of toc.entries) {
 				const completionItem = this.#createHeaderCompletion(entry, insertionRange, replacementRange, path);
 				completionItem.filterText = '#' + completionItem.label;
+				completionItem.sortText = isHeaderInDocument ? sortTexts.localHeader : sortTexts.workspaceHeader;
+				
 				if (path) {
 					completionItem.detail = l10n.t(`Link to '# {0}' in '{1}'`, entry.text, path);
 					completionItem.labelDetails = { description: path };

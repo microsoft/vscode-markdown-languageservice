@@ -6,6 +6,26 @@
 import * as picomatch from 'picomatch';
 import { URI } from 'vscode-uri';
 
+/**
+ * Preferred style for file paths to {@link markdownFileExtensions markdown files}.
+ */
+export enum PreferredMdPathExtensionStyle {
+	/**
+	 * Try to maintain the existing of the path.
+	 */
+	auto = 'auto',
+
+	/**
+	 * Include the file extension when possible.
+	 */
+	includeExtension = 'includeExtension',
+
+	/**
+	 * Drop the file extension when possible.
+	 */
+	removeExtension = 'removeExtension',
+}
+
 export interface LsConfiguration {
 	/**
 	 * List of file extensions should be considered markdown.
@@ -35,14 +55,8 @@ export interface LsConfiguration {
 	 * Preferred style for file paths to {@link markdownFileExtensions markdown files}.
 	 * 
 	 * This is used for paths added by the language service, such as for path completions and on file renames.
-	 * 
-	 * Valid values:
-	 * 
-	 * - `auto` — Try to maintain the existing of the path.
-	 * - `includeExtension` — Include the file extension when possible.
-	 * - `removeExtension` — Drop the file extension when possible.
 	 */
-	readonly preferredMdPathExtensionStyle?: 'auto' | 'includeExtension' | 'removeExtension';
+	readonly preferredMdPathExtensionStyle?: PreferredMdPathExtensionStyle;
 }
 
 export const defaultMarkdownFileExtension = 'md';

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import type { CancellationToken, CompletionContext } from 'vscode-languageserver';
+import type { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration, LsConfiguration } from './config';
@@ -17,7 +17,7 @@ import { MdDocumentSymbolProvider } from './languageFeatures/documentSymbols';
 import { FileRename, MdFileRenameProvider } from './languageFeatures/fileRename';
 import { MdFoldingProvider } from './languageFeatures/folding';
 import { MdOrganizeLinkDefinitionProvider } from './languageFeatures/organizeLinkDefs';
-import { MdPathCompletionProvider } from './languageFeatures/pathCompletions';
+import { MdPathCompletionOptions, MdPathCompletionProvider } from './languageFeatures/pathCompletions';
 import { MdReferencesProvider } from './languageFeatures/references';
 import { MdRenameProvider } from './languageFeatures/rename';
 import { MdSelectionRangeProvider } from './languageFeatures/smartSelect';
@@ -104,7 +104,7 @@ export interface IMdLanguageService {
 	/**
 	 * Get completions items at a given position in a markdown file.
 	 */
-	getCompletionItems(document: ITextDocument, position: lsp.Position, context: CompletionContext, token: CancellationToken): Promise<lsp.CompletionItem[]>;
+	getCompletionItems(document: ITextDocument, position: lsp.Position, context: MdPathCompletionOptions, token: CancellationToken): Promise<lsp.CompletionItem[]>;
 
 	/**
 	 * Get the references to a symbol at the current location.

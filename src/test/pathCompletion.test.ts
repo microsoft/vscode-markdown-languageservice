@@ -9,7 +9,7 @@ import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration, LsConfiguration, PreferredMdPathExtensionStyle } from '../config';
 import { MdLinkProvider } from '../languageFeatures/documentLinks';
-import { IncludeWorkspaceHeaderCompletions, MdPathCompletionOptions, MdPathCompletionProvider } from '../languageFeatures/pathCompletions';
+import { IncludeWorkspaceHeaderCompletions, PathCompletionOptions, MdPathCompletionProvider } from '../languageFeatures/pathCompletions';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { noopToken } from '../util/cancellation';
 import { DisposableStore } from '../util/dispose';
@@ -21,7 +21,7 @@ import { nulLogger } from './nulLogging';
 import { CURSOR, getCursorPositions, joinLines, withStore, workspacePath } from './util';
 
 
-async function getCompletionsAtCursor(store: DisposableStore, doc: InMemoryDocument, workspace: IWorkspace, configOverrides: Partial<LsConfiguration> = {}, context: Partial<MdPathCompletionOptions> = {}) {
+async function getCompletionsAtCursor(store: DisposableStore, doc: InMemoryDocument, workspace: IWorkspace, configOverrides: Partial<LsConfiguration> = {}, context: Partial<PathCompletionOptions> = {}) {
 	const config = getLsConfiguration(configOverrides);
 
 	const engine = createNewMarkdownEngine();
@@ -41,7 +41,7 @@ async function getCompletionsAtCursor(store: DisposableStore, doc: InMemoryDocum
 	});
 }
 
-async function getCompletionsAtCursorForFileContents(store: DisposableStore, uri: URI, fileContents: string, workspace?: IWorkspace, configOverrides: Partial<LsConfiguration> = {}, context: Partial<MdPathCompletionOptions> = {}) {
+async function getCompletionsAtCursorForFileContents(store: DisposableStore, uri: URI, fileContents: string, workspace?: IWorkspace, configOverrides: Partial<LsConfiguration> = {}, context: Partial<PathCompletionOptions> = {}) {
 	const doc = new InMemoryDocument(uri, fileContents);
 	const ws = workspace ?? store.add(new InMemoryWorkspace([doc]));
 

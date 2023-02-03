@@ -17,7 +17,7 @@ import { MdDocumentSymbolProvider } from './languageFeatures/documentSymbols';
 import { FileRename, MdFileRenameProvider } from './languageFeatures/fileRename';
 import { MdFoldingProvider } from './languageFeatures/folding';
 import { MdOrganizeLinkDefinitionProvider } from './languageFeatures/organizeLinkDefs';
-import { MdPathCompletionOptions, MdPathCompletionProvider } from './languageFeatures/pathCompletions';
+import { PathCompletionOptions, MdPathCompletionProvider } from './languageFeatures/pathCompletions';
 import { MdReferencesProvider } from './languageFeatures/references';
 import { MdRenameProvider } from './languageFeatures/rename';
 import { MdSelectionRangeProvider } from './languageFeatures/smartSelect';
@@ -32,7 +32,7 @@ export { LsConfiguration, PreferredMdPathExtensionStyle } from './config';
 export { DiagnosticCode, DiagnosticLevel, DiagnosticOptions, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
 export { ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks';
 export { FileRename } from './languageFeatures/fileRename';
-export { IncludeWorkspaceHeaderCompletions, MdPathCompletionOptions } from './languageFeatures/pathCompletions';
+export { IncludeWorkspaceHeaderCompletions, PathCompletionOptions as MdPathCompletionOptions } from './languageFeatures/pathCompletions';
 export { RenameNotSupportedAtLocationError } from './languageFeatures/rename';
 export { ILogger, LogLevel } from './logging';
 export { IMdParser, Token } from './parser';
@@ -104,7 +104,7 @@ export interface IMdLanguageService {
 	/**
 	 * Get completions items at a given position in a markdown file.
 	 */
-	getCompletionItems(document: ITextDocument, position: lsp.Position, context: MdPathCompletionOptions, token: CancellationToken): Promise<lsp.CompletionItem[]>;
+	getCompletionItems(document: ITextDocument, position: lsp.Position, context: PathCompletionOptions, token: CancellationToken): Promise<lsp.CompletionItem[]>;
 
 	/**
 	 * Get the references to a symbol at the current location.

@@ -79,10 +79,11 @@ const defaultConfig: LsConfiguration = {
 };
 
 export function getLsConfiguration(overrides: Partial<LsConfiguration>): LsConfiguration {
-	return {
-		...defaultConfig,
-		...overrides,
-	};
+	return new Proxy<LsConfiguration>(Object.create(null), {
+		get(_target, p: keyof LsConfiguration, _receiver) {
+			return p in overrides ? overrides[p] : defaultConfig[p];
+		},
+	});
 }
 
 export function isExcludedPath(configuration: LsConfiguration, uri: URI): boolean {

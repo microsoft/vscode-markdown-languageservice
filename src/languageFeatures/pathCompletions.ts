@@ -119,7 +119,7 @@ export enum IncludeWorkspaceHeaderCompletions {
 /**
  * Control the type of completions returned by a {@link MdPathCompletionProvider}.
  */
-export interface MdPathCompletionOptions {
+export interface PathCompletionOptions {
 	/**
 	 * Should header completions for other files in the workspace be returned when
 	 * you trigger completions.
@@ -161,7 +161,7 @@ export class MdPathCompletionProvider {
 		this.#workspaceTocCache = new MdWorkspaceInfoCache(workspace, (doc) => tocProvider.getForDocument(doc));
 	}
 
-	public async provideCompletionItems(document: ITextDocument, position: lsp.Position, context: CompletionContext & MdPathCompletionOptions, token: CancellationToken): Promise<lsp.CompletionItem[]> {
+	public async provideCompletionItems(document: ITextDocument, position: lsp.Position, context: CompletionContext & PathCompletionOptions, token: CancellationToken): Promise<lsp.CompletionItem[]> {
 		const pathContext = this.#getPathCompletionContext(document, position);
 		if (!pathContext) {
 			return [];
@@ -174,7 +174,7 @@ export class MdPathCompletionProvider {
 		return items;
 	}
 
-	async *#provideCompletionItems(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, options: MdPathCompletionOptions, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
+	async *#provideCompletionItems(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, options: PathCompletionOptions, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
 		switch (context.kind) {
 			case CompletionContextKind.ReferenceLink: {
 				yield* this.#provideReferenceSuggestions(document, position, context, token);

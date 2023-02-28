@@ -91,16 +91,23 @@ export class MdFoldingProvider {
 		if (token.isCancellationRequested) {
 			return [];
 		}
+		return Array.from(this.#getBlockFoldingRangesFromTokens(document, tokens));
+	}
 
-		const multiLineListItems = tokens.filter(isFoldableToken);
-		return multiLineListItems.map(listItem => {
-			const startLine = listItem.map[0];
-			let endLine = listItem.map[1] - 1;
-			if (isEmptyOrWhitespace(getLine(document, endLine)) && endLine >= startLine + 1) {
-				endLine = endLine - 1;
+	*#getBlockFoldingRangesFromTokens(document: ITextDocument, tokens: readonly Token[]): Iterable<lsp.FoldingRange> {
+		for (const token of tokens) {
+			if (isFoldableToken(token)) {
+				const startLine = token.map[0];
+				let endLine = token.map[1] - 1;
+				if (isEmptyOrWhitespace(getLine(document, endLine)) && endLine >= startLine + 1) {
+					endLine = endLine - 1;
+				}
+
+				if (endLine > startLine) {
+					yield { startLine, endLine, kind: this.#getFoldingRangeKind(token) };
+				}
 			}
-			return { startLine, endLine, kind: this.#getFoldingRangeKind(listItem) };
-		});
+		}
 	}
 
 	#getFoldingRangeKind(listItem: Token): lsp.FoldingRangeKind | undefined {
@@ -137,6 +144,8 @@ function isFoldableToken(token: Token): token is TokenWithMap {
 	switch (token.type) {
 		case 'fence':
 		case 'list_item_open':
+		case 'table_open':
+		case 'blockquote_open':
 			return token.map[1] > token.map[0];
 
 		case 'html_block':

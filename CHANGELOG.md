@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.0-alpha.6 UNRELEASED
+- Add folding of tables and block quotes.
+
 ## 0.3.0-alpha.5 February 20, 2023
 - Allow language service configuration to be changed dynamically. 
 

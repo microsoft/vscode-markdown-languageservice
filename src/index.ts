@@ -233,7 +233,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const definitionsProvider = new MdDefinitionProvider(config, init.workspace, tocProvider, linkCache);
 	const renameProvider = new MdRenameProvider(config, init.workspace, referencesProvider, init.parser.slugifier, logger);
 	const fileRenameProvider = new MdFileRenameProvider(config, init.workspace, linkCache, referencesProvider);
-	const diagnosticsComputer = new DiagnosticComputer(config, init.workspace, linkProvider, tocProvider);
+	const diagnosticsComputer = new DiagnosticComputer(config, init.workspace, linkProvider, tocProvider, logger);
 	const docSymbolProvider = new MdDocumentSymbolProvider(tocProvider, linkProvider, logger);
 	const workspaceSymbolProvider = new MdWorkspaceSymbolProvider(init.workspace, docSymbolProvider);
 	const organizeLinkDefinitions = new MdOrganizeLinkDefinitionProvider(linkProvider);
@@ -283,7 +283,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 			if (!isWorkspaceWithFileWatching(init.workspace)) {
 				throw new Error(`Workspace does not support file watching. Diagnostics manager not supported`);
 			}
-			return new DiagnosticsManager(config, init.workspace, linkProvider, tocProvider);
+			return new DiagnosticsManager(config, init.workspace, linkProvider, tocProvider, logger);
 		}
 	});
 }

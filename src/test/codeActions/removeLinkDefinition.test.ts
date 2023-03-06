@@ -25,7 +25,7 @@ async function getActions(store: DisposableStore, doc: InMemoryDocument, pos: ls
 
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
-	const computer = new DiagnosticComputer(config, workspace, linkProvider, tocProvider);
+	const computer = new DiagnosticComputer(config, workspace, linkProvider, tocProvider, nulLogger);
 
 	const provider = new MdRemoveLinkDefinitionCodeActionProvider();
 	return Array.from(

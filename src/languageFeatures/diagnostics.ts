@@ -19,6 +19,7 @@ import { Limiter } from '../util/limiter';
 import { ResourceMap } from '../util/resourceMap';
 import { FileStat, IWorkspace, IWorkspaceWithWatching, statLinkToMarkdownFile } from '../workspace';
 import { HrefKind, InternalHref, LinkDefinitionSet, MdLink, MdLinkDefinition, MdLinkKind, MdLinkProvider, MdLinkSource, parseLocationInfoFromFragment, ReferenceLinkMap } from './documentLinks';
+import { ILogger, LogLevel } from '../logging';
 
 /**
  * The severity at which diagnostics are reported
@@ -157,17 +158,20 @@ export class DiagnosticComputer {
 	readonly #workspace: IWorkspace;
 	readonly #linkProvider: MdLinkProvider;
 	readonly #tocProvider: MdTableOfContentsProvider;
+	readonly #logger: ILogger;
 
 	constructor(
 		configuration: LsConfiguration,
 		workspace: IWorkspace,
 		linkProvider: MdLinkProvider,
 		tocProvider: MdTableOfContentsProvider,
+		logger: ILogger,
 	) {
 		this.#configuration = configuration;
 		this.#workspace = workspace;
 		this.#linkProvider = linkProvider;
 		this.#tocProvider = tocProvider;
+		this.#logger = logger;
 	}
 
 	public async compute(
@@ -179,6 +183,8 @@ export class DiagnosticComputer {
 		readonly links: readonly MdLink[];
 		readonly statCache: ResourceMap<{ readonly exists: boolean }>;
 	}> {
+		this.#logger.log(LogLevel.Debug, 'DiagnosticComputer.compute', { document: doc.uri, version: doc.version });
+
 		const { links, definitions } = await this.#linkProvider.getLinks(doc);
 		const statCache = new ResourceMap<{ readonly exists: boolean }>();
 		if (token.isCancellationRequested) {
@@ -487,10 +493,13 @@ class FileLinkState extends Disposable {
 	}>();
 
 	readonly #workspace: IWorkspaceWithWatching;
+	readonly #logger: ILogger;
 
-	constructor(workspace: IWorkspaceWithWatching) {
+	constructor(workspace: IWorkspaceWithWatching, logger: ILogger) {
 		super();
+
 		this.#workspace = workspace;
+		this.#logger = logger;
 	}
 
 	override dispose() {
@@ -566,6 +575,8 @@ class FileLinkState extends Disposable {
 	}
 
 	#onLinkedResourceChanged(resource: URI, exists: boolean) {
+		this.#logger.log(LogLevel.Trace, 'FileLinkState.onLinkedResourceChanged', { resource, exists });
+
 		const entry = this.#linkedToFile.get(resource);
 		if (entry) {
 			entry.exists = exists;
@@ -593,14 +604,17 @@ export class DiagnosticsManager extends Disposable implements IPullDiagnosticsMa
 		configuration: LsConfiguration,
 		workspace: IWorkspaceWithWatching,
 		linkProvider: MdLinkProvider,
-		tocProvider: MdTableOfContentsProvider
+		tocProvider: MdTableOfContentsProvider,
+		logger: ILogger,
 	) {
 		super();
 
-		const linkWatcher = new FileLinkState(workspace);
+		const linkWatcher = new FileLinkState(workspace, logger);
 		this.#linkWatcher = this._register(linkWatcher);
 
 		this._register(this.#linkWatcher.onDidChangeLinkedToFile(e => {
+			logger.log(LogLevel.Trace, 'DiagnosticsManager.onDidChangeLinkedToFile', { resource: e.changedResource });
+			
 			this.#onLinkedToFileChanged.fire({
 				changedResource: e.changedResource,
 				linkingResources: Array.from(e.linkingFiles),
@@ -628,7 +642,7 @@ export class DiagnosticsManager extends Disposable implements IPullDiagnosticsMa
 			},
 		});
 
-		this.#computer = new DiagnosticComputer(configuration, stateCachedWorkspace, linkProvider, tocProvider);
+		this.#computer = new DiagnosticComputer(configuration, stateCachedWorkspace, linkProvider, tocProvider, logger);
 
 		this._register(workspace.onDidDeleteMarkdownDocument(uri => {
 			this.#linkWatcher.deleteDocument(uri);

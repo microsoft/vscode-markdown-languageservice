@@ -253,7 +253,7 @@ export class MdTableOfContentsProvider extends Disposable {
 		this.#logger = logger;
 
 		this.#cache = this._register(new MdDocumentInfoCache<TableOfContents>(workspace, (doc, token) => {
-			this.#logger.log(LogLevel.Debug, 'TableOfContentsProvider', `create - ${doc.uri}`);
+			this.#logger.log(LogLevel.Debug, 'TableOfContentsProvider.create', { document: doc.uri, version: doc.version });
 			return TableOfContents.create(parser, doc, token);
 		}));
 	}

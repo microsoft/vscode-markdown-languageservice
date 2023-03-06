@@ -3,9 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ILogger } from '../logging';
+import { ILogger, LogLevel } from '../logging';
 
 export const nulLogger = new class implements ILogger {
+	readonly level = LogLevel.Off;
+
 	log(): void {
 		// noop
 	}

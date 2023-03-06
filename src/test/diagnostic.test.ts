@@ -26,7 +26,7 @@ async function getComputedDiagnostics(store: DisposableStore, doc: InMemoryDocum
 	const config = getLsConfiguration({});
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
-	const computer = new DiagnosticComputer(config, workspace, linkProvider, tocProvider);
+	const computer = new DiagnosticComputer(config, workspace, linkProvider, tocProvider, nulLogger);
 	return (
 		await computer.compute(doc, getDiagnosticsOptions(options), noopToken)
 	).diagnostics;
@@ -447,7 +447,7 @@ suite('Diagnostic Manager', () => {
 		const config = getLsConfiguration({});
 		const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 		const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
-		return store.add(new DiagnosticsManager(config, workspace, linkProvider, tocProvider));
+		return store.add(new DiagnosticsManager(config, workspace, linkProvider, tocProvider, nulLogger));
 	}
 
 	test('Should not re-stat files on simple edits', withStore(async (store) => {

@@ -31,7 +31,7 @@ export class MdSelectionRangeProvider {
 	}
 
 	public async provideSelectionRanges(document: ITextDocument, positions: readonly Position[], token: CancellationToken): Promise<lsp.SelectionRange[] | undefined> {
-		this.#logger.log(LogLevel.Debug, 'MdSelectionRangeProvider', `provideSelectionRanges — ${document.uri} ${document.version}`);
+		this.#logger.log(LogLevel.Debug, 'MdSelectionRangeProvider.provideSelectionRanges', { document: document.uri, version: document.version });
 
 		return coalesce(await Promise.all(positions.map(position => this.#provideSelectionRange(document, position, token))));
 	}

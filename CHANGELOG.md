@@ -1,7 +1,8 @@
 # Changelog
 
-## 0.3.0-alpha.6 UNRELEASED
+## 0.3.0-alpha.6 March 6, 2023
 - Add folding of tables and block quotes.
+- Clean up logging API.
 
 ## 0.3.0-alpha.5 February 20, 2023
 - Allow language service configuration to be changed dynamically. 

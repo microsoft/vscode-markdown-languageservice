@@ -3,39 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { CancellationToken, CancellationTokenSource } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
-import { ITextDocument } from './types/textDocument';
+import { getDocUri, ITextDocument } from './types/textDocument';
 import { Disposable } from './util/dispose';
 import { lazy, Lazy } from './util/lazy';
 import { ResourceMap } from './util/resourceMap';
 import { IWorkspace } from './workspace';
 
 
-class LazyResourceMap<T> {
-	private readonly _map = new ResourceMap<Lazy<Promise<T>>>();
 
-	public has(resource: URI): boolean {
-		return this._map.has(resource);
-	}
-
-	public get(resource: URI): Promise<T> | undefined {
-		return this._map.get(resource)?.value;
-	}
-
-	public set(resource: URI, value: Lazy<Promise<T>>) {
-		this._map.set(resource, value);
-	}
-
-	public delete(resource: URI) {
-		this._map.delete(resource);
-	}
-
-	public entries(): Promise<Array<[URI, T]>> {
-		return Promise.all(Array.from(this._map.entries(), async ([key, entry]) => {
-			return [key, await entry.value];
-		}));
-	}
-}
+type GetValueFn<T> = (document: ITextDocument, token: CancellationToken) => Promise<T>;
 
 /**
  * Cache of information per-document in the workspace.
@@ -44,75 +22,90 @@ class LazyResourceMap<T> {
  */
 export class MdDocumentInfoCache<T> extends Disposable {
 
-	private readonly _cache = new LazyResourceMap<T>();
-	private readonly _loadingDocuments = new ResourceMap<Promise<ITextDocument | undefined>>();
+	readonly #cache = new ResourceMap<{
+		readonly value: Lazy<Promise<T>>;
+		readonly cts: CancellationTokenSource;
+	}>();
 
-	public constructor(
-		private readonly workspace: IWorkspace,
-		private readonly getValue: (document: ITextDocument) => Promise<T>,
-	) {
+	readonly #loadingDocuments = new ResourceMap<Promise<ITextDocument | undefined>>();
+
+	readonly #workspace: IWorkspace;
+	readonly #getValue: GetValueFn<T>;
+
+	public constructor(workspace: IWorkspace, getValue: GetValueFn<T>) {
 		super();
 
-		this._register(this.workspace.onDidChangeMarkdownDocument(doc => this.invalidate(doc)));
-		this._register(this.workspace.onDidDeleteMarkdownDocument(this.onDidDeleteDocument, this));
+		this.#workspace = workspace;
+		this.#getValue = getValue;
+
+		this._register(this.#workspace.onDidChangeMarkdownDocument(doc => this.#invalidate(doc)));
+		this._register(this.#workspace.onDidDeleteMarkdownDocument(this.#onDidDeleteDocument, this));
 	}
 
 	public async get(resource: URI): Promise<T | undefined> {
-		let existing = this._cache.get(resource);
+		let existing = this.#cache.get(resource);
 		if (existing) {
-			return existing;
+			return existing.value.value;
 		}
 
-		const doc = await this.loadDocument(resource);
+		const doc = await this.#loadDocument(resource);
 		if (!doc) {
 			return undefined;
 		}
 
 		// Check if we have invalidated
-		existing = this._cache.get(resource);
+		existing = this.#cache.get(resource);
 		if (existing) {
-			return existing;
+			return existing.value.value;
 		}
 
-		return this.resetEntry(doc)?.value;
+		return this.#resetEntry(doc)?.value;
 	}
 
 	public async getForDocument(document: ITextDocument): Promise<T> {
-		const existing = this._cache.get(URI.parse(document.uri));
+		const existing = this.#cache.get(getDocUri(document));
 		if (existing) {
-			return existing;
+			return existing.value.value;
 		}
-		return this.resetEntry(document).value;
+		return this.#resetEntry(document).value;
 	}
 
-	private loadDocument(resource: URI): Promise<ITextDocument | undefined> {
-		const existing = this._loadingDocuments.get(resource);
+	#loadDocument(resource: URI): Promise<ITextDocument | undefined> {
+		const existing = this.#loadingDocuments.get(resource);
 		if (existing) {
 			return existing;
 		}
 
-		const p = this.workspace.openMarkdownDocument(resource);
-		this._loadingDocuments.set(resource, p);
+		const p = this.#workspace.openMarkdownDocument(resource);
+		this.#loadingDocuments.set(resource, p);
 		p.finally(() => {
-			this._loadingDocuments.delete(resource);
+			this.#loadingDocuments.delete(resource);
 		});
 		return p;
 	}
 
-	private resetEntry(document: ITextDocument): Lazy<Promise<T>> {
-		const value = lazy(() => this.getValue(document));
-		this._cache.set(URI.parse(document.uri), value);
+	#resetEntry(document: ITextDocument): Lazy<Promise<T>> {
+		// TODO: cancel old request?
+
+		const cts = new CancellationTokenSource();
+		const value = lazy(() => this.#getValue(document, cts.token));
+		this.#cache.set(getDocUri(document), { value, cts });
 		return value;
 	}
 
-	private invalidate(document: ITextDocument): void {
-		if (this._cache.has(URI.parse(document.uri))) {
-			this.resetEntry(document);
+	#invalidate(document: ITextDocument): void {
+		if (this.#cache.has(getDocUri(document))) {
+			this.#resetEntry(document);
 		}
 	}
 
-	private onDidDeleteDocument(resource: URI) {
-		this._cache.delete(resource);
+	#onDidDeleteDocument(resource: URI) {
+		const entry = this.#cache.get(resource);
+		if (entry) {
+			entry.cts.cancel();
+			entry.cts.dispose();
+			this.#cache.delete(resource);
+		}
 	}
 }
 
@@ -124,65 +117,86 @@ export class MdDocumentInfoCache<T> extends Disposable {
  */
 export class MdWorkspaceInfoCache<T> extends Disposable {
 
-	private readonly _cache = new LazyResourceMap<T>();
-	private _init?: Promise<void>;
+	readonly #cache = new ResourceMap<{
+		readonly value: Lazy<Promise<T>>;
+		readonly cts: CancellationTokenSource;
+	}>();
 
-	public constructor(
-		private readonly workspace: IWorkspace,
-		private readonly getValue: (document: ITextDocument) => Promise<T>,
-	) {
+	#init?: Promise<void>;
+
+	readonly #workspace: IWorkspace;
+	readonly #getValue: GetValueFn<T>;
+
+	public constructor(workspace: IWorkspace, getValue: GetValueFn<T>) {
 		super();
 
-		this._register(this.workspace.onDidChangeMarkdownDocument(this.onDidChangeDocument, this));
-		this._register(this.workspace.onDidCreateMarkdownDocument(this.onDidChangeDocument, this));
-		this._register(this.workspace.onDidDeleteMarkdownDocument(this.onDidDeleteDocument, this));
+		this.#workspace = workspace;
+		this.#getValue = getValue;
+
+		this._register(this.#workspace.onDidChangeMarkdownDocument(this.#onDidChangeDocument, this));
+		this._register(this.#workspace.onDidCreateMarkdownDocument(this.#onDidChangeDocument, this));
+		this._register(this.#workspace.onDidDeleteMarkdownDocument(this.#onDidDeleteDocument, this));
 	}
 
 	public async entries(): Promise<Array<[URI, T]>> {
-		await this.ensureInit();
-		return this._cache.entries();
+		await this.#ensureInit();
+
+		return Promise.all(Array.from(this.#cache.entries(), async ([k, v]) => {
+			return [k, await v.value.value];
+		}));
 	}
 
 	public async values(): Promise<Array<T>> {
-		await this.ensureInit();
-		return Array.from(await this._cache.entries(), x => x[1]);
+		await this.#ensureInit();
+		return Promise.all(Array.from(this.#cache.entries(), x => x[1].value.value));
 	}
 
 	public async getForDocs(docs: readonly ITextDocument[]): Promise<T[]> {
 		for (const doc of docs) {
-			if (!this._cache.has(URI.parse(doc.uri))) {
-				this.update(doc);
+			if (!this.#cache.has(getDocUri(doc))) {
+				this.#update(doc);
 			}
 		}
 
-		return Promise.all(docs.map(doc => this._cache.get(URI.parse(doc.uri)) as Promise<T>));
+		return Promise.all(docs.map(doc => this.#cache.get(getDocUri(doc))!.value.value));
 	}
 
-	private async ensureInit(): Promise<void> {
-		if (!this._init) {
-			this._init = this.populateCache();
+	async #ensureInit(): Promise<void> {
+		if (!this.#init) {
+			this.#init = this.#populateCache();
 		}
-		await this._init;
+		await this.#init;
 	}
 
-	private async populateCache(): Promise<void> {
-		const markdownDocuments = await this.workspace.getAllMarkdownDocuments();
+	async #populateCache(): Promise<void> {
+		const markdownDocuments = await this.#workspace.getAllMarkdownDocuments();
 		for (const document of markdownDocuments) {
-			if (!this._cache.has(URI.parse(document.uri))) {
-				this.update(document);
+			if (!this.#cache.has(getDocUri(document))) {
+				this.#update(document);
 			}
 		}
 	}
 
-	private update(document: ITextDocument): void {
-		this._cache.set(URI.parse(document.uri), lazy(() => this.getValue(document)));
+	#update(document: ITextDocument): void {
+		// TODO: cancel old request?
+
+		const cts = new CancellationTokenSource();
+		this.#cache.set(getDocUri(document), {
+			value: lazy(() => this.#getValue(document, cts.token)),
+			cts
+		});
 	}
 
-	private onDidChangeDocument(document: ITextDocument) {
-		this.update(document);
+	#onDidChangeDocument(document: ITextDocument) {
+		this.#update(document);
 	}
 
-	private onDidDeleteDocument(resource: URI) {
-		this._cache.delete(resource);
+	#onDidDeleteDocument(resource: URI) {
+		const entry = this.#cache.get(resource);
+		if (entry) {
+			entry.cts.cancel();
+			entry.cts.dispose();
+			this.#cache.delete(resource);
+		}
 	}
 }

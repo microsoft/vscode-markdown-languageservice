@@ -3,13 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { ILogger, LogLevel } from './logging';
 import { IMdParser, Token } from './parser';
 import { githubSlugifier, ISlugifier, Slug } from './slugify';
 import { makeRange } from './types/range';
-import { getLine, ITextDocument } from './types/textDocument';
+import { getDocUri, getLine, ITextDocument } from './types/textDocument';
 import { Disposable } from './util/dispose';
 import { IWorkspace } from './workspace';
 import { MdDocumentInfoCache } from './workspaceCache';
@@ -66,32 +67,35 @@ export interface TocEntry {
 
 export class TableOfContents {
 
-	public static async create(parser: IMdParser, document: ITextDocument,): Promise<TableOfContents> {
-		const entries = await this.buildToc(parser, document);
+	public static async create(parser: IMdParser, document: ITextDocument, token: CancellationToken): Promise<TableOfContents> {
+		const entries = await this.#buildToc(parser, document, token);
 		return new TableOfContents(entries, parser.slugifier);
 	}
 
-	public static async createForContainingDoc(parser: IMdParser, workspace: IWorkspace, document: ITextDocument): Promise<TableOfContents> {
-		const context = workspace.getContainingDocument?.(URI.parse(document.uri));
+	public static async createForContainingDoc(parser: IMdParser, workspace: IWorkspace, document: ITextDocument, token: CancellationToken): Promise<TableOfContents> {
+		const context = workspace.getContainingDocument?.(getDocUri(document));
 		if (context) {
-			const entries: TocEntry[] = [];
-			await Promise.all(Array.from(context.children, async cell => {
+			const entries = (await Promise.all(Array.from(context.children, async cell => {
 				const doc = await workspace.openMarkdownDocument(cell.uri);
-				if (doc) {
-					entries.push(...(await this.buildToc(parser, doc)));
+				if (!doc || token.isCancellationRequested) {
+					return [];
 				}
-			}));
+				return this.#buildToc(parser, doc, token);
+			}))).flat();
 			return new TableOfContents(entries, parser.slugifier);
 		}
 
-		return this.create(parser, document);
+		return this.create(parser, document, token);
 	}
 
-	private static async buildToc(parser: IMdParser, document: ITextDocument): Promise<TocEntry[]> {
-		const docUri = URI.parse(document.uri);
+	static async #buildToc(parser: IMdParser, document: ITextDocument, token: CancellationToken): Promise<TocEntry[]> {
+		const docUri = getDocUri(document);
 
 		const toc: TocEntry[] = [];
 		const tokens = await parser.tokenize(document);
+		if (token.isCancellationRequested) {
+			return [];
+		}
 
 		const existingSlugEntries = new Map<string, { count: number }>();
 
@@ -125,7 +129,7 @@ export class TableOfContents {
 
 			const lineNumber = open.map[0];
 			const line = getLine(document, lineNumber);
-			const bodyText = TableOfContents.getHeaderTitleAsPlainText(body);
+			const bodyText = TableOfContents.#getHeaderTitleAsPlainText(body);
 
 			let slug = parser.slugifier.fromHeading(bodyText);
 			const existingSlugEntry = existingSlugEntries.get(slug.value);
@@ -149,7 +153,7 @@ export class TableOfContents {
 			toc.push({
 				slug,
 				text: line.replace(/^\s*#+\s*(.*?)(\s+#+)?$/, (_, word) => word.trim()),
-				level: TableOfContents.getHeaderLevel(open.markup),
+				level: TableOfContents.#getHeaderLevel(open.markup),
 				line: lineNumber,
 				sectionLocation: headerLocation, // Populated in next steps
 				headerLocation,
@@ -179,7 +183,7 @@ export class TableOfContents {
 		});
 	}
 
-	private static getHeaderLevel(markup: string): number {
+	static #getHeaderLevel(markup: string): number {
 		if (markup === '=') {
 			return 1;
 		} else if (markup === '-') {
@@ -189,9 +193,9 @@ export class TableOfContents {
 		}
 	}
 
-	private static tokenToPlainText(token: Token): string {
+	static #tokenToPlainText(token: Token): string {
 		if (token.children) {
-			return token.children.map(TableOfContents.tokenToPlainText).join('');
+			return token.children.map(TableOfContents.#tokenToPlainText).join('');
 		}
 
 		switch (token.type) {
@@ -204,22 +208,26 @@ export class TableOfContents {
 		}
 	}
 
-	private static getHeaderTitleAsPlainText(headerTitleParts: readonly Token[]): string {
+	static #getHeaderTitleAsPlainText(headerTitleParts: readonly Token[]): string {
 		return headerTitleParts
-			.map(TableOfContents.tokenToPlainText)
+			.map(TableOfContents.#tokenToPlainText)
 			.join('')
 			.trim();
 	}
 
 	public static readonly empty = new TableOfContents([], githubSlugifier);
 
+	readonly #slugifier: ISlugifier;
+
 	private constructor(
 		public readonly entries: readonly TocEntry[],
-		private readonly slugifier: ISlugifier,
-	) { }
+		slugifier: ISlugifier,
+	) {
+		this.#slugifier = slugifier;
+	}
 
 	public lookup(fragment: string): TocEntry | undefined {
-		const slug = this.slugifier.fromHeading(fragment);
+		const slug = this.#slugifier.fromHeading(fragment);
 		return this.entries.find(entry => entry.slug.equals(slug));
 	}
 }
@@ -227,29 +235,38 @@ export class TableOfContents {
 
 export class MdTableOfContentsProvider extends Disposable {
 
-	private readonly _cache: MdDocumentInfoCache<TableOfContents>;
+	readonly #cache: MdDocumentInfoCache<TableOfContents>;
+
+	readonly #parser: IMdParser;
+	readonly #workspace: IWorkspace;
+	readonly #logger: ILogger;
 
 	constructor(
-		private readonly parser: IMdParser,
-		private readonly workspace: IWorkspace,
-		private readonly logger: ILogger,
+		parser: IMdParser,
+		workspace: IWorkspace,
+		logger: ILogger,
 	) {
 		super();
-		this._cache = this._register(new MdDocumentInfoCache<TableOfContents>(workspace, doc => {
-			this.logger.log(LogLevel.Debug, 'TableOfContentsProvider', `create - ${doc.uri}`);
-			return TableOfContents.create(parser, doc);
+
+		this.#parser = parser;
+		this.#workspace = workspace;
+		this.#logger = logger;
+
+		this.#cache = this._register(new MdDocumentInfoCache<TableOfContents>(workspace, (doc, token) => {
+			this.#logger.log(LogLevel.Debug, 'TableOfContentsProvider.create', { document: doc.uri, version: doc.version });
+			return TableOfContents.create(parser, doc, token);
 		}));
 	}
 
 	public async get(resource: URI): Promise<TableOfContents> {
-		return await this._cache.get(resource) ?? TableOfContents.empty;
+		return await this.#cache.get(resource) ?? TableOfContents.empty;
 	}
 
 	public getForDocument(doc: ITextDocument): Promise<TableOfContents> {
-		return this._cache.getForDocument(doc);
+		return this.#cache.getForDocument(doc);
 	}
 
-	public getForContainingDoc(doc: ITextDocument): Promise<TableOfContents> {
-		return TableOfContents.createForContainingDoc(this.parser, this.workspace, doc);
+	public getForContainingDoc(doc: ITextDocument, token: CancellationToken): Promise<TableOfContents> {
+		return TableOfContents.createForContainingDoc(this.#parser, this.#workspace, doc, token);
 	}
 }

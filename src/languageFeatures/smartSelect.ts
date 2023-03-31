@@ -11,61 +11,74 @@ import { MdTableOfContentsProvider, TocEntry } from '../tableOfContents';
 import { translatePosition } from '../types/position';
 import { areRangesEqual, makeRange, modifyRange, rangeContains } from '../types/range';
 import { getLine, ITextDocument } from '../types/textDocument';
+import { coalesce } from '../util/arrays';
 import { isEmptyOrWhitespace } from '../util/string';
 
 export class MdSelectionRangeProvider {
 
+	readonly #parser: IMdParser;
+	readonly #tocProvider: MdTableOfContentsProvider;
+	readonly #logger: ILogger;
+
 	constructor(
-		private readonly parser: IMdParser,
-		private readonly tocProvider: MdTableOfContentsProvider,
-		private readonly logger: ILogger,
-	) { }
-
-	public async provideSelectionRanges(document: ITextDocument, positions: Position[], _token: CancellationToken): Promise<lsp.SelectionRange[] | undefined> {
-		this.logger.log(LogLevel.Debug, 'MdSelectionRangeProvider', `provideSelectionRanges — ${document.uri} ${document.version}`);
-
-		const promises = await Promise.all(positions.map((position) => {
-			return this.provideSelectionRange(document, position);
-		}));
-		return promises.filter(item => item !== undefined) as lsp.SelectionRange[];
+		parser: IMdParser,
+		tocProvider: MdTableOfContentsProvider,
+		logger: ILogger,
+	) {
+		this.#parser = parser;
+		this.#tocProvider = tocProvider;
+		this.#logger = logger;
 	}
 
-	private async provideSelectionRange(document: ITextDocument, position: Position): Promise<lsp.SelectionRange | undefined> {
-		const headerRange = await this.getHeaderSelectionRange(document, position);
-		const blockRange = await this.getBlockSelectionRange(document, position, headerRange);
-		const inlineRange = await this.getInlineSelectionRange(document, position, blockRange);
-		return inlineRange || blockRange || headerRange;
+	public async provideSelectionRanges(document: ITextDocument, positions: readonly Position[], token: CancellationToken): Promise<lsp.SelectionRange[] | undefined> {
+		this.#logger.log(LogLevel.Debug, 'MdSelectionRangeProvider.provideSelectionRanges', { document: document.uri, version: document.version });
+
+		return coalesce(await Promise.all(positions.map(position => this.#provideSelectionRange(document, position, token))));
 	}
 
-	private async getInlineSelectionRange(document: ITextDocument, position: Position, blockRange?: lsp.SelectionRange): Promise<lsp.SelectionRange | undefined> {
-		return createInlineRange(document, position, blockRange);
+	async #provideSelectionRange(document: ITextDocument, position: Position, token: CancellationToken): Promise<lsp.SelectionRange | undefined> {
+		const headerRange = await this.#getHeaderSelectionRange(document, position, token);
+		if (token.isCancellationRequested) {
+			return;
+		}
+
+		const blockRange = await this.#getBlockSelectionRange(document, position, headerRange, token);
+		if (token.isCancellationRequested) {
+			return;
+		}
+
+		const inlineRange = createInlineRange(document, position, blockRange);
+		return inlineRange ?? blockRange ?? headerRange;
 	}
 
-	private async getBlockSelectionRange(document: ITextDocument, position: Position, headerRange?: lsp.SelectionRange): Promise<lsp.SelectionRange | undefined> {
-		const tokens = await this.parser.tokenize(document);
-		const blockTokens = getBlockTokensForPosition(tokens, position, headerRange);
+	async #getBlockSelectionRange(document: ITextDocument, position: Position, parent: lsp.SelectionRange | undefined, token: CancellationToken): Promise<lsp.SelectionRange | undefined> {
+		const tokens = await this.#parser.tokenize(document);
+		if (token.isCancellationRequested) {
+			return undefined;
+		}
 
+		const blockTokens = getBlockTokensForPosition(tokens, position, parent);
 		if (blockTokens.length === 0) {
 			return undefined;
 		}
 
-		let currentRange: lsp.SelectionRange | undefined = headerRange ? headerRange : createBlockRange(blockTokens.shift()!, document, position.line);
-
+		let currentRange = parent ?? createBlockRange(blockTokens.shift()!, document, position.line, undefined);
 		for (let i = 0; i < blockTokens.length; i++) {
 			currentRange = createBlockRange(blockTokens[i], document, position.line, currentRange);
 		}
 		return currentRange;
 	}
 
-	private async getHeaderSelectionRange(document: ITextDocument, position: Position): Promise<lsp.SelectionRange | undefined> {
-		const toc = await this.tocProvider.getForDocument(document);
+	async #getHeaderSelectionRange(document: ITextDocument, position: Position, token: CancellationToken): Promise<lsp.SelectionRange | undefined> {
+		const toc = await this.#tocProvider.getForDocument(document);
+		if (token.isCancellationRequested) {
+			return undefined;
+		}
 
 		const headerInfo = getHeadersForPosition(toc.entries, position);
-
 		const headers = headerInfo.headers;
 
 		let currentRange: lsp.SelectionRange | undefined;
-
 		for (let i = 0; i < headers.length; i++) {
 			currentRange = createHeaderRange(headers[i], i === headers.length - 1, headerInfo.headerOnThisLine, currentRange, getFirstChildHeader(document, headers[i], toc.entries));
 		}
@@ -103,8 +116,7 @@ function createHeaderRange(header: TocEntry, isClosestHeaderToPosition: boolean,
 	}
 }
 
-
-function getBlockTokensForPosition(tokens: Token[], position: Position, parent?: lsp.SelectionRange): TokenWithMap[] {
+function getBlockTokensForPosition(tokens: readonly Token[], position: Position, parent: lsp.SelectionRange | undefined): TokenWithMap[] {
 	const enclosingTokens = tokens.filter((token): token is TokenWithMap => !!token.map && (token.map[0] <= position.line && token.map[1] > position.line) && (!parent || (token.map[0] >= parent.range.start.line && token.map[1] <= parent.range.end.line + 1)) && isBlockElement(token));
 	if (enclosingTokens.length === 0) {
 		return [];
@@ -113,25 +125,25 @@ function getBlockTokensForPosition(tokens: Token[], position: Position, parent?:
 	return sortedTokens;
 }
 
-function createBlockRange(block: TokenWithMap, document: ITextDocument, cursorLine: number, parent?: lsp.SelectionRange): lsp.SelectionRange | undefined {
+function createBlockRange(block: TokenWithMap, document: ITextDocument, cursorLine: number, parent: lsp.SelectionRange | undefined): lsp.SelectionRange {
 	if (block.type === 'fence') {
 		return createFencedRange(block, cursorLine, document, parent);
+	}
+
+	let startLine = isEmptyOrWhitespace(getLine(document, block.map[0])) ? block.map[0] + 1 : block.map[0];
+	let endLine = startLine === block.map[1] ? block.map[1] : block.map[1] - 1;
+	if (block.type === 'paragraph_open' && block.map[1] - block.map[0] === 2) {
+		startLine = endLine = cursorLine;
+	} else if (isList(block) && isEmptyOrWhitespace(getLine(document, endLine))) {
+		endLine = endLine - 1;
+	}
+	const range = makeRange(startLine, 0, endLine, getLine(document, endLine).length);
+	if (parent && rangeContains(parent.range, range) && !areRangesEqual(parent.range, range)) {
+		return makeSelectionRange(range, parent);
+	} else if (parent && areRangesEqual(parent.range, range)) {
+		return parent;
 	} else {
-		let startLine = isEmptyOrWhitespace(getLine(document, block.map[0])) ? block.map[0] + 1 : block.map[0];
-		let endLine = startLine === block.map[1] ? block.map[1] : block.map[1] - 1;
-		if (block.type === 'paragraph_open' && block.map[1] - block.map[0] === 2) {
-			startLine = endLine = cursorLine;
-		} else if (isList(block) && isEmptyOrWhitespace(getLine(document, endLine))) {
-			endLine = endLine - 1;
-		}
-		const range = makeRange(startLine, 0, endLine, getLine(document, endLine).length);
-		if (parent && rangeContains(parent.range, range) && !areRangesEqual(parent.range, range)) {
-			return makeSelectionRange(range, parent);
-		} else if (parent && areRangesEqual(parent.range, range)) {
-			return parent;
-		} else {
-			return makeSelectionRange(range, undefined);
-		}
+		return makeSelectionRange(range, undefined);
 	}
 }
 
@@ -147,9 +159,9 @@ function createInlineRange(document: ITextDocument, cursorPosition: Position, pa
 			comboSelection = createBoldRange(lineText, cursorPosition.character, cursorPosition.line, italicSelection);
 		}
 	}
-	const linkSelection = createLinkRange(lineText, cursorPosition.character, cursorPosition.line, comboSelection || boldSelection || italicSelection || parent);
-	const inlineCodeBlockSelection = createOtherInlineRange(lineText, cursorPosition.character, cursorPosition.line, false, linkSelection || parent);
-	return inlineCodeBlockSelection || linkSelection || comboSelection || boldSelection || italicSelection;
+	const linkSelection = createLinkRange(lineText, cursorPosition.character, cursorPosition.line, comboSelection ?? boldSelection ?? italicSelection ?? parent);
+	const inlineCodeBlockSelection = createOtherInlineRange(lineText, cursorPosition.character, cursorPosition.line, false, linkSelection ?? parent);
+	return inlineCodeBlockSelection ?? linkSelection ?? comboSelection ?? boldSelection ?? italicSelection;
 }
 
 function createFencedRange(token: TokenWithMap, cursorLine: number, document: ITextDocument, parent?: lsp.SelectionRange): lsp.SelectionRange {

@@ -1,3 +1,4 @@
+"branches" :"-[ZachryTylerWood]" :\
 "GLOW7:":,
 "BEGINS:":,
 "!#/Users/Bin/Bash/":,
@@ -12,7 +13,28 @@
 "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
 "coffeescript.md" :"#Create" :"item("{% "$'' 'Obj" %}")" :"'='"'='' )is'='"'"'' 'yargs(AGS)).);     \" :")'='"'='('_'?'_''))'.)';"''     '/'' '::     
 "console": "integratedTerminal",
-"internalConsoleOptions": "OPEN(API)'@package.json]" :\
+"internalConsoleOptions": "OPEN(API)'@package.json]" :
+"*//Use IntelliSense to learn about possible attributes." :
+	// Hover to view descriptions of existing attributes." :
+	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "node",
+			"request": "launch",
+			"name": "Mocha",
+			"program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+			"args": [
+				"${workspaceFolder}/test",
+				"'out/test/**/*.test.js'",
+				"--ui=tdd"
+			],
+			"console": "integratedTerminal",
+			"internalConsoleOptions": "OPEN(A.P.I):\pkg.js'@package.json" :\
+      "branches :'-'' '["' 'trunk'' ']'"'':
+  Push: push_request
+  push_request: branches
+  'Branch: '-'' '['' 'main'' ']'"'' :
 		},
 	]
 }

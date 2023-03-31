@@ -18,8 +18,18 @@ export interface TokenWithMap extends Token {
 	readonly map: [number, number];
 }
 
+/**
+ * Parses Markdown text into a stream of tokens.
+ */
 export interface IMdParser {
-	readonly slugifier: ISlugifier;
 
+	/**
+	 * The {@link ISlugifier slugifier} used for generating unique ids for headers in the Markdown.
+	 */
+	readonly slugifier: ISlugifier;
+	
+	/**
+	 * Parse `document` into a stream of tokens.
+	 */
 	tokenize(document: ITextDocument): Promise<Token[]>;
 }

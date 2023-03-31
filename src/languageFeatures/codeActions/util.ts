@@ -3,12 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ILogger, LogLevel } from '../logging';
-
-export const nulLogger = new class implements ILogger {
-	readonly level = LogLevel.Off;
-
-	log(): void {
-		// noop
-	}
-};
+export function codeActionKindContains(kindA: string, kindB: string): unknown {
+	return kindA === kindB || kindB.startsWith(kindA + '.');
+}

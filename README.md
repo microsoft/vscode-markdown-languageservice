@@ -68,8 +68,9 @@ Currently supported language features:
 -  Code actions
 
 	- Extract all occurrences of a link in a file to a link definition at the bottom of the file.
+	- Quick fixes for removing duplicated or unused link definitions.
 
-- Diagnostics (experimental)
+- Diagnostics (error reporting)
 
 	Supports generating diagnostics for invalid links to:
 
@@ -77,8 +78,13 @@ Currently supported language features:
 	- Header within the current file.
 	- Files in the workspace.
 	- Headers in other files.
+	
+	Also can generate diagnostics for:
 
-- Update links on file rename (experimental)
+	- Unused link definitions.
+	- Duplicate link definitions.
+
+- Update links on file rename
 
 	Generate an edit that updates all links when a file/directory in the workspace is renamed or moved.
 

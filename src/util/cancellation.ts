@@ -5,9 +5,9 @@
 
 import { CancellationToken, Emitter } from 'vscode-languageserver';
 
-export const noopToken = new class implements CancellationToken {
-	_onCancellationRequestedEmitter = new Emitter<void>();
-	onCancellationRequested = this._onCancellationRequestedEmitter.event;
+export const noopToken: CancellationToken = new class implements CancellationToken {
+	readonly #onCancellationRequestedEmitter = new Emitter<void>();
+	onCancellationRequested = this.#onCancellationRequestedEmitter.event;
 
 	get isCancellationRequested() { return false; }
-};
+}();

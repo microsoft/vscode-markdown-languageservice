@@ -116,4 +116,23 @@ suite('Workspace symbols', () => {
 		assert.strictEqual(symbols.length, 1);
 		assert.strictEqual(symbols[0].name, '# header1');
 	}));
+
+	test('Should match case insensitively', withStore(async (store) => {
+		const workspace = store.add(new InMemoryWorkspace([
+			new InMemoryDocument(workspacePath('test.md'), `# aBc1\nabc\n## ABc2`)
+		]));
+
+		{
+			const symbols = await getWorkspaceSymbols(store, workspace, 'ABC');
+			assert.strictEqual(symbols.length, 2);
+			assert.strictEqual(symbols[0].name, '# aBc1');
+			assert.strictEqual(symbols[1].name, '## ABc2');
+		}
+		{
+			const symbols = await getWorkspaceSymbols(store, workspace, 'abc');
+			assert.strictEqual(symbols.length, 2);
+			assert.strictEqual(symbols[0].name, '# aBc1');
+			assert.strictEqual(symbols[1].name, '## ABc2');
+		}
+	}));
 });

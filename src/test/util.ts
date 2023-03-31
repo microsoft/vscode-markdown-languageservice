@@ -5,8 +5,10 @@
 
 import * as assert from 'assert';
 import * as os from 'os';
+import * as lsp from 'vscode-languageserver-types';
 import { Position, Range } from 'vscode-languageserver-types';
 import * as URI from 'vscode-uri';
+import { DiagnosticLevel, DiagnosticOptions } from '../languageFeatures/diagnostics';
 import { DisposableStore } from '../util/dispose';
 import { InMemoryDocument } from './inMemoryDocument';
 
@@ -19,10 +21,10 @@ export function workspacePath(...segments: string[]): URI.URI {
 }
 
 export function assertRangeEqual(expected: Range, actual: Range, message?: string) {
-	assert.strictEqual(expected.start.line, actual.start.line, message);
-	assert.strictEqual(expected.start.character, actual.start.character, message);
-	assert.strictEqual(expected.end.line, actual.end.line, message);
-	assert.strictEqual(expected.end.character, actual.end.character, message);
+	assert.strictEqual(expected.start.line, actual.start.line, `${message || ''}. Range start line not equal`);
+	assert.strictEqual(expected.start.character, actual.start.character, `${message || ''}. Range start character not equal`);
+	assert.strictEqual(expected.end.line, actual.end.line, `${message || ''}. Range end line not equal`);
+	assert.strictEqual(expected.end.character, actual.end.character, `${message || ''}. Range end character not equal`);
 }
 
 export function withStore<R>(fn: (this: Mocha.Context, store: DisposableStore) => Promise<R>) {
@@ -50,4 +52,21 @@ export function getCursorPositions(contents: string, doc: InMemoryDocument): Pos
 		wordLength = CURSOR.length;
 	}
 	return positions;
+}
+
+export const defaultDiagnosticsOptions = Object.freeze<DiagnosticOptions>({
+	validateFileLinks: DiagnosticLevel.warning,
+	validateMarkdownFileLinkFragments: undefined,
+	validateFragmentLinks: DiagnosticLevel.warning,
+	validateReferences: DiagnosticLevel.warning,
+	validateUnusedLinkDefinitions: DiagnosticLevel.warning,
+	validateDuplicateLinkDefinitions: DiagnosticLevel.warning,
+	ignoreLinks: [],
+});
+
+export function applyActionEdit(doc: InMemoryDocument, action: lsp.CodeAction): string {
+	const edits = (action.edit?.documentChanges?.filter(change => {
+		return lsp.TextDocumentEdit.is(change) && change.textDocument.uri === doc.uri;
+	}) ?? []) as lsp.TextDocumentEdit[];
+	return doc.applyEdits(edits.map(edit => edit.edits).flat());
 }

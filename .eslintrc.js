@@ -14,6 +14,16 @@ module.exports = {
 		'@typescript-eslint/no-unused-vars': 0,
 		'no-useless-escape': 0,
 		'semi': 1,
-		'quotes': [1, 'single', { allowTemplateLiterals: true }]
+		'quotes': [1, 'single', { allowTemplateLiterals: true }],
+		'no-restricted-syntax': [
+			'warn',
+			{
+				selector: ':matches(PropertyDefinition, TSParameterProperty, MethodDefinition[key.name!="constructor"])[accessibility="private"]',
+				message: 'Use #private instead',
+			},
+		],
 	},
-};
+	ignorePatterns: [
+		'types/**/*.d.ts'
+	]
+}; 

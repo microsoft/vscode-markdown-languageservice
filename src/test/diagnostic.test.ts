@@ -18,22 +18,15 @@ import { createNewMarkdownEngine } from './engine';
 import { InMemoryDocument } from './inMemoryDocument';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
-import { assertRangeEqual, joinLines, withStore, workspacePath, workspaceRoot } from './util';
+import { assertRangeEqual, defaultDiagnosticsOptions, joinLines, withStore, workspacePath, workspaceRoot } from './util';
 
-const defaultDiagnosticsOptions = Object.freeze<DiagnosticOptions>({
-	validateFileLinks: DiagnosticLevel.warning,
-	validateMarkdownFileLinkFragments: undefined,
-	validateFragmentLinks: DiagnosticLevel.warning,
-	validateReferences: DiagnosticLevel.warning,
-	ignoreLinks: [],
-});
 
 async function getComputedDiagnostics(store: DisposableStore, doc: InMemoryDocument, workspace: IWorkspace, options: Partial<DiagnosticOptions> = {}): Promise<lsp.Diagnostic[]> {
 	const engine = createNewMarkdownEngine();
 	const config = getLsConfiguration({});
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
-	const computer = new DiagnosticComputer(config, workspace, linkProvider, tocProvider);
+	const computer = new DiagnosticComputer(config, workspace, linkProvider, tocProvider, nulLogger);
 	return (
 		await computer.compute(doc, getDiagnosticsOptions(options), noopToken)
 	).diagnostics;
@@ -77,7 +70,7 @@ suite('Diagnostic Computer', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace, { validateUnusedLinkDefinitions: DiagnosticLevel.ignore });
 		assertDiagnosticsEqual(diagnostics, [
 			makeRange(0, 6, 0, 22),
 			makeRange(3, 11, 3, 27),
@@ -95,7 +88,7 @@ suite('Diagnostic Computer', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace, { validateUnusedLinkDefinitions: DiagnosticLevel.ignore });
 		assertDiagnosticsEqual(diagnostics, [
 			makeRange(2, 6, 2, 21),
 			makeRange(5, 11, 5, 26),
@@ -152,15 +145,17 @@ suite('Diagnostic Computer', () => {
 		]);
 	}));
 
-	// test('Should not generate diagnostics when validate is disabled', withStore(async (store) => {
-	// 	const doc1 = new InMemoryDocument(workspacePath('doc1.md'), joinLines(
-	// 		`[text](#no-such-header)`,
-	// 		`[text][no-such-ref]`,
-	// 	));
-	// 	const workspace = store.add(new InMemoryWorkspace([doc1]));
-	// 	const diagnostics = await getComputedDiagnostics(store, doc1, workspace, new MemoryDiagnosticConfiguration({ enabled: false }).getOptions(doc1.uri));
-	// 	assertDiagnosticsEqual(diagnostics, []);
-	// }));
+	test('Reference links should be case insensitive', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`[good link][GoOd]`,
+			``,
+			`[gOoD]: http://example.com`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		assertDiagnosticsEqual(diagnostics, []);
+	}));
 
 	test('Should not generate diagnostics for email autolink', withStore(async (store) => {
 		const doc1 = new InMemoryDocument(workspacePath('doc1.md'), joinLines(
@@ -188,7 +183,7 @@ suite('Diagnostic Computer', () => {
 			`[text]: /no-such-file`,
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc1]));
-		const diagnostics = await getComputedDiagnostics(store, doc1, workspace, { ignoreLinks: ['/no-such-file'] });
+		const diagnostics = await getComputedDiagnostics(store, doc1, workspace, { ignoreLinks: ['/no-such-file'], validateUnusedLinkDefinitions: DiagnosticLevel.ignore });
 		assertDiagnosticsEqual(diagnostics, []);
 	}));
 
@@ -375,7 +370,7 @@ suite('Diagnostic Computer', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace, { validateUnusedLinkDefinitions: DiagnosticLevel.ignore });
 		assertDiagnosticsEqual(diagnostics, [
 			makeRange(0, 8, 0, 18),
 			makeRange(2, 8, 2, 18),
@@ -384,6 +379,64 @@ suite('Diagnostic Computer', () => {
 		const [diag1, diag2] = diagnostics;
 		assert.strictEqual(diag1.data.fsPath, workspacePath('no such.md').fsPath);
 		assert.strictEqual(diag2.data.fsPath, workspacePath('no such.md').fsPath);
+	}));
+
+	test('Should not validate line number links', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc1.md'), joinLines(
+			`[link](#L1)`,
+			`[link](doc1.md#L1)`,
+			`[link](#L1,2)`,
+			`[link](doc1.md#L1,2)`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		assertDiagnosticsEqual(diagnostics, []);
+	}));
+
+	test('Should generate diagnostics for unused link definitions', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`[ref]`,
+			`text`,
+			`[ref]: http://example.com`,
+			`[bad-ref]: http://example.com`,
+			`text`,
+			`[bad-ref2]: http://example.com`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		assertDiagnosticsEqual(diagnostics, [
+			makeRange(3, 0, 3, 29),
+			makeRange(5, 0, 5, 30),
+		]);
+	}));
+
+	test('Unused link definition diagnostic should span title', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`[unused]: http://example.com "title"`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		assertDiagnosticsEqual(diagnostics, [
+			makeRange(0, 0, 0, 36),
+		]);
+	}));
+
+	test('Should generate diagnostics for duplicate link definitions', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`[def]: http://example.com`,
+			`[other]: http://example.com`,
+			`[def]: http://example.com/other`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace, { validateUnusedLinkDefinitions: DiagnosticLevel.ignore });
+		assertDiagnosticsEqual(diagnostics, [
+			makeRange(0, 1, 0, 4),
+			makeRange(2, 1, 2, 4),
+		]);
 	}));
 });
 
@@ -394,7 +447,7 @@ suite('Diagnostic Manager', () => {
 		const config = getLsConfiguration({});
 		const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 		const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
-		return store.add(new DiagnosticsManager(config, workspace, linkProvider, tocProvider));
+		return store.add(new DiagnosticsManager(config, workspace, linkProvider, tocProvider, nulLogger));
 	}
 
 	test('Should not re-stat files on simple edits', withStore(async (store) => {

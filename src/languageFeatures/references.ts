@@ -11,12 +11,12 @@ import { IMdParser } from '../parser';
 import { MdTableOfContentsProvider, TocEntry } from '../tableOfContents';
 import { translatePosition } from '../types/position';
 import { areRangesEqual, modifyRange, rangeContains } from '../types/range';
-import { ITextDocument } from '../types/textDocument';
+import { getDocUri, ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
-import { looksLikeMarkdownPath } from '../util/file';
+import { looksLikeMarkdownUri } from '../util/file';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
-import { HrefKind, InternalHref, MdLink, MdLinkKind } from './documentLinks';
+import { HrefKind, looksLikeLinkToResource, MdLink, MdLinkKind } from './documentLinks';
 
 export enum MdReferenceKind {
 	Link = 1,
@@ -73,15 +73,29 @@ export type MdReference = MdLinkReference | MdHeaderReference;
  */
 export class MdReferencesProvider extends Disposable {
 
+	readonly #configuration: LsConfiguration;
+	readonly #parser: IMdParser;
+	readonly #workspace: IWorkspace;
+	readonly #tocProvider: MdTableOfContentsProvider;
+	readonly #linkCache: MdWorkspaceInfoCache<readonly MdLink[]>;
+	readonly #logger: ILogger;
+
 	public constructor(
-		private readonly configuration: LsConfiguration,
-		private readonly parser: IMdParser,
-		private readonly workspace: IWorkspace,
-		private readonly tocProvider: MdTableOfContentsProvider,
-		private readonly linkCache: MdWorkspaceInfoCache<readonly MdLink[]>,
-		private readonly logger: ILogger,
+		configuration: LsConfiguration,
+		parser: IMdParser,
+		workspace: IWorkspace,
+		tocProvider: MdTableOfContentsProvider,
+		linkCache: MdWorkspaceInfoCache<readonly MdLink[]>,
+		logger: ILogger,
 	) {
 		super();
+
+		this.#configuration = configuration;
+		this.#parser = parser;
+		this.#workspace = workspace;
+		this.#tocProvider = tocProvider;
+		this.#linkCache = linkCache;
+		this.#logger = logger;
 	}
 
 	async provideReferences(document: ITextDocument, position: lsp.Position, context: lsp.ReferenceContext, token: CancellationToken): Promise<lsp.Location[]> {
@@ -92,34 +106,37 @@ export class MdReferencesProvider extends Disposable {
 	}
 
 	public async getReferencesAtPosition(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<MdReference[]> {
-		this.logger.log(LogLevel.Trace, 'ReferencesProvider', `getReferencesAtPosition — ${document.uri} ${document.version}`);
+		this.#logger.log(LogLevel.Debug, 'ReferencesProvider.getReferencesAtPosition', { document: document.uri, version: document.version });
 
-		const toc = await this.tocProvider.getForDocument(document);
+		const toc = await this.#tocProvider.getForDocument(document);
 		if (token.isCancellationRequested) {
 			return [];
 		}
 
 		const header = toc.entries.find(entry => entry.line === position.line);
 		if (header) {
-			return this.getReferencesToHeader(document, header);
+			return this.#getReferencesToHeader(document, header, token);
 		} else {
-			return this.getReferencesToLinkAtPosition(document, position, token);
+			return this.#getReferencesToLinkAtPosition(document, position, token);
 		}
 	}
 
 	public async getReferencesToFileInWorkspace(resource: URI, token: CancellationToken): Promise<MdReference[]> {
-		this.logger.log(LogLevel.Trace, 'ReferencesProvider', `getAllReferencesToFileInWorkspace — ${resource}`);
+		this.#logger.log(LogLevel.Debug, 'ReferencesProvider.getAllReferencesToFileInWorkspace', { resource });
 
-		const allLinksInWorkspace = (await this.linkCache.values()).flat();
+		const allLinksInWorkspace = await this.#getAllLinksInWorkspace();
 		if (token.isCancellationRequested) {
 			return [];
 		}
 
-		return Array.from(this.findLinksToFile(resource, allLinksInWorkspace, undefined));
+		return Array.from(this.#findLinksToFile(resource, allLinksInWorkspace, undefined));
 	}
 
-	private async getReferencesToHeader(document: ITextDocument, header: TocEntry): Promise<MdReference[]> {
-		const links = (await this.linkCache.values()).flat();
+	async #getReferencesToHeader(document: ITextDocument, header: TocEntry, token: CancellationToken): Promise<MdReference[]> {
+		const links = await this.#getAllLinksInWorkspace();
+		if (token.isCancellationRequested) {
+			return [];
+		}
 
 		const references: MdReference[] = [];
 
@@ -134,8 +151,8 @@ export class MdReferencesProvider extends Disposable {
 
 		for (const link of links) {
 			if (link.href.kind === HrefKind.Internal
-				&& this.looksLikeLinkToDoc(link.href, URI.parse(document.uri))
-				&& this.parser.slugifier.fromHeading(link.href.fragment).value === header.slug.value
+				&& looksLikeLinkToResource(this.#configuration, link.href, getDocUri(document))
+				&& this.#parser.slugifier.fromHeading(link.href.fragment).value === header.slug.value
 			) {
 				references.push({
 					kind: MdReferenceKind.Link,
@@ -150,20 +167,23 @@ export class MdReferencesProvider extends Disposable {
 		return references;
 	}
 
-	private async getReferencesToLinkAtPosition(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<MdReference[]> {
-		const docLinks = (await this.linkCache.getForDocs([document]))[0];
+	async #getReferencesToLinkAtPosition(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<MdReference[]> {
+		const docLinks = (await this.#linkCache.getForDocs([document]))[0];
+		if (token.isCancellationRequested) {
+			return [];
+		}
 
 		for (const link of docLinks) {
 			if (link.kind === MdLinkKind.Definition) {
 				// We could be in either the ref name or the definition
 				if (rangeContains(link.ref.range, position)) {
-					return Array.from(this.getReferencesToLinkReference(docLinks, link.ref.text, { resource: URI.parse(document.uri), range: link.ref.range }));
+					return Array.from(this.#getReferencesToLinkReference(docLinks, link.ref.text, { resource: getDocUri(document), range: link.ref.range }));
 				} else if (rangeContains(link.source.hrefRange, position)) {
-					return this.getReferencesToLink(docLinks, link, position, token);
+					return this.#getReferencesToLink(docLinks, link, position, token);
 				}
 			} else {
 				if (rangeContains(link.source.hrefRange, position)) {
-					return this.getReferencesToLink(docLinks, link, position, token);
+					return this.#getReferencesToLink(docLinks, link, position, token);
 				}
 			}
 		}
@@ -171,13 +191,13 @@ export class MdReferencesProvider extends Disposable {
 		return [];
 	}
 
-	private async getReferencesToLink(docLinks: Iterable<MdLink>, sourceLink: MdLink, triggerPosition: lsp.Position, token: CancellationToken): Promise<MdReference[]> {
+	async #getReferencesToLink(docLinks: Iterable<MdLink>, sourceLink: MdLink, triggerPosition: lsp.Position, token: CancellationToken): Promise<MdReference[]> {
 		if (sourceLink.href.kind === HrefKind.Reference) {
-			return Array.from(this.getReferencesToLinkReference(docLinks, sourceLink.href.ref, { resource: sourceLink.source.resource, range: sourceLink.source.hrefRange }));
+			return Array.from(this.#getReferencesToLinkReference(docLinks, sourceLink.href.ref, { resource: sourceLink.source.resource, range: sourceLink.source.hrefRange }));
 		}
-		
+
 		// Otherwise find all occurrences of the link in the workspace
-		const allLinksInWorkspace = (await this.linkCache.values()).flat();
+		const allLinksInWorkspace = await this.#getAllLinksInWorkspace();
 		if (token.isCancellationRequested) {
 			return [];
 		}
@@ -200,15 +220,15 @@ export class MdReferencesProvider extends Disposable {
 			return references;
 		}
 
-		const resolvedResource = await statLinkToMarkdownFile(this.configuration, this.workspace, sourceLink.href.path);
+		const resolvedResource = await statLinkToMarkdownFile(this.#configuration, this.#workspace, sourceLink.href.path);
 		if (token.isCancellationRequested) {
 			return [];
 		}
 
 		const references: MdReference[] = [];
 
-		if (resolvedResource && this.isMarkdownPath(resolvedResource) && sourceLink.href.fragment && sourceLink.source.fragmentRange && rangeContains(sourceLink.source.fragmentRange, triggerPosition)) {
-			const toc = await this.tocProvider.get(resolvedResource);
+		if (resolvedResource && this.#isMarkdownPath(resolvedResource) && sourceLink.href.fragment && sourceLink.source.fragmentRange && rangeContains(sourceLink.source.fragmentRange, triggerPosition)) {
+			const toc = await this.#tocProvider.get(resolvedResource);
 			const entry = toc.lookup(sourceLink.href.fragment);
 			if (entry) {
 				references.push({
@@ -222,11 +242,11 @@ export class MdReferencesProvider extends Disposable {
 			}
 
 			for (const link of allLinksInWorkspace) {
-				if (link.href.kind !== HrefKind.Internal || !this.looksLikeLinkToDoc(link.href, resolvedResource)) {
+				if (link.href.kind !== HrefKind.Internal || !looksLikeLinkToResource(this.#configuration, link.href, resolvedResource)) {
 					continue;
 				}
 
-				if (this.parser.slugifier.fromHeading(link.href.fragment).equals(this.parser.slugifier.fromHeading(sourceLink.href.fragment))) {
+				if (this.#parser.slugifier.fromHeading(link.href.fragment).equals(this.#parser.slugifier.fromHeading(sourceLink.href.fragment))) {
 					const isTriggerLocation = sourceLink.source.resource.fsPath === link.source.resource.fsPath && areRangesEqual(sourceLink.source.hrefRange, link.source.hrefRange);
 					references.push({
 						kind: MdReferenceKind.Link,
@@ -238,28 +258,23 @@ export class MdReferencesProvider extends Disposable {
 				}
 			}
 		} else { // Triggered on a link without a fragment so we only require matching the file and ignore fragments
-			references.push(...this.findLinksToFile(resolvedResource ?? sourceLink.href.path, allLinksInWorkspace, sourceLink));
+			references.push(...this.#findLinksToFile(resolvedResource ?? sourceLink.href.path, allLinksInWorkspace, sourceLink));
 		}
 
 		return references;
 	}
 
-	private isMarkdownPath(resolvedHrefPath: URI) {
-		return this.workspace.hasMarkdownDocument(resolvedHrefPath) || looksLikeMarkdownPath(this.configuration, resolvedHrefPath);
+	async #getAllLinksInWorkspace(): Promise<readonly MdLink[]> {
+		return (await this.#linkCache.values()).flat();
 	}
 
-	private looksLikeLinkToDoc(href: InternalHref, targetDoc: URI): boolean {
-		if (href.path.fsPath === targetDoc.fsPath) {
-			return true;
-		}
-
-		return this.configuration.markdownFileExtensions.some(ext => 
-			href.path.with({ path: href.path.path + '.' + ext }).fsPath === targetDoc.fsPath);
+	#isMarkdownPath(resolvedHrefPath: URI) {
+		return this.#workspace.hasMarkdownDocument(resolvedHrefPath) || looksLikeMarkdownUri(this.#configuration, resolvedHrefPath);
 	}
 
-	private *findLinksToFile(resource: URI, links: readonly MdLink[], sourceLink: MdLink | undefined): Iterable<MdReference> {
+	*#findLinksToFile(resource: URI, links: readonly MdLink[], sourceLink: MdLink | undefined): Iterable<MdReference> {
 		for (const link of links) {
-			if (link.href.kind !== HrefKind.Internal || !this.looksLikeLinkToDoc(link.href, resource)) {
+			if (link.href.kind !== HrefKind.Internal || !looksLikeLinkToResource(this.#configuration, link.href, resource)) {
 				continue;
 			}
 
@@ -269,7 +284,7 @@ export class MdReferencesProvider extends Disposable {
 			}
 
 			const isTriggerLocation = !!sourceLink && sourceLink.source.resource.fsPath === link.source.resource.fsPath && areRangesEqual(sourceLink.source.hrefRange, link.source.hrefRange);
-			const pathRange = this.getPathRange(link);
+			const pathRange = this.#getPathRange(link);
 			yield {
 				kind: MdReferenceKind.Link,
 				isTriggerLocation,
@@ -280,7 +295,7 @@ export class MdReferencesProvider extends Disposable {
 		}
 	}
 
-	private *getReferencesToLinkReference(allLinks: Iterable<MdLink>, refToFind: string, from: { resource: URI; range: lsp.Range }): Iterable<MdReference> {
+	*#getReferencesToLinkReference(allLinks: Iterable<MdLink>, refToFind: string, from: { resource: URI; range: lsp.Range }): Iterable<MdReference> {
 		for (const link of allLinks) {
 			let ref: string;
 			if (link.kind === MdLinkKind.Definition) {
@@ -295,7 +310,7 @@ export class MdReferencesProvider extends Disposable {
 				const isTriggerLocation = from.resource.fsPath === link.source.resource.fsPath && (
 					(link.href.kind === HrefKind.Reference && areRangesEqual(from.range, link.source.hrefRange)) || (link.kind === MdLinkKind.Definition && areRangesEqual(from.range, link.ref.range)));
 
-				const pathRange = this.getPathRange(link);
+				const pathRange = this.#getPathRange(link);
 				yield {
 					kind: MdReferenceKind.Link,
 					isTriggerLocation,
@@ -310,7 +325,7 @@ export class MdReferencesProvider extends Disposable {
 	/**
 	 * Get just the range of the file path, dropping the fragment
 	 */
-	private getPathRange(link: MdLink): lsp.Range {
+	#getPathRange(link: MdLink): lsp.Range {
 		return link.source.fragmentRange
 			? modifyRange(link.source.hrefRange, undefined, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 }))
 			: link.source.hrefRange;

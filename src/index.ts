@@ -3,19 +3,21 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import type { CancellationToken, CompletionContext } from 'vscode-languageserver';
+import type { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
-import { getLsConfiguration } from './config';
+import { getLsConfiguration, LsConfiguration } from './config';
 import { MdExtractLinkDefinitionCodeActionProvider } from './languageFeatures/codeActions/extractLinkDef';
+import { MdRemoveLinkDefinitionCodeActionProvider } from './languageFeatures/codeActions/removeLinkDefinition';
 import { MdDefinitionProvider } from './languageFeatures/definitions';
 import { DiagnosticComputer, DiagnosticOptions, DiagnosticsManager, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
+import { MdDocumentHighlightProvider } from './languageFeatures/documentHighlights';
 import { createWorkspaceLinkCache, MdLinkProvider, ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks';
 import { MdDocumentSymbolProvider } from './languageFeatures/documentSymbols';
-import { MdFileRenameProvider } from './languageFeatures/fileRename';
+import { FileRename, MdFileRenameProvider } from './languageFeatures/fileRename';
 import { MdFoldingProvider } from './languageFeatures/folding';
 import { MdOrganizeLinkDefinitionProvider } from './languageFeatures/organizeLinkDefs';
-import { MdPathCompletionProvider } from './languageFeatures/pathCompletions';
+import { PathCompletionOptions, MdPathCompletionProvider } from './languageFeatures/pathCompletions';
 import { MdReferencesProvider } from './languageFeatures/references';
 import { MdRenameProvider } from './languageFeatures/rename';
 import { MdSelectionRangeProvider } from './languageFeatures/smartSelect';
@@ -24,16 +26,19 @@ import { ILogger } from './logging';
 import { IMdParser } from './parser';
 import { MdTableOfContentsProvider } from './tableOfContents';
 import { ITextDocument } from './types/textDocument';
-import { isWorkspaceWithFileWatching, IWorkspace, IWorkspaceWithWatching } from './workspace';
+import { isWorkspaceWithFileWatching, IWorkspace } from './workspace';
 
-export { DiagnosticCode, DiagnosticLevel, DiagnosticOptions } from './languageFeatures/diagnostics';
+export { LsConfiguration, PreferredMdPathExtensionStyle } from './config';
+export { DiagnosticCode, DiagnosticLevel, DiagnosticOptions, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
 export { ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks';
+export { FileRename } from './languageFeatures/fileRename';
+export { IncludeWorkspaceHeaderCompletions, PathCompletionOptions as MdPathCompletionOptions } from './languageFeatures/pathCompletions';
+export { RenameNotSupportedAtLocationError } from './languageFeatures/rename';
 export { ILogger, LogLevel } from './logging';
 export { IMdParser, Token } from './parser';
 export { githubSlugifier, ISlugifier } from './slugify';
 export { ITextDocument } from './types/textDocument';
-export { FileStat, FileWatcherOptions, IWorkspace } from './workspace';
-export { IWorkspaceWithWatching };
+export { ContainingDocumentContext, FileStat, FileWatcherOptions, IFileSystemWatcher, IWorkspace, IWorkspaceWithWatching } from './workspace';
 
 /**
  * Provides language tooling methods for working with markdown.
@@ -43,12 +48,12 @@ export interface IMdLanguageService {
 	/**
 	 * Get all links of a markdown file.
 	 *
-	 * Note that you must invoke {@link resolveDocumentLink} on each link before executing the link.
+	 * Note that you must invoke {@link IMdLanguageService.resolveDocumentLink} on each link before executing the link.
 	 */
 	getDocumentLinks(document: ITextDocument, token: CancellationToken): Promise<lsp.DocumentLink[]>;
 
 	/**
-	 * Resolves a link from {@link getDocumentLinks}.
+	 * Resolves a link from {@link IMdLanguageService.getDocumentLinks}.
 	 *
 	 * This fills in the target on the link.
 	 *
@@ -99,7 +104,7 @@ export interface IMdLanguageService {
 	/**
 	 * Get completions items at a given position in a markdown file.
 	 */
-	getCompletionItems(document: ITextDocument, position: lsp.Position, context: CompletionContext, token: CancellationToken): Promise<lsp.CompletionItem[]>;
+	getCompletionItems(document: ITextDocument, position: lsp.Position, context: PathCompletionOptions, token: CancellationToken): Promise<lsp.CompletionItem[]>;
 
 	/**
 	 * Get the references to a symbol at the current location.
@@ -150,9 +155,9 @@ export interface IMdLanguageService {
 	 *
 	 * You can pass in uris to resources or directories. However if you pass in multiple edits, these edits must not overlap/conflict.
 	 *
-	 * @returns A workspace edit that performs the rename or undefined if the rename cannot be performed.
+	 * @returns An object with a workspace edit that performs the rename and a list of old file uris that effected the edit. Returns undefined if the rename cannot be performed. 
 	 */
-	getRenameFilesInWorkspaceEdit(edits: ReadonlyArray<{ readonly oldUri: URI; readonly newUri: URI }>, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined>;
+	getRenameFilesInWorkspaceEdit(edits: readonly FileRename[], token: CancellationToken): Promise<{ participatingRenames: readonly FileRename[]; edit: lsp.WorkspaceEdit } | undefined>;
 
 	/**
 	 * Get code actions for a selection in a file.
@@ -162,9 +167,14 @@ export interface IMdLanguageService {
 	getCodeActions(document: ITextDocument, range: lsp.Range, context: lsp.CodeActionContext, token: CancellationToken): Promise<lsp.CodeAction[]>;
 
 	/**
+	 * Get document highlights for a position in the document.
+	 */
+	getDocumentHighlights(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<lsp.DocumentHighlight[]>;
+
+	/**
 	 * Compute diagnostics for a given file.
 	 *
-	 * Note that this function is stateless and re-validates all links every time you make the request. Use {@link createPullDiagnosticsManager}
+	 * Note that this function is stateless and re-validates all links every time you make the request. Use {@link IMdLanguageService.createPullDiagnosticsManager}
 	 * to more efficiently get diagnostics.
 	 */
 	computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]>;
@@ -184,34 +194,30 @@ export interface IMdLanguageService {
 	dispose(): void;
 }
 
-export interface LanguageServiceInitialization {
-	// Services
+/**
+ * Initialization options for creating a new {@link IMdLanguageService}.
+ */
+export interface LanguageServiceInitialization extends Partial<LsConfiguration> {
 
+	/**
+	 * The {@link IWorkspace workspace} that the  {@link IMdLanguageService language service} uses to work with files. 
+	 */
 	readonly workspace: IWorkspace;
+
+	/**
+	 * The {@link IMdParser markdown parsing engine} that the  {@link IMdLanguageService language service} uses to
+	 * process Markdown source. 
+	 */
 	readonly parser: IMdParser;
+
+	/**
+	 * The {@link ILogger logger} that the  {@link IMdLanguageService language service} use for logging messages.
+	 */
 	readonly logger: ILogger;
-
-	// Config
-
-	/**
-	 * List of file extensions should be considered as markdown.
-	 *
-	 * These should not include the leading `.`.
-	 *
-	 * @default ['md']
-	 */
-	readonly markdownFileExtensions?: readonly string[];
-
-	/**
-	 * List of path globs that should be excluded from cross-file operations.
-	 *
-	 * Note that this does not prevent explicit requests for those files.
-	 */
-	readonly excludePaths?: readonly string[];
 }
 
 /**
- * Create a new instance of the language service.
+ * Create a new instance of the {@link IMdLanguageService language service}.
  */
 export function createLanguageService(init: LanguageServiceInitialization): IMdLanguageService {
 	const config = getLsConfiguration(init);
@@ -221,18 +227,20 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const smartSelectProvider = new MdSelectionRangeProvider(init.parser, tocProvider, logger);
 	const foldingProvider = new MdFoldingProvider(init.parser, tocProvider, logger);
 	const linkProvider = new MdLinkProvider(config, init.parser, init.workspace, tocProvider, logger);
-	const pathCompletionProvider = new MdPathCompletionProvider(config, init.workspace, init.parser, linkProvider);
+	const pathCompletionProvider = new MdPathCompletionProvider(config, init.workspace, init.parser, linkProvider, tocProvider);
 	const linkCache = createWorkspaceLinkCache(init.parser, init.workspace);
 	const referencesProvider = new MdReferencesProvider(config, init.parser, init.workspace, tocProvider, linkCache, logger);
 	const definitionsProvider = new MdDefinitionProvider(config, init.workspace, tocProvider, linkCache);
 	const renameProvider = new MdRenameProvider(config, init.workspace, referencesProvider, init.parser.slugifier, logger);
 	const fileRenameProvider = new MdFileRenameProvider(config, init.workspace, linkCache, referencesProvider);
-	const diagnosticsComputer = new DiagnosticComputer(config, init.workspace, linkProvider, tocProvider);
+	const diagnosticsComputer = new DiagnosticComputer(config, init.workspace, linkProvider, tocProvider, logger);
 	const docSymbolProvider = new MdDocumentSymbolProvider(tocProvider, linkProvider, logger);
 	const workspaceSymbolProvider = new MdWorkspaceSymbolProvider(init.workspace, docSymbolProvider);
 	const organizeLinkDefinitions = new MdOrganizeLinkDefinitionProvider(linkProvider);
+	const documentHighlightProvider = new MdDocumentHighlightProvider(config, tocProvider, linkProvider);
 
 	const extractCodeActionProvider = new MdExtractLinkDefinitionCodeActionProvider(linkProvider);
+	const removeLinkDefinitionActionProvider = new MdRemoveLinkDefinitionCodeActionProvider();
 
 	return Object.freeze<IMdLanguageService>({
 		dispose: () => {
@@ -260,7 +268,13 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 		getRenameEdit: renameProvider.provideRenameEdits.bind(renameProvider),
 		getRenameFilesInWorkspaceEdit: fileRenameProvider.getRenameFilesInWorkspaceEdit.bind(fileRenameProvider),
 		getCodeActions: async (doc: ITextDocument, range: lsp.Range, context: lsp.CodeActionContext, token: CancellationToken): Promise<lsp.CodeAction[]> => {
-			return extractCodeActionProvider.getActions(doc, range, context, token);
+			return (await Promise.all([
+				extractCodeActionProvider.getActions(doc, range, context, token),
+				Array.from(removeLinkDefinitionActionProvider.getActions(doc, range, context)),
+			])).flat();
+		},
+		getDocumentHighlights: (document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<lsp.DocumentHighlight[]> => {
+			return documentHighlightProvider.getDocumentHighlights(document, position, token);
 		},
 		computeDiagnostics: async (doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]> => {
 			return (await diagnosticsComputer.compute(doc, options, token))?.diagnostics;
@@ -269,7 +283,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 			if (!isWorkspaceWithFileWatching(init.workspace)) {
 				throw new Error(`Workspace does not support file watching. Diagnostics manager not supported`);
 			}
-			return new DiagnosticsManager(config, init.workspace, linkProvider, tocProvider);
+			return new DiagnosticsManager(config, init.workspace, linkProvider, tocProvider, logger);
 		}
 	});
 }

@@ -6,7 +6,6 @@
 import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { ITextDocument } from '../types/textDocument';
-import { noopToken } from '../util/cancellation';
 import { Disposable } from '../util/dispose';
 import { IWorkspace } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
@@ -14,31 +13,38 @@ import { MdDocumentSymbolProvider } from './documentSymbols';
 
 export class MdWorkspaceSymbolProvider extends Disposable {
 
-	private readonly _cache: MdWorkspaceInfoCache<lsp.SymbolInformation[]>;
+	readonly #cache: MdWorkspaceInfoCache<readonly lsp.SymbolInformation[]>;
+	readonly #symbolProvider: MdDocumentSymbolProvider;
 
-	public constructor(
+	constructor(
 		workspace: IWorkspace,
-		private readonly symbolProvider: MdDocumentSymbolProvider,
+		symbolProvider: MdDocumentSymbolProvider,
 	) {
 		super();
+		this.#symbolProvider = symbolProvider;
 
-		this._cache = this._register(new MdWorkspaceInfoCache(workspace, doc => this.provideDocumentSymbolInformation(doc, noopToken)));
+		this.#cache = this._register(new MdWorkspaceInfoCache(workspace, (doc, token) => this.provideDocumentSymbolInformation(doc, token)));
 	}
 
-	public async provideWorkspaceSymbols(query: string, _token: CancellationToken): Promise<lsp.WorkspaceSymbol[]> {
-		const allSymbols = (await this._cache.values()).flat();
-		return allSymbols.filter(symbolInformation => symbolInformation.name.toLowerCase().indexOf(query.toLowerCase()) !== -1);
-	}
-
-	public async provideDocumentSymbolInformation(document: ITextDocument, token: CancellationToken): Promise<lsp.SymbolInformation[]> {
-		const docSymbols = await this.symbolProvider.provideDocumentSymbols(document, {}, token);
+	public async provideWorkspaceSymbols(query: string, token: CancellationToken): Promise<lsp.WorkspaceSymbol[]> {
+		const allSymbols = await this.#cache.values();
 		if (token.isCancellationRequested) {
 			return [];
 		}
-		return Array.from(this.toSymbolInformation(document.uri, docSymbols));
+
+		const normalizedQueryStr = query.toLowerCase();
+		return allSymbols.flat().filter(symbolInformation => symbolInformation.name.toLowerCase().includes(normalizedQueryStr));
 	}
 
-	private *toSymbolInformation(uri: string, docSymbols: lsp.DocumentSymbol[]): Iterable<lsp.SymbolInformation> {
+	public async provideDocumentSymbolInformation(document: ITextDocument, token: CancellationToken): Promise<lsp.SymbolInformation[]> {
+		const docSymbols = await this.#symbolProvider.provideDocumentSymbols(document, {}, token);
+		if (token.isCancellationRequested) {
+			return [];
+		}
+		return Array.from(this.#toSymbolInformation(document.uri, docSymbols));
+	}
+
+	*#toSymbolInformation(uri: string, docSymbols: readonly lsp.DocumentSymbol[]): Iterable<lsp.SymbolInformation> {
 		for (const symbol of docSymbols) {
 			yield {
 				name: symbol.name,
@@ -46,7 +52,7 @@ export class MdWorkspaceSymbolProvider extends Disposable {
 				location: { uri, range: symbol.selectionRange }
 			};
 			if (symbol.children) {
-				yield* this.toSymbolInformation(uri, symbol.children);
+				yield* this.#toSymbolInformation(uri, symbol.children);
 			}
 		}
 	}

@@ -38,20 +38,20 @@ export interface IDisposable {
 }
 
 export abstract class Disposable {
-	private _isDisposed = false;
+	#isDisposed = false;
 
 	protected _disposables: IDisposable[] = [];
 
 	public dispose(): any {
-		if (this._isDisposed) {
+		if (this.#isDisposed) {
 			return;
 		}
-		this._isDisposed = true;
+		this.#isDisposed = true;
 		disposeAll(this._disposables);
 	}
 
 	protected _register<T extends IDisposable>(value: T): T {
-		if (this._isDisposed) {
+		if (this.#isDisposed) {
 			value.dispose();
 		} else {
 			this._disposables.push(value);
@@ -60,17 +60,17 @@ export abstract class Disposable {
 	}
 
 	protected get isDisposed() {
-		return this._isDisposed;
+		return this.#isDisposed;
 	}
 }
 
 export class DisposableStore extends Disposable {
-	private readonly items = new Set<IDisposable>();
+	readonly #items = new Set<IDisposable>();
 
 	public override dispose() {
 		super.dispose();
-		disposeAll(this.items);
-		this.items.clear();
+		disposeAll(this.#items);
+		this.#items.clear();
 	}
 
 	public add<T extends IDisposable>(item: T): T {
@@ -78,7 +78,7 @@ export class DisposableStore extends Disposable {
 			console.warn('Adding to disposed store. Item will be leaked');
 		}
 
-		this.items.add(item);
+		this.#items.add(item);
 		return item;
 	}
 }

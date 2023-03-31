@@ -7,13 +7,23 @@ import { Event } from 'vscode-languageserver';
 import { URI, Utils } from 'vscode-uri';
 import { defaultMarkdownFileExtension, LsConfiguration } from './config';
 import { ITextDocument } from './types/textDocument';
-import { IDisposable } from './util/dispose';
 import { ResourceMap } from './util/resourceMap';
 
+/**
+ * Result of {@link IWorkspace.stat stating} a file.
+ */
 export interface FileStat {
-	readonly isDirectory?: boolean;
+	/**
+	 * True if the file is directory.
+	 */
+	readonly isDirectory: boolean;
 }
 
+/**
+ * Information about a parent markdown document that contains sub-documents.
+ * 
+ * This could be a notebook document for example, where the `children` are the Markdown cells in the notebook.
+ */
 export interface ContainingDocumentContext {
 	/**
 	 * Uri of the parent document.
@@ -69,7 +79,7 @@ export interface IWorkspace {
 	 *
 	 * This may either get the document from a cache or open it and add it to the cache.
 	 *
-	 * @return The document, or `undefined` if the file could not be opened or was not a markdown file.
+	 * @returns The document, or `undefined` if the file could not be opened or was not a markdown file.
 	 */
 	openMarkdownDocument(resource: URI): Promise<ITextDocument | undefined>;
 
@@ -78,7 +88,7 @@ export interface IWorkspace {
 	 *
 	 * @param resource URI to check. Does not have to be to a markdown file.
 	 *
-	 * @return Metadata or `undefined` if the resource does not exist.
+	 * @returns Metadata or `undefined` if the resource does not exist.
 	 */
 	stat(resource: URI): Promise<FileStat | undefined>;
 
@@ -87,7 +97,7 @@ export interface IWorkspace {
 	 *
 	 * @param resource URI of the directory to check. Does not have to be to a markdown file.
 	 *
-	 * @return List of `[fileName, metadata]` tuples.
+	 * @returns List of `[fileName, metadata]` tuples.
 	 */
 	readDirectory(resource: URI): Promise<Iterable<readonly [string, FileStat]>>;
 
@@ -96,14 +106,22 @@ export interface IWorkspace {
 	 *
 	 * If `resource` is a notebook cell for example, this should return the parent notebook.
 	 *
-	 * @return The parent document info or `undefined` if none.
+	 * @returns The parent document info or `undefined` if none.
 	 */
 	getContainingDocument?(resource: URI): ContainingDocumentContext | undefined;
 }
 
+/**
+ * Configures which events a {@link IFileSystemWatcher} fires.
+ */
 export interface FileWatcherOptions {
+	/** Ignore file creation events. */
 	readonly ignoreCreate?: boolean;
+
+	/** Ignore file change events. */
 	readonly ignoreChange?: boolean;
+
+	/** Ignore file delete events. */
 	readonly ignoreDelete?: boolean;
 }
 
@@ -124,7 +142,13 @@ export function isWorkspaceWithFileWatching(workspace: IWorkspace): workspace is
 /**
  * Watches a file for changes to it on the file system.
  */
-export interface IFileSystemWatcher extends IDisposable {
+export interface IFileSystemWatcher {
+
+	/**
+	 * Dispose of the watcher. This should stop watching and clean up any associated resources.
+	 */
+	dispose(): void;
+
 	/** Fired when the file is created. */
 	readonly onDidCreate: Event<URI>;
 
@@ -178,7 +202,7 @@ export async function openLinkToMarkdownFile(config: LsConfiguration, workspace:
 /**
  * Check that a link to a file exists.
  *
- * @return The resolved URI or `undefined` if the file does not exist.
+ * @returns The resolved URI or `undefined` if the file does not exist.
  */
 export async function statLinkToMarkdownFile(config: LsConfiguration, workspace: IWorkspace, linkUri: URI, out_statCache?: ResourceMap<{ readonly exists: boolean }>): Promise<URI | undefined> {
 	const exists = async (uri: URI): Promise<boolean> => {
@@ -202,8 +226,13 @@ export async function statLinkToMarkdownFile(config: LsConfiguration, workspace:
 
 export function tryAppendMarkdownFileExtension(config: LsConfiguration, linkUri: URI): URI | undefined {
 	const ext = Utils.extname(linkUri).toLowerCase().replace(/^\./, '');
-	if (ext === '' || !(config.markdownFileExtensions.includes(ext) || config.knownLinkedToFileExtensions.includes(ext))) {
+	if (config.markdownFileExtensions.includes(ext)) {
+		return linkUri;
+	}
+
+	if (ext === '' || !config.knownLinkedToFileExtensions.includes(ext)) {
 		return linkUri.with({ path: linkUri.path + '.' + (config.markdownFileExtensions[0] ?? defaultMarkdownFileExtension) });
 	}
+	
 	return undefined;
 }

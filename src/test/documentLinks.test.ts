@@ -275,12 +275,12 @@ suite('Link computer', () => {
 		]);
 	});
 
-	test.skip('Should find reference link shorthand for link with space in label (#141285)', async () => {
+	test('Should find reference link shorthand for link with space in label (#141285)', async () => {
 		const links = await getLinksForText(joinLines(
 			'[ref with space]',
 		));
 		assertLinksEqual(links, [
-			makeRange(0, 7, 0, 26),
+			makeRange(0, 1, 0, 15),
 		]);
 	});
 
@@ -583,13 +583,86 @@ suite('Link computer', () => {
 		const link = links[0];
 		assert.strictEqual((link.href as InternalHref).path.toString(), docUri.toString());
 	});
+
+	test(`Should allow links to end with ':' if they are not link defs (https://github.com/microsoft/vscode/issues/162691)`, async () => {
+		const links = await getLinksForText(joinLines(
+			`- [@just-web/contributions]: abc`,
+			`- [@just-web/contributions]:`,
+			`- [@just-web/contributions][]:`,
+			`- [@just-web/contributions][ref]:`,
+		));
+
+		assertLinksEqual(links, [
+			makeRange(0, 3, 0, 26),
+			makeRange(1, 3, 1, 26),
+			makeRange(2, 3, 2, 26),
+			makeRange(3, 28, 3, 31),
+		]);
+	});
+
+	test(`Should handle reference links with backticks`, async () => {
+		const links = await getLinksForText(joinLines(
+			'[`github`][github]',
+			``,
+			`[github]: https://github.com`,
+		));
+
+		assertLinksEqual(links, [
+			makeRange(0, 11, 0, 17),
+			makeRange(2, 10, 2, 28),
+		]);
+	});
+
+	test('Should find reference links to images', async () => {
+		const links = await getLinksForText(joinLines(
+			`[![alt](img)][def]`,
+			``,
+			`[def]: http://example.com`,
+		));
+
+		assertLinksEqual(links, [
+			makeRange(0, 8, 0, 11),
+			makeRange(0, 14, 0, 17),
+			makeRange(2, 7, 2, 25),
+		]);
+	});
+
+	test('Should find links to images references', async () => {
+		const links = await getLinksForText(joinLines(
+			`[![alt][def]](img)`,
+			``,
+			`[def]: http://example.com`,
+		));
+
+		assertLinksEqual(links, [
+			makeRange(0, 14, 0, 17),
+			makeRange(0, 8, 0, 11),
+			makeRange(2, 7, 2, 25),
+		]);
+	});
+
+	test('Should find reference links to image references', async () => {
+		const links = await getLinksForText(joinLines(
+			`[![alt][img]][def]`,
+			``,
+			`[def]: http://example.com`,
+		));
+
+		assertLinksEqual(links, [
+			makeRange(0, 8, 0, 11),
+			makeRange(0, 14, 0, 17),
+			makeRange(2, 7, 2, 25),
+		]);
+	});
 });
 
 
 suite('Link provider', () => {
 
+	const testFile = workspacePath('x.md');
+
 	function getLinksForFile(fileContents: string) {
-		const doc = new InMemoryDocument(workspacePath('x.md'), fileContents);
+		const doc = new InMemoryDocument(testFile, fileContents);
 		const workspace = new InMemoryWorkspace([doc]);
 
 		const engine = createNewMarkdownEngine();
@@ -602,7 +675,7 @@ suite('Link provider', () => {
 		assert.strictEqual(actualLinks.length, expectedRanges.length);
 
 		for (let i = 0; i < actualLinks.length; ++i) {
-			assertRangeEqual(actualLinks[i].range, expectedRanges[i], `Range ${i} to be equal`);
+			assertRangeEqual(actualLinks[i].range, expectedRanges[i], `Range ${ i } to be equal`);
 		}
 	}
 
@@ -625,6 +698,39 @@ suite('Link provider', () => {
 	test('Should not include reference link shorthand when definition does not exist (#141285)', async () => {
 		const links = await getLinksForFile('[ref]');
 		assertLinksEqual(links, []);
+	});
+
+	test('Should find reference links case insensitively', async () => {
+		const links = await getLinksForFile(joinLines(
+			'[ref]',
+			'[rEf][]',
+			'[ref][ReF]',
+			'',
+			'[REF]: http://example.com'
+		));
+		assertLinksEqual(links, [
+			makeRange(0, 1, 0, 4),
+			makeRange(1, 1, 1, 4),
+			makeRange(2, 6, 2, 9),
+			makeRange(4, 7, 4, 25),
+		]);
+	});
+
+	test('Should use first link reference found in document', async () => {
+		const links = await getLinksForFile(joinLines(
+			`[abc]`,
+			``,
+			`[abc]: http://example.com/1`,
+			`[abc]: http://example.com/2`,
+		));
+
+		assertLinksEqual(links, [
+			makeRange(0, 1, 0, 4),
+			makeRange(2, 7, 2, 27),
+			makeRange(3, 7, 3, 27),
+		]);
+
+		assert.strictEqual(links[0].target, testFile.with({ fragment: 'L3,8' }).toString(true));
 	});
 
 	test('Should not encode link', async () => {

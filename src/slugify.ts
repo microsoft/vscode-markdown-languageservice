@@ -13,10 +13,16 @@ export class Slug {
 	}
 }
 
+/**
+ * Generates unique ids for headers in the Markdown.
+ */
 export interface ISlugifier {
 	fromHeading(heading: string): Slug;
 }
 
+/**
+ * A {@link ISlugifier slugifier} that approximates how GitHub's slugifier works.
+ */
 export const githubSlugifier: ISlugifier = new class implements ISlugifier {
 	fromHeading(heading: string): Slug {
 		const slugifiedHeading = encodeURI(

@@ -1,11 +1,10 @@
 {
 	"compilerOptions": {
-		"target": "es2020",
+		"target": "es2022",
 		"lib": [
 			"ES2020",
 		],
 		"sourceMap": true,
-		"declaration": true,
 		"module": "commonjs",
 		"strict": true,
 		"noImplicitAny": true,

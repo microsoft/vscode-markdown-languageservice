@@ -724,14 +724,9 @@ export class MdLinkProvider extends Disposable {
 		}
 
 		// Try navigating with fragment that sets line number
-		const lineNumberFragment = linkFragment.match(/^L(\d+)(?:,(\d+))?$/i);
-		if (lineNumberFragment) {
-			const line = +lineNumberFragment[1] - 1;
-			if (!isNaN(line)) {
-				const char = +lineNumberFragment[2] - 1;
-				const position: lsp.Position = { line, character: isNaN(char) ? 0 : char };
-				return { kind: 'file', uri: target, position };
-			}
+		const locationLinkPosition = parseLocationInfoFromFragment(linkFragment);
+		if (locationLinkPosition) {
+			return { kind: 'file', uri: target, position: locationLinkPosition };
 		}
 
 		// Try navigating to header in file
@@ -813,6 +808,24 @@ export class MdLinkProvider extends Disposable {
 			fragment: `L${pos.line + 1},${pos.character + 1}`
 		}).toString(true);
 	}
+}
+
+/**
+ * Extract position info from link fragments that look like `#L5,3`
+ */
+export function parseLocationInfoFromFragment(fragment: string): lsp.Position | undefined {
+	const match = fragment.match(/^L(\d+)(?:,(\d+))?$/i);
+	if (!match) {
+		return undefined;
+	}
+
+	const line = +match[1] - 1;
+	if (isNaN(line)) {
+		return undefined;
+	}
+
+	const column = +match[2] - 1;
+	return { line, character: isNaN(column) ? 0 : column };
 }
 
 export function createWorkspaceLinkCache(

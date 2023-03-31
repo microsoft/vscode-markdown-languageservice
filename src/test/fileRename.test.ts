@@ -8,7 +8,7 @@ import * as lsp from 'vscode-languageserver-types';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration } from '../config';
 import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks';
-import { MdFileRenameProvider } from '../languageFeatures/fileRename';
+import { FileRenameResponse, MdFileRenameProvider } from '../languageFeatures/fileRename';
 import { MdReferencesProvider } from '../languageFeatures/references';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { makeRange } from '../types/range';
@@ -24,7 +24,7 @@ import { assertRangeEqual, joinLines, withStore, workspacePath } from './util';
 /**
  * Get all the edits for a file rename.
  */
-function getFileRenameEdits(store: DisposableStore, edits: ReadonlyArray<{ oldUri: URI, newUri: URI }>, workspace: IWorkspace): Promise<lsp.WorkspaceEdit | undefined> {
+function getFileRenameEdits(store: DisposableStore, edits: ReadonlyArray<{ oldUri: URI, newUri: URI }>, workspace: IWorkspace): Promise<FileRenameResponse | undefined> {
 	const config = getLsConfiguration({});
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
@@ -79,8 +79,8 @@ suite('File Rename', () => {
 		const oldUri = workspacePath('old.md');
 		const newUri = workspacePath('new.md');
 
-		const edit = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
-		assertEditsEqual(edit!, {
+		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
+		assertEditsEqual(response!.edit, {
 			uri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 6, 0, 13), '/new.md'),
 				lsp.TextEdit.replace(makeRange(1, 6, 1, 12), 'new.md'),
@@ -103,8 +103,8 @@ suite('File Rename', () => {
 		const oldUri = workspacePath('old.md');
 		const newUri = workspacePath('new.md');
 
-		const edit = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
-		assertEditsEqual(edit!, {
+		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
+		assertEditsEqual(response!.edit, {
 			uri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 6, 0, 13), '/new.md'),
 				lsp.TextEdit.replace(makeRange(1, 6, 1, 12), 'new.md'),
@@ -127,8 +127,8 @@ suite('File Rename', () => {
 		const oldUri = workspacePath('old.md');
 		const newUri = workspacePath('new.md');
 
-		const edit = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
-		assertEditsEqual(edit!, {
+		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
+		assertEditsEqual(response!.edit, {
 			uri: docUri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 6, 0, 10), '/new'),
 				lsp.TextEdit.replace(makeRange(1, 6, 1, 9), 'new'),
@@ -153,8 +153,8 @@ suite('File Rename', () => {
 		const oldUri = workspacePath('old.md');
 		const newUri = workspacePath('new with space.md');
 
-		const edit = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
-		assertEditsEqual(edit!, {
+		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
+		assertEditsEqual(response!.edit, {
 			uri: docUri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 6, 0, 13), '/new%20with%20space.md'),
 				lsp.TextEdit.replace(makeRange(1, 6, 1, 12), 'new%20with%20space.md'),
@@ -181,12 +181,12 @@ suite('File Rename', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const edit = await getFileRenameEdits(store, [
+		const response = await getFileRenameEdits(store, [
 			{ oldUri: workspacePath('cat.png'), newUri: workspacePath('kitty.png') },
 			{ oldUri: workspacePath('dog.png'), newUri: workspacePath('hot', 'doggo.png') },
 		], workspace);
 
-		assertEditsEqual(edit!, {
+		assertEditsEqual(response!.edit, {
 			uri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 6, 0, 14), '/kitty.png'),
 				lsp.TextEdit.replace(makeRange(2, 6, 2, 13), 'kitty.png'),
@@ -214,8 +214,8 @@ suite('File Rename', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const edit = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri }], workspace);
-		assertEditsEqual(edit!, {
+		const response = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri }], workspace);
+		assertEditsEqual(response!.edit, {
 			uri: newUri, edits: [
 				lsp.TextEdit.replace(makeRange(1, 6, 1, 14), '../other.md'),
 				lsp.TextEdit.replace(makeRange(2, 6, 2, 16), '../other.md'),
@@ -237,8 +237,8 @@ suite('File Rename', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const edit = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri }], workspace);
-		assertEditsEqual(edit!, {
+		const response = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri }], workspace);
+		assertEditsEqual(response!.edit, {
 			uri: newUri, edits: [
 				lsp.TextEdit.replace(makeRange(1, 6, 1, 11), '../other'),
 				lsp.TextEdit.replace(makeRange(2, 6, 2, 13), '../other'),
@@ -270,8 +270,8 @@ suite('File Rename', () => {
 		const oldUri = workspacePath('old');
 		const newUri = workspacePath('new');
 
-		const edit = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
-		assertEditsEqual(edit!, {
+		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
+		assertEditsEqual(response!.edit, {
 			uri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 6, 0, 15), '/new/a.md'),
 				lsp.TextEdit.replace(makeRange(1, 6, 1, 15), '/new/b.md'),
@@ -313,8 +313,8 @@ suite('File Rename', () => {
 		const oldUri = workspacePath('old');
 		const newUri = workspacePath('new');
 
-		const edit = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri }], workspace);
-		assertEditsEqual(edit!, {
+		const response = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri }], workspace);
+		assertEditsEqual(response!.edit, {
 			uri: uri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 6, 0, 15), '/new/a.md'),
 				lsp.TextEdit.replace(makeRange(1, 6, 1, 15), '/new/b.md'),
@@ -342,12 +342,53 @@ suite('File Rename', () => {
 		const oldUri = workspacePath('old');
 		const newUri = workspacePath('new', 'sub');
 
-		const edit = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri }], workspace);
-		assertEditsEqual(edit!, {
+		const response = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri }], workspace);
+		assertEditsEqual(response!.edit, {
 			uri: uri, edits: [
 				lsp.TextEdit.replace(makeRange(2, 6, 2, 13), '../../a.md'),
 				lsp.TextEdit.replace(makeRange(3, 6, 3, 13), '../../b.md'),
 			]
 		});
+	}));
+
+	test('Should update links when renaming multiple files', withStore(async (store) => {
+		const uri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(uri, joinLines(
+			`[abc](/old1.md)`,
+			`[abc](old2.md)`,
+			`[abc](./old1.md)`,
+			`[xyz]: ./old2.md`,
+			`[abc](/other1.md)`,
+			`[xyz1]: ./other1.md`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const old1Uri = workspacePath('old1.md');
+		const new1Uri = workspacePath('new1.md');
+
+		const old2Uri = workspacePath('old2.md');
+		const new2Uri = workspacePath('new2.md');
+
+		const response = await getFileRenameEdits(store, [
+			{ oldUri: old1Uri, newUri: new1Uri },
+			{ oldUri: old2Uri, newUri: new2Uri },
+			// And create an edit that does not effect the result
+			{
+				oldUri: workspacePath('uninvolved.md'), 
+				newUri: workspacePath('uninvolved-new.md')
+			}
+		], workspace);
+		assertEditsEqual(response!.edit, {
+			uri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 6, 0, 14), '/new1.md'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 15), './new1.md'),
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 13), 'new2.md'),
+				lsp.TextEdit.replace(makeRange(3, 7, 3, 16), './new2.md'),
+			]
+		});
+
+		assert.strictEqual(response?.participatingRenames.length, 2);
+		assert.strictEqual(response?.participatingRenames[0].oldUri.toString(), old1Uri.toString());
+		assert.strictEqual(response?.participatingRenames[1].oldUri.toString(), old2Uri.toString());
 	}));
 });

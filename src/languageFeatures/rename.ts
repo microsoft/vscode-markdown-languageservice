@@ -28,6 +28,12 @@ export interface MdReferencesResponse {
 	readonly triggerRef: MdReference;
 }
 
+export class RenameNotSupportedAtLocationError extends Error {
+	constructor() {
+		super(localize('rename.notSupported', 'Renaming is not supported here. Try renaming a header or link.'));
+	}
+}
+
 export class MdRenameProvider extends Disposable {
 
 	private cachedRefs?: {
@@ -38,7 +44,6 @@ export class MdRenameProvider extends Disposable {
 		readonly references: MdReference[];
 	} | undefined;
 
-	private readonly renameNotSupportedText = localize('rename.notSupported', 'Rename not supported at location');
 
 	public constructor(
 		private readonly configuration: LsConfiguration,
@@ -59,7 +64,7 @@ export class MdRenameProvider extends Disposable {
 		}
 
 		if (!allRefsInfo || !allRefsInfo.references.length) {
-			throw new Error(this.renameNotSupportedText);
+			throw new RenameNotSupportedAtLocationError();
 		}
 
 		const triggerRef = allRefsInfo.triggerRef;
@@ -83,15 +88,15 @@ export class MdRenameProvider extends Disposable {
 				const { fragmentRange } = triggerRef.link.source;
 				if (fragmentRange && rangeContains(fragmentRange, position)) {
 					const declaration = this.findHeaderDeclaration(allRefsInfo.references);
-					if (declaration) {
-						return { range: fragmentRange, placeholder: declaration.headerText };
-					}
-					return { range: fragmentRange, placeholder: document.getText(fragmentRange) };
+					return {
+						range: fragmentRange,
+						placeholder: declaration ? declaration.headerText : document.getText(fragmentRange),
+					};
 				}
 
 				const range = getFilePathRange(triggerRef.link);
 				if (!range) {
-					throw new Error(this.renameNotSupportedText);
+					throw new RenameNotSupportedAtLocationError();
 				}
 				return { range, placeholder: tryDecodeUri(document.getText(range)) };
 			}

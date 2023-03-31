@@ -385,19 +385,6 @@ suite('Diagnostic Computer', () => {
 		assert.strictEqual(diag1.data.fsPath, workspacePath('no such.md').fsPath);
 		assert.strictEqual(diag2.data.fsPath, workspacePath('no such.md').fsPath);
 	}));
-
-	test('Should not validate line number links', withStore(async (store) => {
-		const doc = new InMemoryDocument(workspacePath('doc1.md'), joinLines(
-			`[link](#L1)`,
-			`[link](doc1.md#L1)`,
-			`[link](#L1,2)`,
-			`[link](doc1.md#L1,2)`,
-		));
-		const workspace = store.add(new InMemoryWorkspace([doc]));
-
-		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
-		assertDiagnosticsEqual(diagnostics, []);
-	}));
 });
 
 

@@ -12,7 +12,7 @@ import { MdDefinitionProvider } from './languageFeatures/definitions';
 import { DiagnosticComputer, DiagnosticOptions, DiagnosticsManager, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
 import { createWorkspaceLinkCache, MdLinkProvider, ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks';
 import { MdDocumentSymbolProvider } from './languageFeatures/documentSymbols';
-import { FileRename, MdFileRenameProvider } from './languageFeatures/fileRename';
+import { MdFileRenameProvider } from './languageFeatures/fileRename';
 import { MdFoldingProvider } from './languageFeatures/folding';
 import { MdOrganizeLinkDefinitionProvider } from './languageFeatures/organizeLinkDefs';
 import { MdPathCompletionProvider } from './languageFeatures/pathCompletions';
@@ -28,13 +28,12 @@ import { isWorkspaceWithFileWatching, IWorkspace, IWorkspaceWithWatching } from 
 
 export { DiagnosticCode, DiagnosticLevel, DiagnosticOptions } from './languageFeatures/diagnostics';
 export { ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks';
-export { RenameNotSupportedAtLocationError } from './languageFeatures/rename';
 export { ILogger, LogLevel } from './logging';
 export { IMdParser, Token } from './parser';
 export { githubSlugifier, ISlugifier } from './slugify';
 export { ITextDocument } from './types/textDocument';
 export { FileStat, FileWatcherOptions, IWorkspace } from './workspace';
-export { IWorkspaceWithWatching, FileRename };
+export { IWorkspaceWithWatching };
 
 /**
  * Provides language tooling methods for working with markdown.
@@ -151,9 +150,9 @@ export interface IMdLanguageService {
 	 *
 	 * You can pass in uris to resources or directories. However if you pass in multiple edits, these edits must not overlap/conflict.
 	 *
-	 * @returns An object with a workspace edit that performs the rename and a list of old file uris that effected the edit. Returns undefined if the rename cannot be performed. 
+	 * @returns A workspace edit that performs the rename or undefined if the rename cannot be performed.
 	 */
-	getRenameFilesInWorkspaceEdit(edits: readonly FileRename[], token: CancellationToken): Promise<{ participatingRenames: readonly FileRename[]; edit: lsp.WorkspaceEdit } | undefined>;
+	getRenameFilesInWorkspaceEdit(edits: ReadonlyArray<{ readonly oldUri: URI; readonly newUri: URI }>, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined>;
 
 	/**
 	 * Get code actions for a selection in a file.

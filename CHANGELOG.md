@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.0-alpha.1 — May 2, 2023
+- Enable document links, references, and rename for HTML fragments in Markdown.
+
 ## 0.3.0 — March 16, 2023
 - Enabled localization using `@vscode/l10n` package.
 - Add support for cross workspace header completions when triggered on `##`.

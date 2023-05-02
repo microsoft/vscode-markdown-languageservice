@@ -685,5 +685,26 @@ suite('References', () => {
 			}
 		}));
 	});
+
+
+	suite('Html', () => {
+		test('Should find html references to header', withStore(async (store) => {
+			const uri = workspacePath('doc.md');
+			const doc = new InMemoryDocument(uri, joinLines(
+				`# abc`,
+				``,
+				`<a href="#abc"></a>`,
+				`<a href="#aBC"></a>`,
+			));
+			const workspace = store.add(new InMemoryWorkspace([doc]));
+
+			const refs = await getReferences(store, doc, { line: 0, character: 3 }, workspace);
+			assertReferencesEqual(refs!,
+				{ uri, line: 0 },
+				{ uri, line: 2 },
+				{ uri, line: 3 },
+			);
+		}));
+	});
 });
 

@@ -117,7 +117,7 @@ export enum IncludeWorkspaceHeaderCompletions {
 }
 
 /**
- * Control the type of completions returned by a {@link MdPathCompletionProvider}.
+ * Control the type of path completions returned.
  */
 export interface PathCompletionOptions {
 	/**

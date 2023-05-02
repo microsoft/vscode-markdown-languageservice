@@ -4,21 +4,22 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { HTMLElement, parse } from 'node-html-parser';
 import type { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { URI, Utils } from 'vscode-uri';
 import { LsConfiguration } from '../config';
 import { ILogger, LogLevel } from '../logging';
-import { IMdParser } from '../parser';
+import { IMdParser, Token } from '../parser';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { translatePosition } from '../types/position';
 import { makeRange, rangeContains } from '../types/range';
-import { getDocUri, getLine, ITextDocument } from '../types/textDocument';
+import { ITextDocument, getDocUri, getLine } from '../types/textDocument';
 import { coalesce } from '../util/arrays';
 import { Disposable } from '../util/dispose';
 import { r } from '../util/string';
 import { tryDecodeUri } from '../util/uri';
-import { getWorkspaceFolder, IWorkspace, tryAppendMarkdownFileExtension } from '../workspace';
+import { IWorkspace, getWorkspaceFolder, tryAppendMarkdownFileExtension } from '../workspace';
 import { MdDocumentInfoCache, MdWorkspaceInfoCache } from '../workspaceCache';
 
 
@@ -140,7 +141,6 @@ export interface MdLinkSource {
 	 * The range of the fragment within the path.
 	 *
 	 * For `[boris](/cat.md#siberian "title")` this would be the range of `#siberian`
-	 *
 	 */
 	readonly fragmentRange: lsp.Range | undefined;
 }
@@ -325,15 +325,10 @@ const definitionPattern = /^([\t ]*\[(?!\^)((?:\\\]|[^\]])+)\]:\s*)([^<]\S*|<[^>
 const inlineCodePattern = /(^|[^`])(`+)((?:.+?|.*?(?:(?:\r?\n).+?)*?)(?:\r?\n)?\2)(?:$|[^`])/gm;
 
 class NoLinkRanges {
-	static readonly #empty = new NoLinkRanges([], new Map());
-
-	public static async compute(tokenizer: IMdParser, document: ITextDocument, token: CancellationToken): Promise<NoLinkRanges> {
-		const tokens = await tokenizer.tokenize(document);
-		if (token.isCancellationRequested) {
-			return NoLinkRanges.#empty;
-		}
-
-		const multiline = tokens.filter(t => (t.type === 'code_block' || t.type === 'fence' || t.type === 'html_block') && !!t.map).map(t => t.map) as [number, number][];
+	public static compute(tokens: readonly Token[], document: ITextDocument): NoLinkRanges {
+		const multiline = tokens
+			.filter(t => (t.type === 'code_block' || t.type === 'fence' || t.type === 'html_block') && !!t.map)
+			.map(t => ({ type: t.type, range: t.map as [number, number] }));
 
 		const inlineRanges = new Map</* line number */ number, lsp.Range[]>();
 		const text = document.getText();
@@ -357,9 +352,9 @@ class NoLinkRanges {
 
 	private constructor(
 		/**
-		 * code blocks and fences each represented by [line_start,line_end).
+		 * Block element ranges, such as code blocks. Represented by [line_start, line_end).
 		 */
-		public readonly multiline: ReadonlyArray<[number, number]>,
+		public readonly multiline: ReadonlyArray<{ type: string, range: [number, number] }>,
 
 		/**
 		 * Inline code spans where links should not be detected
@@ -367,8 +362,8 @@ class NoLinkRanges {
 		public readonly inline: ReadonlyMap</* line number */ number, lsp.Range[]>
 	) { }
 
-	contains(position: lsp.Position): boolean {
-		return this.multiline.some(interval => position.line >= interval[0] && position.line < interval[1]) ||
+	contains(position: lsp.Position, excludeType = ''): boolean {
+		return this.multiline.some(({ type, range }) => type !== excludeType && position.line >= range[0] && position.line < range[1]) ||
 			!!this.inline.get(position.line)?.some(inlineRange => rangeContains(inlineRange, position));
 	}
 
@@ -413,10 +408,12 @@ export class MdLinkComputer {
 	}
 
 	public async getAllLinks(document: ITextDocument, token: CancellationToken): Promise<MdLink[]> {
-		const noLinkRanges = await NoLinkRanges.compute(this.#tokenizer, document, token);
+		const tokens = await this.#tokenizer.tokenize(document);
 		if (token.isCancellationRequested) {
 			return [];
 		}
+
+		const noLinkRanges = NoLinkRanges.compute(tokens, document);
 
 		const inlineLinks = Array.from(this.#getInlineLinks(document, noLinkRanges));
 		return [
@@ -424,6 +421,7 @@ export class MdLinkComputer {
 			...this.#getReferenceLinks(document, noLinkRanges.concatInline(inlineLinks.map(x => x.source.range))),
 			...this.#getLinkDefinitions(document, noLinkRanges),
 			...this.#getAutoLinks(document, noLinkRanges),
+			...this.#getHtmlLinks(document, noLinkRanges),
 		];
 	}
 
@@ -614,6 +612,80 @@ export class MdLinkComputer {
 				ref: { text: reference, range: refRange },
 				href: target,
 			};
+		}
+	}
+
+	#getHtmlLinks(document: ITextDocument, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
+		const text = document.getText();
+		if (!/<\w/.test(text)) { // Only parse if there may be html
+			return [];
+		}
+
+		try {
+			const tree = parse(text);
+			return this.#getHtmlLinksFromNode(document, tree, noLinkRanges);
+		} catch {
+			return [];
+		}
+	}
+
+	static #toAttrEntry(attr: string) {
+		return { attr, regexp: new RegExp(`(${attr}=["'])([^'"]*)["']`, 'i') };
+	}
+
+	static readonly #linkAttrsByTag = new Map([
+		['IMG', ['src'].map(this.#toAttrEntry)],
+		['VIDEO', ['src', 'placeholder'].map(this.#toAttrEntry)],
+		['SOURCE', ['src'].map(this.#toAttrEntry)],
+		['A', ['href'].map(this.#toAttrEntry)],
+	]);
+
+	*#getHtmlLinksFromNode(document: ITextDocument, node: HTMLElement, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
+		const attrs = MdLinkComputer.#linkAttrsByTag.get(node.tagName);
+		if (attrs) {
+			for (const attr of attrs) {
+				const link = node.attributes[attr.attr];
+				if (!link) {
+					continue;
+				}
+
+				const attrMatch = node.outerHTML.match(attr.regexp);
+				if (!attrMatch) {
+					continue;
+				}
+
+				const docUri = getDocUri(document);
+				const linkTarget = createHref(docUri, link, this.#workspace);
+				if (!linkTarget) {
+					continue;
+				}
+
+				const linkStart = document.positionAt(node.range[0] + attrMatch.index! + attrMatch[1].length);
+				if (noLinkRanges.contains(linkStart, 'html_block')) {
+					continue;
+				}
+
+				const linkEnd = translatePosition(linkStart, { characterDelta: attrMatch[2].length });
+				const hrefRange = { start: linkStart, end: linkEnd };
+				yield {
+					kind: MdLinkKind.Link,
+					href: linkTarget,
+					source: {
+						hrefText: link,
+						resource: docUri,
+						targetRange: hrefRange,
+						hrefRange: hrefRange,
+						range: { start: linkStart, end: linkEnd },
+						...getLinkSourceFragmentInfo(document, link, linkStart, linkEnd),
+					}
+				};
+			}
+		}
+
+		for (const child of node.childNodes) {
+			if (child instanceof HTMLElement) {
+				yield* this.#getHtmlLinksFromNode(document, child, noLinkRanges);
+			}
 		}
 	}
 }

@@ -194,16 +194,20 @@ export class DiagnosticComputer {
 		// Current doc always implicitly exists
 		statCache.set(getDocUri(doc), { exists: true });
 
+		const diagnostics = (await Promise.all([
+			this.#validateFileLinks(options, links, statCache, token),
+			this.#validateFragmentLinks(doc, options, links, token),
+			Array.from(this.#validateReferenceLinks(options, links, definitions)),
+			Array.from(this.#validateUnusedLinkDefinitions(options, links)),
+			Array.from(this.#validateDuplicateLinkDefinitions(options, links)),
+		])).flat();
+
+		this.#logger.log(LogLevel.Trace, 'DiagnosticComputer.compute finished', { document: doc.uri, version: doc.version, diagnostics });
+		
 		return {
 			links: links,
 			statCache,
-			diagnostics: (await Promise.all([
-				this.#validateFileLinks(options, links, statCache, token),
-				this.#validateFragmentLinks(doc, options, links, token),
-				Array.from(this.#validateReferenceLinks(options, links, definitions)),
-				Array.from(this.#validateUnusedLinkDefinitions(options, links)),
-				Array.from(this.#validateDuplicateLinkDefinitions(options, links)),
-			])).flat()
+			diagnostics: diagnostics
 		};
 	}
 

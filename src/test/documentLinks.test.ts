@@ -654,6 +654,44 @@ suite('Link computer', () => {
 			makeRange(2, 7, 2, 25),
 		]);
 	});
+
+	test('Should find src in block html <img>', async () => {
+		const links = await getLinksForText(joinLines(
+			`<img src="cat.png">`,
+			``,
+			`<img src='cat.png'>`,
+			``,
+			`<img src='cat.png' />`,
+		));
+
+		assertLinksEqual(links, [
+			makeRange(0, 10, 0, 17),
+			makeRange(2, 10, 2, 17),
+			makeRange(4, 10, 4, 17),
+		]);
+	});
+
+	test('Should find src in inline html <img>', async () => {
+		const links = await getLinksForText(joinLines(
+			`text <img src="cat.png"> more text`,
+		));
+
+		assertLinksEqual(links, [
+			makeRange(0, 15, 0, 22),
+		]);
+	});
+
+	test('Should ignore html link in code block', async () => {
+		const links = await getLinksForText(joinLines(
+			`inline \`<img src="cat.png">\``,
+			``,
+			`~~~`,
+			`<img src="cat.png">`,
+			`~~~`
+		));
+
+		assertLinksEqual(links, []);
+	});
 });
 
 
@@ -675,7 +713,7 @@ suite('Link provider', () => {
 		assert.strictEqual(actualLinks.length, expectedRanges.length);
 
 		for (let i = 0; i < actualLinks.length; ++i) {
-			assertRangeEqual(actualLinks[i].range, expectedRanges[i], `Range ${ i } to be equal`);
+			assertRangeEqual(actualLinks[i].range, expectedRanges[i], `Range ${i} to be equal`);
 		}
 	}
 

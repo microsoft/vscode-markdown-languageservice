@@ -720,5 +720,49 @@ suite('Rename', () => {
 			]
 		});
 	}));
+
+	test('Path rename should rename paths in html tags', withStore(async (store) => {
+		const uri1 = workspacePath('doc1.md');
+		const doc1 = new InMemoryDocument(uri1, joinLines(
+			`![img](/images/more/image.png)`,
+			``,
+			`<img src="/images/more/image.png">`,
+		));
+
+		const uri2 = workspacePath('sub', 'doc2.md');
+		const doc2 = new InMemoryDocument(uri2, joinLines(
+			`<img src="/images/more/image.png">`,
+		));
+
+		const workspace = store.add(new InMemoryWorkspace([
+			doc1,
+			doc2
+		]));
+
+		const expectedEdits = [
+			// Should not have file edits since the files don't exist here
+			{
+				uri: uri1, edits: [
+					lsp.TextEdit.replace(makeRange(0, 7, 0, 29), '/img/test/new.png'),
+					lsp.TextEdit.replace(makeRange(2, 10, 2, 32), '/img/test/new.png'),
+				]
+			},
+			{
+				uri: uri2, edits: [
+					lsp.TextEdit.replace(makeRange(0, 10, 0, 32), '/img/test/new.png'),
+				]
+			}
+		];
+
+		{
+			// Trigger on image path
+			const edit = await getRenameEdits(store, doc1, { line: 0, character: 10 }, '/img/test/new.png', workspace);
+			assertEditsEqual(edit!, ...expectedEdits);
+		}
+		{
+			// Trigger on html tag path
+			const edit = await getRenameEdits(store, doc1, { line: 2, character: 12 }, '/img/test/new.png', workspace);
+			assertEditsEqual(edit!, ...expectedEdits);
+		}
+	}));
 });
- 

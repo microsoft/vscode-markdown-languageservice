@@ -523,12 +523,12 @@ export class MdLinkComputer {
 				const text = match[3];
 				if (!text) {
 					// Handle the case ![][cat]
-					if (!match[0].startsWith('!')) {
+					if (!match[2].startsWith('!')) {
 						// Empty links are not valid
 						continue;
 					}
 				}
-				if (!match[0].startsWith('!')) {
+				if (!match[2].startsWith('!')) {
 					// Also get links in text
 					yield* this.#getReferenceLinksInText(document, match[3], linkStartOffset + 1, noLinkRanges);
 				}

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.0-alpha.2 — May 23, 2023
+- Add path completions in HTML attributes
+
 ## 0.4.0-alpha.1 — May 2, 2023
 - Enable document links, references, and rename for HTML fragments in Markdown.
 

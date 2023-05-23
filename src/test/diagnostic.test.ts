@@ -438,6 +438,22 @@ suite('Diagnostic Computer', () => {
 			makeRange(2, 1, 2, 4),
 		]);
 	}));
+
+	test('Should not mark image reference as unused (#131)', withStore(async (store) => {
+		const docUri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(docUri, joinLines(
+			`text`,
+			``,
+			`![][cat]`,
+			``,
+			`[cat]: https://example.com/cat.png`,
+		));
+
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace, { });
+		assertDiagnosticsEqual(diagnostics, []);
+	}));
 });
 
 

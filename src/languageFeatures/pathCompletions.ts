@@ -20,7 +20,7 @@ import { Schemes } from '../util/schemes';
 import { r } from '../util/string';
 import { FileStat, getWorkspaceFolder, IWorkspace, openLinkToMarkdownFile } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
-import { MdLinkProvider } from './documentLinks';
+import { MdLinkProvider, htmlTagPathAttrs } from './documentLinks';
 
 enum CompletionContextKind {
 	/** `[...](|)` */
@@ -31,6 +31,9 @@ enum CompletionContextKind {
 
 	/** `[]: |` */
 	LinkDefinition,
+
+	/** <img src="|"> */
+	HtmlAttribute,
 }
 
 interface AnchorContext {
@@ -181,7 +184,8 @@ export class MdPathCompletionProvider {
 				return;
 			}
 			case CompletionContextKind.LinkDefinition:
-			case CompletionContextKind.Link: {
+			case CompletionContextKind.Link:
+			case CompletionContextKind.HtmlAttribute: {
 				if (
 					(context.linkPrefix.startsWith('#') && options.includeWorkspaceHeaderCompletions === IncludeWorkspaceHeaderCompletions.onSingleOrDoubleHash) ||
 					(context.linkPrefix.startsWith('##') && (options.includeWorkspaceHeaderCompletions === IncludeWorkspaceHeaderCompletions.onDoubleHash || options.includeWorkspaceHeaderCompletions === IncludeWorkspaceHeaderCompletions.onSingleOrDoubleHash))
@@ -222,6 +226,7 @@ export class MdPathCompletionProvider {
 						yield* this.#providePathSuggestions(document, position, context, token);
 					}
 				}
+				return;
 			}
 		}
 	}
@@ -247,11 +252,30 @@ export class MdPathCompletionProvider {
 	/// [id]: |
 	readonly #definitionPattern = /^\s*\[[\w\-]+\]:\s*([^\s]*)$/m;
 
+	/// [id]: |
+	readonly #htmlAttributeStartPattern = /\<(?<tag>\w+)([^>]*)\s(?<attr>\w+)=['"](?<link>[^'"]*)$/m;
+
 	#getPathCompletionContext(document: ITextDocument, position: lsp.Position): PathCompletionContext | undefined {
 		const line = getLine(document, position.line);
 
 		const linePrefixText = line.slice(0, position.character);
 		const lineSuffixText = line.slice(position.character);
+
+		const htmlAttributePrefixMatch = linePrefixText.match(this.#htmlAttributeStartPattern);
+		if (htmlAttributePrefixMatch?.groups) {
+			const validPathAttrs = htmlTagPathAttrs.get(htmlAttributePrefixMatch.groups.tag.toUpperCase());
+			if (!validPathAttrs || !validPathAttrs.some(attr => attr === htmlAttributePrefixMatch.groups!.attr.toLowerCase())) {
+				return undefined;
+			}
+
+			const prefix = htmlAttributePrefixMatch.groups.link;
+			if (this.#refLooksLikeUrl(prefix)) {
+				return undefined;
+			}
+
+			const suffix = lineSuffixText.match(/^[^\s'"]*/);
+			return this.#createCompletionContext(CompletionContextKind.HtmlAttribute, position, prefix, suffix?.[0] ?? '', false);
+		}
 
 		const linkPrefixMatch = linePrefixText.match(this.#linkStartPattern);
 		if (linkPrefixMatch) {
@@ -262,14 +286,7 @@ export class MdPathCompletionProvider {
 			}
 
 			const suffix = lineSuffixText.match(/^[^\)\s][^\)\s\>]*/);
-			return {
-				kind: CompletionContextKind.Link,
-				linkPrefix: tryDecodeUriComponent(prefix),
-				linkTextStartPosition: translatePosition(position, { characterDelta: -prefix.length }),
-				linkSuffix: suffix ? suffix[0] : '',
-				anchorInfo: this.#getAnchorContext(prefix),
-				skipEncoding: isAngleBracketLink,
-			};
+			return this.#createCompletionContext(CompletionContextKind.Link, position, prefix, suffix?.[0] ?? '', isAngleBracketLink);
 		}
 
 		const definitionLinkPrefixMatch = linePrefixText.match(this.#definitionPattern);
@@ -281,14 +298,7 @@ export class MdPathCompletionProvider {
 			}
 
 			const suffix = lineSuffixText.match(/^[^\s]*/);
-			return {
-				kind: CompletionContextKind.LinkDefinition,
-				linkPrefix: tryDecodeUriComponent(prefix),
-				linkTextStartPosition: translatePosition(position, { characterDelta: -prefix.length }),
-				linkSuffix: suffix ? suffix[0] : '',
-				anchorInfo: this.#getAnchorContext(prefix),
-				skipEncoding: isAngleBracketLink,
-			};
+			return this.#createCompletionContext(CompletionContextKind.LinkDefinition, position, prefix, suffix?.[0] ?? '', isAngleBracketLink);
 		}
 
 		const referenceLinkPrefixMatch = linePrefixText.match(this.#referenceLinkStartPattern);
@@ -304,6 +314,17 @@ export class MdPathCompletionProvider {
 		}
 
 		return undefined;
+	}
+
+	#createCompletionContext(kind: CompletionContextKind, position: lsp.Position, prefix: string, suffix: string, skipEncoding: boolean): PathCompletionContext | undefined {
+		return {
+			kind,
+			linkPrefix: tryDecodeUriComponent(prefix),
+			linkTextStartPosition: translatePosition(position, { characterDelta: -prefix.length }),
+			linkSuffix: suffix,
+			anchorInfo: this.#getAnchorContext(prefix),
+			skipEncoding,
+		};
 	}
 
 	/**
@@ -379,7 +400,7 @@ export class MdPathCompletionProvider {
 	}
 
 	#ownHeaderEntryDetails(entry: TocEntry): string | undefined {
-		return l10n.t(`Link to '{0}'`, '#'.repeat(entry.level) +  ' ' +entry.text);
+		return l10n.t(`Link to '{0}'`, '#'.repeat(entry.level) + ' ' + entry.text);
 	}
 
 	/**
@@ -406,7 +427,7 @@ export class MdPathCompletionProvider {
 				const completionItem = this.#createHeaderCompletion(entry, insertionRange, replacementRange, path);
 				completionItem.filterText = '#' + completionItem.label;
 				completionItem.sortText = isHeaderInCurrentDocument ? sortTexts.localHeader : sortTexts.workspaceHeader;
-				
+
 				if (isHeaderInCurrentDocument) {
 					completionItem.detail = this.#ownHeaderEntryDetails(entry);
 				} else if (path) {

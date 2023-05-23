@@ -509,8 +509,8 @@ suite('Path completions', () => {
 				new InMemoryDocument(workspacePath('a.md'), joinLines(
 					'# A b C',
 				)),
-				new InMemoryDocument(workspacePath('sub','c.md'), joinLines(
-					'# x Y z', 
+				new InMemoryDocument(workspacePath('sub', 'c.md'), joinLines(
+					'# x Y z',
 				)),
 			]));
 
@@ -580,6 +580,82 @@ suite('Path completions', () => {
 			assertCompletionsEqual(completions, [
 				{ label: '#a-b-c', insertText: '../a#a-b-c' },
 				{ label: '#x-y-z', insertText: 'b#x-y-z' },
+			]);
+		}));
+	});
+
+	suite('Html attribute path completions', () => {
+
+		test('Should return completions for headers in current doc', withStore(async (store) => {
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`# a B c`,
+				``,
+				`<img src="${CURSOR}`,
+			));
+
+			assertCompletionsEqual(completions, [
+				{ label: '#a-b-c' },
+				{ label: 'new.md' },
+			]);
+		}));
+
+		test('Should not return completions on unknown tags or attributes', withStore(async (store) => {
+			{
+				const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+					`# a B c`,
+					``,
+					`<img source="${CURSOR}`,
+				));
+				assertCompletionsEqual(completions, []);
+			}
+			{
+				const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+					`# a B c`,
+					``,
+					`<image src="${CURSOR}`,
+				));
+				assertCompletionsEqual(completions, []);
+			}
+		}));
+
+		test('Should not return completions for links with scheme', withStore(async (store) => {
+			{
+				const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+					`# a B c`,
+					``,
+					`<img src="http://${CURSOR}`,
+				));
+
+				assertCompletionsEqual(completions, []);
+			}
+			{
+				const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+					`# a B c`,
+					``,
+					`<img src="mailto:${CURSOR}`,
+				));
+
+				assertCompletionsEqual(completions, []);
+			}
+		}));
+
+		test('Should return completions when other attributes are present', withStore(async (store) => {
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`<img style="color: red" src="${CURSOR}" height="10px">`,
+			));
+
+			assertCompletionsEqual(completions, [
+				{ label: 'new.md' },
+			]);
+		}));
+
+		test('Should return completions for inline html', withStore(async (store) => {
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`some text <img src="./${CURSOR}"> more text`,
+			));
+
+			assertCompletionsEqual(completions, [
+				{ label: 'new.md' },
 			]);
 		}));
 	});

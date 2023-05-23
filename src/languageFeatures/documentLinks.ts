@@ -384,6 +384,16 @@ class NoLinkRanges {
 }
 
 /**
+ * Map of html tags to attributes that contain links.
+ */
+export const htmlTagPathAttrs = new Map([
+	['IMG', ['src']],
+	['VIDEO', ['src', 'placeholder']],
+	['SOURCE', ['src']],
+	['A', ['href']],
+]);
+
+/**
  * The place a document link links to.
  */
 export type ResolvedDocumentLinkTarget =
@@ -513,12 +523,12 @@ export class MdLinkComputer {
 				const text = match[3];
 				if (!text) {
 					// Handle the case ![][cat]
-					if (!match[0].startsWith('!')) {
+					if (!match[2].startsWith('!')) {
 						// Empty links are not valid
 						continue;
 					}
 				}
-				if (!match[0].startsWith('!')) {
+				if (!match[2].startsWith('!')) {
 					// Also get links in text
 					yield* this.#getReferenceLinksInText(document, match[3], linkStartOffset + 1, noLinkRanges);
 				}
@@ -633,12 +643,7 @@ export class MdLinkComputer {
 		return { attr, regexp: new RegExp(`(${attr}=["'])([^'"]*)["']`, 'i') };
 	}
 
-	static readonly #linkAttrsByTag = new Map([
-		['IMG', ['src'].map(this.#toAttrEntry)],
-		['VIDEO', ['src', 'placeholder'].map(this.#toAttrEntry)],
-		['SOURCE', ['src'].map(this.#toAttrEntry)],
-		['A', ['href'].map(this.#toAttrEntry)],
-	]);
+	static readonly #linkAttrsByTag = new Map(Array.from(htmlTagPathAttrs.entries(), ([key, value]) => [key, value.map(MdLinkComputer.#toAttrEntry)]));
 
 	*#getHtmlLinksFromNode(document: ITextDocument, node: HTMLElement, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
 		const attrs = MdLinkComputer.#linkAttrsByTag.get(node.tagName);

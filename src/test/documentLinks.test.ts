@@ -200,6 +200,13 @@ suite('Link computer', () => {
 		]);
 	});
 
+	test('Should find inline image reference links', async () => {
+		const links = await getLinksForText('ab ![][cat] d');
+		assertLinksEqual(links, [
+			makeRange(0, 7, 0, 10),
+		]);
+	});
+
 	test('Should not consider link references starting with ^ character valid (#107471)', async () => {
 		const links = await getLinksForText('[^reference]: https://example.com');
 		assertLinksEqual(links, []);

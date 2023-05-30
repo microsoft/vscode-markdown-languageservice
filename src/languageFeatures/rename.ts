@@ -19,7 +19,7 @@ import { computeRelativePath } from '../util/path';
 import { tryDecodeUri } from '../util/uri';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
 import { HrefKind, InternalHref, MdLink, MdLinkKind, MdLinkSource, resolveInternalDocumentLink } from './documentLinks';
-import { MdHeaderReference, MdReference, MdReferenceKind, MdReferencesProvider } from './references';
+import { MdHeaderReference, MdLinkReference, MdReference, MdReferenceKind, MdReferencesProvider } from './references';
 
 export interface MdReferencesResponse {
 	readonly references: readonly MdReference[];
@@ -176,13 +176,19 @@ export class MdRenameProvider extends Disposable {
 		// Then update all refs to it
 		for (const ref of allRefsInfo.references) {
 			if (ref.kind === MdReferenceKind.Link) {
-				// Try to preserve style of existing links
-				const newLinkText = getLinkRenameText(this.#workspace, ref.link.source, rawNewFilePath.resource, newName.startsWith('./') || newName.startsWith('.\\'));
-				builder.replace(ref.link.source.resource, getFilePathRange(ref.link), encodeURI((newLinkText ?? newName).replace(/\\/g, '/')));
+				const newLinkText = this.#getNewLinkText(ref, rawNewFilePath, newName);
+				builder.replace(ref.link.source.resource, getFilePathRange(ref.link), newLinkText);
 			}
 		}
 
 		return builder.getEdit();
+	}
+
+	#getNewLinkText(ref: MdLinkReference, rawNewFilePath: { resource: URI; linkFragment: string; }, newName: string) {
+		// Try to preserve style of existing links
+		const newLinkText = getLinkRenameText(this.#workspace, ref.link.source, rawNewFilePath.resource, newName.startsWith('./') || newName.startsWith('.\\'));
+
+		return getNewLinkText(ref.link, newLinkText ?? newName);
 	}
 
 	#renameFragment(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
@@ -279,4 +285,48 @@ export function getFilePathRange(link: MdLink): lsp.Range {
 		return modifyRange(link.source.hrefRange, undefined, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 }));
 	}
 	return link.source.hrefRange;
+}
+
+export function getNewLinkText(link: MdLink, newName: string): string {
+	const newLinkText = newName.replace(/\\/g, '/');
+	if (link.source.isAngleBracketLink) {
+		return newLinkText;
+	}
+
+	// We might need to use angle brackets for the link
+	if (needsBracketLink(newLinkText)) {
+		return `<${newLinkText}>`;
+	}
+
+	return encodeURI(newLinkText);
+}
+
+function needsBracketLink(mdPath: string) {
+	// Links with whitespace or control characters must be enclosed in brackets
+	// eslint-disable-next-line no-control-regex
+	if (mdPath.startsWith('<') || /\s|[\u007F\u0000-\u001f]/.test(mdPath)) {
+		return true;
+	}
+
+	// Check if the link has mis-matched parens
+	if (!/[\(\)]/.test(mdPath)) {
+		return false;
+	}
+
+	let previousChar = '';
+	let nestingCount = 0;
+	for (const char of mdPath) {
+		if (char === '(' && previousChar !== '\\') {
+			nestingCount++;
+		} else if (char === ')' && previousChar !== '\\') {
+			nestingCount--;
+		}
+
+		if (nestingCount < 0) {
+			return true;
+		}
+		previousChar = char;
+	}
+
+	return nestingCount > 0;
 }

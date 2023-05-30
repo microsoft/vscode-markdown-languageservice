@@ -16,7 +16,7 @@ import { IWorkspace } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
 import { HrefKind, InternalHref, MdLink, resolveInternalDocumentLink } from './documentLinks';
 import { MdReferenceKind, MdReferencesProvider } from './references';
-import { getFilePathRange, getLinkRenameText } from './rename';
+import { getFilePathRange, getLinkRenameText, getNewLinkText } from './rename';
 
 
 export interface FileRename {
@@ -250,7 +250,7 @@ export class MdFileRenameProvider extends Disposable {
 
 		const newLinkText = getLinkRenameText(this.#workspace, link.source, newFilePath, link.source.pathText.startsWith('.'));
 		if (typeof newLinkText === 'string') {
-			builder.replace(doc, getFilePathRange(link), encodeURI(newLinkText));
+			builder.replace(doc, getFilePathRange(link), getNewLinkText(link, newLinkText));
 			return true;
 		}
 		return false;

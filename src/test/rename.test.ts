@@ -443,7 +443,7 @@ suite('Rename', () => {
 		assert.strictEqual(info!.placeholder, '/sub/doc with spaces.md');
 	}));
 
-	test('Path rename should encode paths', withStore(async (store) => {
+	test('Path rename should handle paths with spaces', withStore(async (store) => {
 		const uri = workspacePath('sub', 'doc.md');
 		const doc = new InMemoryDocument(uri, joinLines(
 			`[text](/sub/doc.md)`,
@@ -457,8 +457,8 @@ suite('Rename', () => {
 			newUri: workspacePath('NEW sub', 'new DOC.md'),
 		}, {
 			uri: uri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 7, 0, 18), '/NEW%20sub/new%20DOC.md'),
-				lsp.TextEdit.replace(makeRange(1, 7, 1, 18), '/NEW%20sub/new%20DOC.md'),
+				lsp.TextEdit.replace(makeRange(0, 7, 0, 18), '</NEW sub/new DOC.md>'),
+				lsp.TextEdit.replace(makeRange(1, 7, 1, 18), '</NEW sub/new DOC.md>'),
 			]
 		});
 	}));
@@ -511,8 +511,8 @@ suite('Rename', () => {
 			newUri: workspacePath('new File.md'), // Rename on disk should use file extension
 		}, {
 			uri: uri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 7, 0, 11), '/new%20File'), // Links should continue to use extension-less paths
-				lsp.TextEdit.replace(makeRange(1, 7, 1, 11), '/new%20File'),
+				lsp.TextEdit.replace(makeRange(0, 7, 0, 11), '</new File>'), // Links should continue to use extension-less paths
+				lsp.TextEdit.replace(makeRange(1, 7, 1, 11), '</new File>'),
 			]
 		});
 	}));
@@ -765,4 +765,55 @@ suite('Rename', () => {
 			assertEditsEqual(edit!, ...expectedEdits);
 		}
 	}));
-});
+
+	test('Rename on angle bracket link should not add extra escapes', withStore(async (store) => {
+		const uri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(uri, joinLines(
+			`![text](<cat.gif>)`,
+			``,
+			`[def]: <cat.gif>`,
+		));
+
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const edit = await getRenameEdits(store, doc, { line: 0, character: 10 }, 'sp ace.gif', workspace);
+		assertEditsEqual(edit!, {
+			uri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 9, 0, 16), 'sp ace.gif'),
+				lsp.TextEdit.replace(makeRange(2, 8, 2, 15), 'sp ace.gif'),
+			]
+		});
+	}));
+
+	test('Rename that adds unmatched parens should force angle bracket link', withStore(async (store) => {
+		const uri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(uri, joinLines(
+			`![text](cat.gif)`,
+			`![text](<cat.gif>)`,
+			``,
+			`[def]: cat.gif`,
+		));
+
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		// Mismatched parens should force use of `<...>` links
+		const mismatchedit = await getRenameEdits(store, doc, { line: 0, character: 10 }, 'open(.gif', workspace);
+		assertEditsEqual(mismatchedit!, {
+			uri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 8, 0, 15), '<open(.gif>'),
+				lsp.TextEdit.replace(makeRange(1, 9, 1, 16), 'open(.gif'),
+				lsp.TextEdit.replace(makeRange(3, 7, 3, 14), '<open(.gif>'),
+			]
+		});
+
+		// But we don't need this if the parens are matched
+		const matchedEdit = await getRenameEdits(store, doc, { line: 0, character: 10 }, 'o(p)(e(n)).gif', workspace);
+		assertEditsEqual(matchedEdit!, {
+			uri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 8, 0, 15), 'o(p)(e(n)).gif'),
+				lsp.TextEdit.replace(makeRange(1, 9, 1, 16), 'o(p)(e(n)).gif'),
+				lsp.TextEdit.replace(makeRange(3, 7, 3, 14), 'o(p)(e(n)).gif'),
+			]
+		});
+	}));
+}); 

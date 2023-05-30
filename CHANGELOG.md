@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0-alpha.3 — May 30, 2023
+- Fix extra escapes being added in angle bracket links on rename.
+- Use angle brackets if new name name needs them on rename.
+
 ## 0.4.0-alpha.2 — May 23, 2023
 - Add path completions in HTML attributes
 

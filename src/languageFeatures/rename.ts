@@ -178,7 +178,9 @@ export class MdRenameProvider extends Disposable {
 			if (ref.kind === MdReferenceKind.Link) {
 				// Try to preserve style of existing links
 				const newLinkText = getLinkRenameText(this.#workspace, ref.link.source, rawNewFilePath.resource, newName.startsWith('./') || newName.startsWith('.\\'));
-				builder.replace(ref.link.source.resource, getFilePathRange(ref.link), encodeURI((newLinkText ?? newName).replace(/\\/g, '/')));
+
+				const nameToUse = (newLinkText ?? newName).replace(/\\/g, '/');
+				builder.replace(ref.link.source.resource, getFilePathRange(ref.link), ref.link.source.isAngleBracketLink ? nameToUse : encodeURI(nameToUse));
 			}
 		}
 

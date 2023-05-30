@@ -765,4 +765,23 @@ suite('Rename', () => {
 			assertEditsEqual(edit!, ...expectedEdits);
 		}
 	}));
-});
+
+	test('Rename on angle bracket link should not add extra escapes', withStore(async (store) => {
+		const uri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(uri, joinLines(
+			`![text](<cat.gif>)`,
+			``,
+			`[def]: <cat.gif>`,
+		));
+
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const edit = await getRenameEdits(store, doc, { line: 0, character: 10 }, 'sp ace.gif', workspace);
+		assertEditsEqual(edit!, {
+			uri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 9, 0, 16), 'sp ace.gif'),
+				lsp.TextEdit.replace(makeRange(2, 8, 2, 15), 'sp ace.gif'),
+			]
+		});
+	}));
+}); 

@@ -143,6 +143,8 @@ export interface MdLinkSource {
 	 * For `[boris](/cat.md#siberian "title")` this would be the range of `#siberian`
 	 */
 	readonly fragmentRange: lsp.Range | undefined;
+
+	readonly isAngleBracketLink: boolean
 }
 
 export enum MdLinkKind {
@@ -232,6 +234,7 @@ function createMdLink(
 			range: { start: linkStart, end: linkEnd },
 			targetRange,
 			hrefRange,
+			isAngleBracketLink,
 			...getLinkSourceFragmentInfo(document, link, hrefStart, hrefEnd),
 		}
 	};
@@ -484,6 +487,7 @@ export class MdLinkComputer {
 				kind: MdLinkKind.Link,
 				href: linkTarget,
 				source: {
+					isAngleBracketLink: true,
 					hrefText: link,
 					resource: docUri,
 					targetRange: hrefRange,
@@ -564,6 +568,7 @@ export class MdLinkComputer {
 			yield {
 				kind: MdLinkKind.Link,
 				source: {
+					isAngleBracketLink: false,
 					hrefText: reference,
 					pathText: reference,
 					resource: getDocUri(document),
@@ -612,6 +617,7 @@ export class MdLinkComputer {
 			yield {
 				kind: MdLinkKind.Definition,
 				source: {
+					isAngleBracketLink,
 					hrefText: linkText,
 					resource: docUri,
 					range: { start: linkStart, end: linkEnd },
@@ -676,6 +682,7 @@ export class MdLinkComputer {
 					kind: MdLinkKind.Link,
 					href: linkTarget,
 					source: {
+						isAngleBracketLink: false,
 						hrefText: link,
 						resource: docUri,
 						targetRange: hrefRange,

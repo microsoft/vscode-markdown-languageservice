@@ -162,7 +162,7 @@ suite('File Rename', () => {
 		});
 	}));
 
-	test('Rename file should encode links with spaces', withStore(async (store) => {
+	test('Rename file should handle links with spaces', withStore(async (store) => {
 		const docUri = workspacePath('doc.md');
 		const doc = new InMemoryDocument(docUri, joinLines(
 			`[abc](/old.md)`,
@@ -180,10 +180,10 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri: docUri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 6, 0, 13), '/new%20with%20space.md'),
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 12), 'new%20with%20space.md'),
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 14), './new%20with%20space.md'),
-				lsp.TextEdit.replace(makeRange(3, 7, 3, 15), './new%20with%20space.md'),
+				lsp.TextEdit.replace(makeRange(0, 6, 0, 13), '</new with space.md>'),
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 12), '<new with space.md>'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 14), '<./new with space.md>'),
+				lsp.TextEdit.replace(makeRange(3, 7, 3, 15), '<./new with space.md>'),
 			]
 		});
 	}));
@@ -574,6 +574,26 @@ suite('File Rename', () => {
 
 				lsp.TextEdit.replace(makeRange(6, 8, 6, 20), 'newReadme.md'),
 				lsp.TextEdit.replace(makeRange(7, 8, 7, 22), './newReadme.md'),
+			]
+		});
+	}));
+
+	test('Rename file with angle bracket links should not add extra escapes', withStore(async (store) => {
+		const uri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(uri, joinLines(
+			`[abc](</old.md>)`,
+			`[abc](<old.md>)`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const oldUri = workspacePath('old.md');
+		const newUri = workspacePath('sp ace.md');
+
+		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
+		assertEditsEqual(response!.edit, {
+			uri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 7, 0, 14), '/sp ace.md'),
+				lsp.TextEdit.replace(makeRange(1, 7, 1, 13), 'sp ace.md'),
 			]
 		});
 	}));

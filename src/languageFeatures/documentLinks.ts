@@ -284,7 +284,7 @@ const linkPattern = new RegExp(
 	r`(\(\s*)` + // Pre href
 	/**/r`(` +
 	/*****/r`[^\s\(\)\<](?:[^\s\(\)]|\([^\s\(\)]*?\))*|` + // Link without whitespace, or...
-	/*****/r`<[^<>]+>` + // In angle brackets
+	/*****/r`<(?:\\[<>]|[^<>])+>` + // In angle brackets
 	/**/r`)` +
 
 	// Title
@@ -323,7 +323,7 @@ const autoLinkPattern = /\<(\w+:[^\>\s]+)\>/g;
 /**
  * Matches `[text]: link`
  */
-const definitionPattern = /^([\t ]*\[(?!\^)((?:\\\]|[^\]])+)\]:\s*)([^<]\S*|<[^>]+>)/gm;
+const definitionPattern = /^([\t ]*\[(?!\^)((?:\\\]|[^\]])+)\]:\s*)([^<]\S*|<(?:\\[<>]|[^<>])+>)/gm;
 
 const inlineCodePattern = /(^|[^`])(`+)((?:.+?|.*?(?:(?:\r?\n).+?)*?)(?:\r?\n)?\2)(?:$|[^`])/gm;
 

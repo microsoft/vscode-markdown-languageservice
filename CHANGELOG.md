@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.0-alpha.4 — June 2, 2023
+- Fix link detection for escaped angle brackets.
+
 ## 0.4.0-alpha.3 — May 30, 2023
 - Fix extra escapes being added in angle bracket links on rename.
 - Use angle brackets if new name name needs them on rename.

@@ -699,6 +699,19 @@ suite('Link computer', () => {
 
 		assertLinksEqual(links, []);
 	});
+
+	test('Should find angle bracket links with escapes', async () => {
+		const links = await getLinksForText(joinLines(
+			String.raw`![text](<\<cat\>.gif>)`,
+			String.raw``,
+			String.raw`[def]: <\<cat\>.gif>`
+		));
+
+		assertLinksEqual(links, [
+			makeRange(0, 9, 0, 20),
+			makeRange(2, 8, 2, 19),
+		]);
+	});
 });
 
 

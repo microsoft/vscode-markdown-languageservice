@@ -8,19 +8,20 @@ import { dirname, extname, resolve } from 'path';
 import type { CancellationToken, CompletionContext } from 'vscode-languageserver-protocol';
 import * as lsp from 'vscode-languageserver-types';
 import { URI, Utils } from 'vscode-uri';
-import { isExcludedPath, LsConfiguration } from '../config';
+import { LsConfiguration, isExcludedPath } from '../config';
 import { IMdParser } from '../parser';
 import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOfContents';
 import { translatePosition } from '../types/position';
 import { makeRange } from '../types/range';
-import { getDocUri, getLine, ITextDocument } from '../types/textDocument';
+import { ITextDocument, getDocUri, getLine } from '../types/textDocument';
 import { looksLikeMarkdownFilePath } from '../util/file';
 import { computeRelativePath } from '../util/path';
 import { Schemes } from '../util/schemes';
 import { r } from '../util/string';
-import { FileStat, getWorkspaceFolder, IWorkspace, openLinkToMarkdownFile } from '../workspace';
+import { FileStat, IWorkspace, getWorkspaceFolder, openLinkToMarkdownFile } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
 import { MdLinkProvider, htmlTagPathAttrs } from './documentLinks';
+import { escapeForAngleBracketLink } from './rename';
 
 enum CompletionContextKind {
 	/** `[...](|)` */
@@ -84,7 +85,7 @@ interface PathCompletionContext {
 	/**
 	 * Indicates that the completion does not require encoding.
 	 */
-	readonly skipEncoding?: boolean;
+	readonly isAngleBracketPath?: boolean;
 }
 
 function tryDecodeUriComponent(str: string): string {
@@ -316,14 +317,14 @@ export class MdPathCompletionProvider {
 		return undefined;
 	}
 
-	#createCompletionContext(kind: CompletionContextKind, position: lsp.Position, prefix: string, suffix: string, skipEncoding: boolean): PathCompletionContext | undefined {
+	#createCompletionContext(kind: CompletionContextKind, position: lsp.Position, prefix: string, suffix: string, isAngleBracketPath: boolean): PathCompletionContext | undefined {
 		return {
 			kind,
 			linkPrefix: tryDecodeUriComponent(prefix),
 			linkTextStartPosition: translatePosition(position, { characterDelta: -prefix.length }),
 			linkSuffix: suffix,
 			anchorInfo: this.#getAnchorContext(prefix),
-			skipEncoding,
+			isAngleBracketPath,
 		};
 	}
 
@@ -422,7 +423,7 @@ export class MdPathCompletionProvider {
 			}
 
 			const normalizedPath = this.#normalizeFileNameCompletion(rawPath);
-			const path = context.skipEncoding ? normalizedPath : encodeURI(normalizedPath);
+			const path = context.isAngleBracketPath ? normalizedPath : encodeURI(normalizedPath);
 			for (const entry of toc.entries) {
 				const completionItem = this.#createHeaderCompletion(entry, insertionRange, replacementRange, path);
 				completionItem.filterText = '#' + completionItem.label;
@@ -476,7 +477,7 @@ export class MdPathCompletionProvider {
 			}
 
 			const isDir = type.isDirectory;
-			const newText = (context.skipEncoding ? name : encodeURIComponent(name)) + (isDir ? '/' : '');
+			const newText = this.#getInsertText(context, name) + (isDir ? '/' : '');
 			const label = isDir ? name + '/' : name;
 			yield {
 				label,
@@ -491,6 +492,14 @@ export class MdPathCompletionProvider {
 				command: isDir ? { command: 'editor.action.triggerSuggest', title: '' } : undefined,
 			};
 		}
+	}
+
+	#getInsertText(context: PathCompletionContext, name: string): string {
+		if (context.isAngleBracketPath) {
+			return escapeForAngleBracketLink(name);
+		}
+
+		return name.replaceAll(' ', '%20');
 	}
 
 	#normalizeFileNameCompletion(name: string): string {

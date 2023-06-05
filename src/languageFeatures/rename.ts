@@ -299,37 +299,37 @@ export function getLinkRenameEdit(link: MdLink, newName: string): lsp.TextEdit {
 			const range = makeRange(translatePosition(pathRange.start, { characterDelta: -1 }), translatePosition(pathRange.end, { characterDelta: 1 }));
 			return { range, newText: newLinkText };
 		} else {
-			return { range: pathRange, newText: escapeAngleBracketLinkContents(newLinkText) };
+			return { range: pathRange, newText: escapeForAngleBracketLink(newLinkText) };
 		}
 	}
 
 	// We might need to use angle brackets for the link
 	if (needsAngleBracketLink(newLinkText)) {
-		return { range: pathRange, newText: `<${escapeAngleBracketLinkContents(newLinkText)}>` };
+		return { range: pathRange, newText: `<${escapeForAngleBracketLink(newLinkText)}>` };
 	}
 
 	return { range: pathRange, newText: newLinkText };
 }
 
-function escapeAngleBracketLinkContents(newLinkText: string) {
-	return newLinkText.replace(/([<>])/g, '\\$1');
+export function escapeForAngleBracketLink(linkText: string) {
+	return linkText.replace(/([<>])/g, '\\$1');
 }
 
-function needsAngleBracketLink(mdPath: string) {
+function needsAngleBracketLink(linkText: string) {
 	// Links with whitespace or control characters must be enclosed in brackets
 	// eslint-disable-next-line no-control-regex
-	if (mdPath.startsWith('<') || /\s|[\u007F\u0000-\u001f]/.test(mdPath)) {
+	if (linkText.startsWith('<') || /\s|[\u007F\u0000-\u001f]/.test(linkText)) {
 		return true;
 	}
 
 	// Check if the link has mis-matched parens
-	if (!/[\(\)]/.test(mdPath)) {
+	if (!/[\(\)]/.test(linkText)) {
 		return false;
 	}
 
 	let previousChar = '';
 	let nestingCount = 0;
-	for (const char of mdPath) {
+	for (const char of linkText) {
 		if (char === '(' && previousChar !== '\\') {
 			nestingCount++;
 		} else if (char === ')' && previousChar !== '\\') {

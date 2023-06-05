@@ -597,4 +597,26 @@ suite('File Rename', () => {
 			]
 		});
 	}));
+
+	test('Rename file should escape angle brackets in angle bracket links', withStore(async (store) => {
+		const uri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(uri, joinLines(
+			`[abc](</old.md>)`,
+			`[abc](<old.md>)`,
+			`[abc](old.md)`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const oldUri = workspacePath('old.md');
+		const newUri = workspacePath('<a>.md');
+
+		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
+		assertEditsEqual(response!.edit, {
+			uri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 7, 0, 14), '/\\<a\\>.md'),
+				lsp.TextEdit.replace(makeRange(1, 7, 1, 13), '\\<a\\>.md'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 12), '<\\<a\\>.md>'),
+			]
+		});
+	}));
 });

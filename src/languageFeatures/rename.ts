@@ -290,18 +290,22 @@ export function getFilePathRange(link: MdLink): lsp.Range {
 export function getNewLinkText(link: MdLink, newName: string): string {
 	const newLinkText = newName.replace(/\\/g, '/');
 	if (link.source.isAngleBracketLink) {
-		return newLinkText;
+		return escapeAngleBracketLinkContents(newLinkText);
 	}
 
 	// We might need to use angle brackets for the link
-	if (needsBracketLink(newLinkText)) {
-		return `<${newLinkText}>`;
+	if (needsAngleBracketLink(newLinkText)) {
+		return `<${escapeAngleBracketLinkContents(newLinkText)}>`;
 	}
 
-	return encodeURI(newLinkText);
+	return newLinkText;
 }
 
-function needsBracketLink(mdPath: string) {
+function escapeAngleBracketLinkContents(newLinkText: string) {
+	return newLinkText.replace(/([<>])/g, '\\$1');
+}
+
+function needsAngleBracketLink(mdPath: string) {
 	// Links with whitespace or control characters must be enclosed in brackets
 	// eslint-disable-next-line no-control-regex
 	if (mdPath.startsWith('<') || /\s|[\u007F\u0000-\u001f]/.test(mdPath)) {

@@ -7,14 +7,15 @@ import * as path from 'path';
 import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { URI, Utils } from 'vscode-uri';
-import { defaultMarkdownFileExtension, LsConfiguration } from '../config';
+import { LsConfiguration, defaultMarkdownFileExtension } from '../config';
 import { ILogger, LogLevel } from '../logging';
 import { ISlugifier } from '../slugify';
 import { arePositionsEqual, translatePosition } from '../types/position';
 import { makeRange, modifyRange, rangeContains } from '../types/range';
-import { getDocUri, ITextDocument } from '../types/textDocument';
+import { ITextDocument, getDocUri } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
 import { WorkspaceEditBuilder } from '../util/editBuilder';
+import { escapeForAngleBracketLink, needsAngleBracketLink } from '../util/mdLinks';
 import { computeRelativePath } from '../util/path';
 import { tryDecodeUri } from '../util/uri';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
@@ -311,36 +312,4 @@ export function getLinkRenameEdit(link: MdLink, newName: string): lsp.TextEdit {
 	return { range: pathRange, newText: newLinkText };
 }
 
-export function escapeForAngleBracketLink(linkText: string) {
-	return linkText.replace(/([<>])/g, '\\$1');
-}
 
-function needsAngleBracketLink(linkText: string) {
-	// Links with whitespace or control characters must be enclosed in brackets
-	// eslint-disable-next-line no-control-regex
-	if (linkText.startsWith('<') || /\s|[\u007F\u0000-\u001f]/.test(linkText)) {
-		return true;
-	}
-
-	// Check if the link has mis-matched parens
-	if (!/[\(\)]/.test(linkText)) {
-		return false;
-	}
-
-	let previousChar = '';
-	let nestingCount = 0;
-	for (const char of linkText) {
-		if (char === '(' && previousChar !== '\\') {
-			nestingCount++;
-		} else if (char === ')' && previousChar !== '\\') {
-			nestingCount--;
-		}
-
-		if (nestingCount < 0) {
-			return true;
-		}
-		previousChar = char;
-	}
-
-	return nestingCount > 0;
-}

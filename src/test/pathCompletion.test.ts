@@ -416,6 +416,22 @@ suite('Path completions', () => {
 		]);
 	}));
 
+	test('Should escape mismatched parens', withStore(async (store) => {
+		const workspace = store.add(new InMemoryWorkspace([
+			new InMemoryDocument(workspacePath('(a).md'), ''),
+			new InMemoryDocument(workspacePath('a(b.md'), ''),
+		]));
+
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+			`[](./${CURSOR}`,
+		), workspace);
+
+		assertCompletionsEqual(completions, [
+			{ label: '(a).md', insertText: '(a).md' },
+			{ label: 'a(b.md', insertText: 'a\\(b.md' },
+		]);
+	}));
+
 	suite('Cross file header completions', () => {
 
 		test('Should return completions for headers in current doc', withStore(async (store) => {
@@ -690,6 +706,22 @@ suite('Path completions', () => {
 
 			assertCompletionsEqual(completions, [
 				{ label: 'new.md' },
+			]);
+		}));
+
+		test('Should escape quotes in html', withStore(async (store) => {
+			const workspace = store.add(new InMemoryWorkspace([
+				new InMemoryDocument(workspacePath(`double qu"ot"e.md`,), joinLines()),
+				new InMemoryDocument(workspacePath(`single qu'ot'e.md`,), joinLines()),
+			]));
+
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`some text <img src="./${CURSOR}"> more text`,
+			), workspace);
+
+			assertCompletionsEqual(completions, [
+				{ label: `double qu"ot"e.md`, insertText: 'double qu&quot;ot&quot;e.md' },
+				{ label: `single qu'ot'e.md`, insertText: 'single qu&apos;ot&apos;e.md' },
 			]);
 		}));
 	});

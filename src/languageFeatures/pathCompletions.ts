@@ -21,7 +21,7 @@ import { r } from '../util/string';
 import { FileStat, IWorkspace, getWorkspaceFolder, openLinkToMarkdownFile } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
 import { MdLinkProvider, htmlTagPathAttrs } from './documentLinks';
-import { escapeForAngleBracketLink } from './rename';
+import { escapeForAngleBracketLink, hasBalancedParens } from '../util/mdLinks';
 
 enum CompletionContextKind {
 	/** `[...](|)` */
@@ -495,8 +495,19 @@ export class MdPathCompletionProvider {
 	}
 
 	#getInsertText(context: PathCompletionContext, name: string): string {
+		if (context.kind === CompletionContextKind.HtmlAttribute) {
+			return name
+				.replaceAll(`"`, '&quot;')
+				.replaceAll(`'`, '&apos;');
+		}
+
 		if (context.isAngleBracketPath) {
 			return escapeForAngleBracketLink(name);
+		}
+
+		
+		if (!hasBalancedParens(name)) {
+			name = name.replace(/([()])/g, '\\$1');
 		}
 
 		return name.replaceAll(' ', '%20');

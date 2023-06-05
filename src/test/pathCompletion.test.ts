@@ -632,6 +632,22 @@ suite('Path completions', () => {
 				{ label: '#x-y-z', insertText: 'b#x-y-z' },
 			]);
 		}));
+
+		test('Should support multibyte character paths', withStore(async (store) => {
+			const workspace = store.add(new InMemoryWorkspace([
+				new InMemoryDocument(workspacePath('テ ス ト.md'), joinLines(
+					`# Header`
+				)),
+			]));
+	
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`[](##${CURSOR}`,
+			), workspace, undefined, { includeWorkspaceHeaderCompletions: IncludeWorkspaceHeaderCompletions.onDoubleHash });
+	
+			assertCompletionsEqual(completions, [
+				{ label: '#header', insertText: 'テ%20ス%20ト.md#header' },
+			]);
+		}));
 	});
 
 	suite('Html attribute path completions', () => {

@@ -2,7 +2,7 @@
 
 ## 0.4.0-alpha.5 — June 5, 2023
 - Make rename and path completions escape angle brackets when inside of angle bracket links.
-- Try removing angle brackets from links if the link no longer requires it.
+- On rename, try removing angle brackets from links if the link no longer requires it.
 - Don't encode paths as aggressively on path completions.
 
 ## 0.4.0-alpha.4 — June 2, 2023

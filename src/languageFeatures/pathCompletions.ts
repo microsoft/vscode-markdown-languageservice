@@ -423,7 +423,7 @@ export class MdPathCompletionProvider {
 			}
 
 			const normalizedPath = this.#normalizeFileNameCompletion(rawPath);
-			const path = context.isAngleBracketPath ? normalizedPath : encodeURI(normalizedPath);
+			const path = this.#getPathInsertText(context, normalizedPath);
 			for (const entry of toc.entries) {
 				const completionItem = this.#createHeaderCompletion(entry, insertionRange, replacementRange, path);
 				completionItem.filterText = '#' + completionItem.label;
@@ -477,7 +477,7 @@ export class MdPathCompletionProvider {
 			}
 
 			const isDir = type.isDirectory;
-			const newText = this.#getInsertText(context, name) + (isDir ? '/' : '');
+			const newText = this.#getPathInsertText(context, name) + (isDir ? '/' : '');
 			const label = isDir ? name + '/' : name;
 			yield {
 				label,
@@ -494,7 +494,7 @@ export class MdPathCompletionProvider {
 		}
 	}
 
-	#getInsertText(context: PathCompletionContext, name: string): string {
+	#getPathInsertText(context: PathCompletionContext, name: string): string {
 		if (context.kind === CompletionContextKind.HtmlAttribute) {
 			return name
 				.replaceAll(`"`, '&quot;')
@@ -505,7 +505,6 @@ export class MdPathCompletionProvider {
 			return escapeForAngleBracketLink(name);
 		}
 
-		
 		if (!hasBalancedParens(name)) {
 			name = name.replace(/([()])/g, '\\$1');
 		}

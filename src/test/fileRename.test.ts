@@ -56,7 +56,7 @@ function assertEditsEqual(actualEdit: lsp.WorkspaceEdit, ...expectedTextEdits: R
 		assert.strictEqual(actualEditForDoc.length, expectedEditsForDoc.length, `Edit counts for '${actualDoc}' should match`);
 
 		for (let g = 0; g < actualEditForDoc.length; ++g) {
-			assertRangeEqual(actualEditForDoc[g].range, expectedEditsForDoc[g].range, `Edit '${g}' of '${actualDoc}' has expected expected range. Expected range: ${JSON.stringify(actualEditForDoc[g].range)}. Actual range: ${JSON.stringify(expectedEditsForDoc[g].range)}`);
+			assertRangeEqual(actualEditForDoc[g].range, expectedEditsForDoc[g].range, `Edit '${g}' of '${actualDoc}' has expected expected range. Expected range: ${JSON.stringify(expectedEditsForDoc[g].range)}. Actual range: ${JSON.stringify(actualEditForDoc[g].range)}`);
 			assert.strictEqual(actualEditForDoc[g].newText, expectedEditsForDoc[g].newText, `Edit '${g}' of '${actualDoc}' has expected edits`);
 		}
 	}
@@ -596,5 +596,97 @@ suite('File Rename', () => {
 				lsp.TextEdit.replace(makeRange(1, 7, 1, 13), 'sp ace.md'),
 			]
 		});
+	}));
+
+	test('Rename file should escape angle brackets in angle bracket links', withStore(async (store) => {
+		const uri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(uri, joinLines(
+			`[abc](</old.md>)`,
+			`[abc](<old.md>)`,
+			`[abc](old.md)`,
+			``,
+			`[def]: </old.md>`,
+			`[def]: <old.md>`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const oldUri = workspacePath('old.md');
+		const newUri = workspacePath('<a>.md');
+
+		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
+		assertEditsEqual(response!.edit, {
+			uri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 6, 0, 15), '/<a>.md'), // Should remove link's <...>
+				lsp.TextEdit.replace(makeRange(1, 7, 1, 13), '\\<a\\>.md'), // Still need's link's <...>
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 12), '<\\<a\\>.md>'),
+				lsp.TextEdit.replace(makeRange(4, 7, 4, 16), '/<a>.md'),
+				lsp.TextEdit.replace(makeRange(5, 8, 5, 14), '\\<a\\>.md'),
+			]
+		});
+	}));
+
+	test('Rename should remove angle angle brackets from link if they are not needed', withStore(async (store) => {
+		const uri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(uri, joinLines(
+			`![text](cat.gif)`,
+			`![text](<cat.gif>)`,
+			``,
+			`[def]: <cat.gif>`,
+		));
+
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const oldUri = workspacePath('cat.gif');
+		const newUri = workspacePath('n<ew>.gif');
+
+		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
+		assertEditsEqual(response!.edit, {
+			uri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 8, 0, 15), 'n<ew>.gif'),
+				lsp.TextEdit.replace(makeRange(1, 8, 1, 17), 'n<ew>.gif'),
+				lsp.TextEdit.replace(makeRange(3, 7, 3, 16), 'n<ew>.gif'),
+			]
+		});
+	}));
+
+	test('Should add angle brackets when parent dir is moved', withStore(async (store) => {
+		// Create workspace state after the renaming /old -> /par(en
+		const newDocUri = workspacePath('par(en', 'readme.md');
+		const newDoc = new InMemoryDocument(newDocUri, joinLines(
+			/* 00 */ `[abc](/top.md)`, // skip
+			/* 01 */ `[abc](/old/sibling.md)`, // edit 0
+			/* 02 */ `[abc](../top.md)`, // skip 
+			/* 03 */ `[abc](../old/sibling.md)`, // edit 1
+			/* 04 */ `[abc](../old/)`, // edit 2
+			/* 05 */ `[abc](../old)`, // edit 3
+			/* 06 */ `[abc](/old)`, // edit 4
+			/* 07 */ `[abc](/old/)`, // edit 5
+			/* 08 */ ``, // Own header links should not get rewritten here
+			/* 09 */ `# header`,
+			/* 10 */ `[text](#header)`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([
+			newDoc,
+			workspacePath('par(en', 'sibling.md'),
+			workspacePath('top.md'),
+		]));
+
+		// Move both the image and the document.
+		// Rename to have an opening '(' which should force angle brackets to be used
+		const response = await getFileRenameEdits(store, [
+			{ oldUri: workspacePath('old'), newUri: workspacePath('par(en') },
+		], workspace);
+
+		assertEditsEqual(response!.edit, {
+			// Here we need to be using the new path to 'doc'
+			uri: newDocUri, edits: [
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 21), '</par(en/sibling.md>'),
+				lsp.TextEdit.replace(makeRange(3, 6, 3, 23), './sibling.md'),
+				lsp.TextEdit.replace(makeRange(4, 6, 4, 13), './'),
+				lsp.TextEdit.replace(makeRange(5, 6, 5, 12), './'),
+				lsp.TextEdit.replace(makeRange(6, 6, 6, 10), '</par(en>'),
+				lsp.TextEdit.replace(makeRange(7, 6, 7, 11), '</par(en>'),
+			]
+		}); 
 	}));
 });

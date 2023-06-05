@@ -6,8 +6,8 @@ import * as path from 'path';
 import { CancellationToken } from 'vscode-languageserver';
 import * as lsp from 'vscode-languageserver-types';
 import { URI, Utils } from 'vscode-uri';
-import { isExcludedPath, LsConfiguration, PreferredMdPathExtensionStyle } from '../config';
-import { getDocUri, ITextDocument } from '../types/textDocument';
+import { LsConfiguration, PreferredMdPathExtensionStyle, isExcludedPath } from '../config';
+import { ITextDocument, getDocUri } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
 import { WorkspaceEditBuilder } from '../util/editBuilder';
 import { looksLikeMarkdownUri } from '../util/file';
@@ -16,7 +16,7 @@ import { IWorkspace } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
 import { HrefKind, InternalHref, MdLink, resolveInternalDocumentLink } from './documentLinks';
 import { MdReferenceKind, MdReferencesProvider } from './references';
-import { getFilePathRange, getLinkRenameText, getNewLinkText } from './rename';
+import { getLinkRenameEdit, getLinkRenameText } from './rename';
 
 
 export interface FileRename {
@@ -102,7 +102,7 @@ export class MdFileRenameProvider extends Disposable {
 		let didParticipate = false;
 		for (const [docUri, links] of allLinksInWorkspace) {
 			for (const link of links) {
-				if (link.href.kind !== HrefKind.Internal) {
+				if (link.href.kind !== HrefKind.Internal || link.source.hrefText.startsWith('#')) {
 					continue;
 				}
 
@@ -139,8 +139,12 @@ export class MdFileRenameProvider extends Disposable {
 							newPathText = path.posix.relative(rootDir.path, oldLink.resource.path);
 						}
 
-						didParticipate = true;
-						builder.replace(docUri, getFilePathRange(link), encodeURI(newPathText));
+						const replacementPath = encodeURI(newPathText);
+						if (replacementPath !== link.source.pathText) {
+							const { range, newText } = getLinkRenameEdit(link, replacementPath);
+							builder.replace(docUri, range, newText);
+							didParticipate = true;
+						}
 					}
 				}
 			}
@@ -250,7 +254,8 @@ export class MdFileRenameProvider extends Disposable {
 
 		const newLinkText = getLinkRenameText(this.#workspace, link.source, newFilePath, link.source.pathText.startsWith('.'));
 		if (typeof newLinkText === 'string') {
-			builder.replace(doc, getFilePathRange(link), getNewLinkText(link, newLinkText));
+			const { range, newText } = getLinkRenameEdit(link, newLinkText);
+			builder.replace(doc, range, newText);
 			return true;
 		}
 		return false;

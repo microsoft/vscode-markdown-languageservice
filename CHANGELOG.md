@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0-alpha.5 — June 5, 2023
+- Escape angle bracket when needed inside of angle bracket links.
+- Try removing angle brackets from links if the link no longer requires it.
+
 ## 0.4.0-alpha.4 — June 2, 2023
 - Fix link detection for escaped angle brackets.
 

@@ -11,7 +11,7 @@ import { defaultMarkdownFileExtension, LsConfiguration } from '../config';
 import { ILogger, LogLevel } from '../logging';
 import { ISlugifier } from '../slugify';
 import { arePositionsEqual, translatePosition } from '../types/position';
-import { modifyRange, rangeContains } from '../types/range';
+import { makeRange, modifyRange, rangeContains } from '../types/range';
 import { getDocUri, ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
 import { WorkspaceEditBuilder } from '../util/editBuilder';
@@ -176,19 +176,19 @@ export class MdRenameProvider extends Disposable {
 		// Then update all refs to it
 		for (const ref of allRefsInfo.references) {
 			if (ref.kind === MdReferenceKind.Link) {
-				const newLinkText = this.#getNewLinkText(ref, rawNewFilePath, newName);
-				builder.replace(ref.link.source.resource, getFilePathRange(ref.link), newLinkText);
+				const { range, newText } = this.#getLinkRenameEdit(ref, rawNewFilePath, newName);
+				builder.replace(ref.link.source.resource, range, newText);
 			}
 		}
 
 		return builder.getEdit();
 	}
 
-	#getNewLinkText(ref: MdLinkReference, rawNewFilePath: { resource: URI; linkFragment: string; }, newName: string) {
+	#getLinkRenameEdit(ref: MdLinkReference, rawNewFilePath: { resource: URI; linkFragment: string; }, newName: string): lsp.TextEdit {
 		// Try to preserve style of existing links
 		const newLinkText = getLinkRenameText(this.#workspace, ref.link.source, rawNewFilePath.resource, newName.startsWith('./') || newName.startsWith('.\\'));
 
-		return getNewLinkText(ref.link, newLinkText ?? newName);
+		return getLinkRenameEdit(ref.link, newLinkText ?? newName);
 	}
 
 	#renameFragment(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
@@ -287,18 +287,28 @@ export function getFilePathRange(link: MdLink): lsp.Range {
 	return link.source.hrefRange;
 }
 
-export function getNewLinkText(link: MdLink, newName: string): string {
+export function getLinkRenameEdit(link: MdLink, newName: string): lsp.TextEdit {
+	const pathRange = getFilePathRange(link);
+
+	// TODO: this won't be correct if the file name contains `\`
 	const newLinkText = newName.replace(/\\/g, '/');
+	
 	if (link.source.isAngleBracketLink) {
-		return escapeAngleBracketLinkContents(newLinkText);
+		if (!needsAngleBracketLink(newLinkText)) {
+			// Remove the angle brackets
+			const range = makeRange(translatePosition(pathRange.start, { characterDelta: -1 }), translatePosition(pathRange.end, { characterDelta: 1 }));
+			return { range, newText: newLinkText };
+		} else {
+			return { range: pathRange, newText: escapeAngleBracketLinkContents(newLinkText) };
+		}
 	}
 
 	// We might need to use angle brackets for the link
 	if (needsAngleBracketLink(newLinkText)) {
-		return `<${escapeAngleBracketLinkContents(newLinkText)}>`;
+		return { range: pathRange, newText: `<${escapeAngleBracketLinkContents(newLinkText)}>` };
 	}
 
-	return newLinkText;
+	return { range: pathRange, newText: newLinkText };
 }
 
 function escapeAngleBracketLinkContents(newLinkText: string) {

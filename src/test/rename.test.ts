@@ -811,8 +811,29 @@ suite('Rename', () => {
 		assertEditsEqual(matchedEdit!, {
 			uri, edits: [
 				lsp.TextEdit.replace(makeRange(0, 8, 0, 15), 'o(p)(e(n)).gif'),
-				lsp.TextEdit.replace(makeRange(1, 9, 1, 16), 'o(p)(e(n)).gif'),
+				lsp.TextEdit.replace(makeRange(1, 8, 1, 17), 'o(p)(e(n)).gif'), // removes <...> from link
 				lsp.TextEdit.replace(makeRange(3, 7, 3, 14), 'o(p)(e(n)).gif'),
+			]
+		});
+	}));
+
+	test('Rename should remove angle angle brackets from link if they are not needed', withStore(async (store) => {
+		const uri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(uri, joinLines(
+			`![text](cat.gif)`,
+			`![text](<cat.gif>)`,
+			``,
+			`[def]: <cat.gif>`,
+		));
+
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const edit = await getRenameEdits(store, doc, { line: 0, character: 10 }, 'n<ew>.gif', workspace);
+		assertEditsEqual(edit!, {
+			uri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 8, 0, 15), 'n<ew>.gif'),
+				lsp.TextEdit.replace(makeRange(1, 8, 1, 17), 'n<ew>.gif'),
+				lsp.TextEdit.replace(makeRange(3, 7, 3, 16), 'n<ew>.gif'),
 			]
 		});
 	}));

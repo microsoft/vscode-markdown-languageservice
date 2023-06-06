@@ -382,6 +382,56 @@ suite('Path completions', () => {
 		]);
 	}));
 
+	test('Should support multibyte character paths', withStore(async (store) => {
+		const workspace = store.add(new InMemoryWorkspace([
+			new InMemoryDocument(workspacePath('テスト1.md'), ''),
+			new InMemoryDocument(workspacePath('テスト', 'テスト2.md'), ''),
+			new InMemoryDocument(workspacePath('テ ス ト3.md'), ''),
+		]));
+
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+			`[](./${CURSOR}`,
+		), workspace);
+
+		assertCompletionsEqual(completions, [
+			{ label: 'テ ス ト3.md', insertText: 'テ%20ス%20ト3.md' },
+			{ label: 'テスト/' },
+			{ label: 'テスト1.md' },
+		]);
+	}));
+
+	test('Should escape angle brackets if in angle bracket link', withStore(async (store) => {
+		const workspace = store.add(new InMemoryWorkspace([
+			new InMemoryDocument(workspacePath('<a>.md'), ''),
+			new InMemoryDocument(workspacePath('a<b>c.md'), ''),
+		]));
+
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+			`[](<./${CURSOR}`,
+		), workspace);
+
+		assertCompletionsEqual(completions, [
+			{ label: '<a>.md', insertText: '\\<a\\>.md' },
+			{ label: 'a<b>c.md', insertText: 'a\\<b\\>c.md' },
+		]);
+	}));
+
+	test('Should escape mismatched parens', withStore(async (store) => {
+		const workspace = store.add(new InMemoryWorkspace([
+			new InMemoryDocument(workspacePath('(a).md'), ''),
+			new InMemoryDocument(workspacePath('a(b.md'), ''),
+		]));
+
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+			`[](./${CURSOR}`,
+		), workspace);
+
+		assertCompletionsEqual(completions, [
+			{ label: '(a).md', insertText: '(a).md' },
+			{ label: 'a(b.md', insertText: 'a\\(b.md' },
+		]);
+	}));
+
 	suite('Cross file header completions', () => {
 
 		test('Should return completions for headers in current doc', withStore(async (store) => {
@@ -582,6 +632,22 @@ suite('Path completions', () => {
 				{ label: '#x-y-z', insertText: 'b#x-y-z' },
 			]);
 		}));
+
+		test('Should support multibyte character paths', withStore(async (store) => {
+			const workspace = store.add(new InMemoryWorkspace([
+				new InMemoryDocument(workspacePath('テ ス ト.md'), joinLines(
+					`# Header`
+				)),
+			]));
+	
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`[](##${CURSOR}`,
+			), workspace, undefined, { includeWorkspaceHeaderCompletions: IncludeWorkspaceHeaderCompletions.onDoubleHash });
+	
+			assertCompletionsEqual(completions, [
+				{ label: '#header', insertText: 'テ%20ス%20ト.md#header' },
+			]);
+		}));
 	});
 
 	suite('Html attribute path completions', () => {
@@ -656,6 +722,22 @@ suite('Path completions', () => {
 
 			assertCompletionsEqual(completions, [
 				{ label: 'new.md' },
+			]);
+		}));
+
+		test('Should escape quotes in html', withStore(async (store) => {
+			const workspace = store.add(new InMemoryWorkspace([
+				new InMemoryDocument(workspacePath(`double qu"ot"e.md`,), joinLines()),
+				new InMemoryDocument(workspacePath(`single qu'ot'e.md`,), joinLines()),
+			]));
+
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`some text <img src="./${CURSOR}"> more text`,
+			), workspace);
+
+			assertCompletionsEqual(completions, [
+				{ label: `double qu"ot"e.md`, insertText: 'double qu&quot;ot&quot;e.md' },
+				{ label: `single qu'ot'e.md`, insertText: 'single qu&apos;ot&apos;e.md' },
 			]);
 		}));
 	});

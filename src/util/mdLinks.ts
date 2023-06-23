@@ -5,7 +5,7 @@
 
 
 export function escapeForAngleBracketLink(linkText: string) {
-	return linkText.replace(/([<>])/g, '\\$1');
+	return linkText.replace(/([<>])/g, '\\$1'); // CodeQL [SM02383] This escaping is done for text in an editor, not for rendered markdown.
 }
 
 export function needsAngleBracketLink(linkText: string) {

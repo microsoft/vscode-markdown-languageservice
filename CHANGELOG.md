@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.0-alpha.6 — WIP
+- Fix path completions when file name contains a literal `%`. In these cases the `%` needs to be encoded to prevent it from being incorrectly decoded on link click
+
 ## 0.4.0-alpha.5 — June 5, 2023
 - Make rename and path completions escape angle brackets when inside of angle bracket links.
 - On rename, try removing angle brackets from links if the link no longer requires it.

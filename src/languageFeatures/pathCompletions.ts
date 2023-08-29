@@ -495,6 +495,10 @@ export class MdPathCompletionProvider {
 	}
 
 	#getPathInsertText(context: PathCompletionContext, name: string): string {
+		// If the  path has a literal `%` in it, we need encode it to prevent
+		// it being incorrectly decoded
+		name = name.replaceAll('%', '%25');
+
 		if (context.kind === CompletionContextKind.HtmlAttribute) {
 			return name
 				.replaceAll(`"`, '&quot;')

@@ -454,6 +454,28 @@ suite('Diagnostic Computer', () => {
 		const diagnostics = await getComputedDiagnostics(store, doc, workspace, { });
 		assertDiagnosticsEqual(diagnostics, []);
 	}));
+
+	test(`Should handle file names with '%' in the name`, withStore(async (store) => {
+		const doc1 = new InMemoryDocument(workspacePath('doc1.md'), joinLines(
+			`[i](/a%20b.md)`, // These should fail since the file will be resolved to 'a b.md'
+			`[i](a%20b.md)`,
+			`[i](./a%20b.md)`,
+			`[i](/a%2520b.md)`, // These should be resolved
+			`[i](a%2520b.md)`,
+			`[i](./a%2520b.md)`,
+			`[i](<a b.md>)`, // This should also fail due since space should not resolve to a file name '%20'
+		));
+		const doc2 = new InMemoryDocument(workspacePath('a%20b.md'), joinLines(''));
+		const workspace = store.add(new InMemoryWorkspace([doc1, doc2]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc1, workspace, { });
+		assertDiagnosticsEqual(diagnostics, [
+			makeRange(0, 4, 0, 13),
+			makeRange(1, 4, 1, 12),
+			makeRange(2, 4, 2, 14),
+			makeRange(6, 5, 6, 11),
+		]);
+	}));
 });
 
 

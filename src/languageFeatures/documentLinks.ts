@@ -296,23 +296,27 @@ const linkPattern = new RegExp(
 * Matches `[text][ref]` or `[shorthand]` or `[shorthand][]`
 */
 const referenceLinkPattern = new RegExp(
-	r`(^|[^\]\\])` + // Must not start with another bracket (workaround for lack of support for negative look behinds)
+	r`(?<![\]\\])` + // Must not start with another bracket
 	r`(?:` +
-	/**/r`(?:` +
-	/****/r`(` + // Start link prefix
-	/******/r`!?` + // Optional image ref
-	/******/r`\[((?:` +// Link text
-	/********/r`\\\]|` + // escaped bracket, or...
-	/********/r`[^\[\]]|` + //non bracket char, or...
-	/********/r`\[[^\[\]]*\]` + // matched bracket pair
-	/******/`+)*)\]` + // end link  text
-	/******/r`\[\s*?` + // Start of link def
-	/****/r`)` + // end link prefix
-	/****/r`(` +
-	/******/r`[^\]]*?)\]` + //link def
-	/******/r`|` +
-	/******/r`\[\s*?([^\\\]]*?)\s*\])(?![\(])` +
-	r`)`,
+
+	// [text][ref] or [text][]
+	/**/r`(?<prefix>` + // Start link prefix
+	/****/r`!?` + // Optional image ref
+	/****/r`\[((?:` +// Link text
+	/******/r`\\.|` + // escaped character, or...
+	/******/r`[^\[\]\\]|` + // non bracket char, or...
+	/******/r`\[[^\[\]]*\]` + // matched bracket pair
+	/****/`)*)\]` + // end link  text
+	/****/r`\[\s*` + // Start of link def
+	/**/r`)` + // end link prefix
+	/**/r`((?:[^\\\]]|\\.)*?)\]` + // link def
+
+	/**/r`|` +
+
+	// [shorthand]
+	/****/r`\[\s*((?:\\.|[^\[\]])+?)\s*\]` +
+	r`)` +
+	r`(?![\(])`,  // Must not be followed by a paren to avoid matching normal links
 	'gm');
 
 /**
@@ -506,7 +510,7 @@ export class MdLinkComputer {
 
 	*#getReferenceLinksInText(document: ITextDocument, text: string, startingOffset: number, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
 		for (const match of text.matchAll(referenceLinkPattern)) {
-			const linkStartOffset = startingOffset + (match.index ?? 0) + match[1].length;
+			const linkStartOffset = startingOffset + (match.index ?? 0);
 			const linkStart = document.positionAt(linkStartOffset);
 			if (noLinkRanges.contains(linkStart)) {
 				continue;
@@ -514,9 +518,9 @@ export class MdLinkComputer {
 
 			let hrefStart: lsp.Position;
 			let hrefEnd: lsp.Position;
-			let reference = match[4];
+			let reference = match[3];
 			if (reference === '') { // [ref][],
-				reference = match[3];
+				reference = match[2].trim();
 				if (!reference) {
 					continue;
 				}
@@ -524,31 +528,35 @@ export class MdLinkComputer {
 				hrefStart = document.positionAt(offset);
 				hrefEnd = document.positionAt(offset + reference.length);
 			} else if (reference) { // [text][ref]
-				const text = match[3];
+				const text = match[2];
 				if (!text) {
 					// Handle the case ![][cat]
-					if (!match[2].startsWith('!')) {
+					if (!match[0].startsWith('!')) {
 						// Empty links are not valid
 						continue;
 					}
 				}
-				if (!match[2].startsWith('!')) {
+				if (!match[0].startsWith('!')) {
 					// Also get links in text
-					yield* this.#getReferenceLinksInText(document, match[3], linkStartOffset + 1, noLinkRanges);
+					yield* this.#getReferenceLinksInText(document, match[2], linkStartOffset + 1, noLinkRanges);
 				}
 
-				const pre = match[2];
+				const pre = match[1];
 				const offset = linkStartOffset + pre.length;
 				hrefStart = document.positionAt(offset);
 				hrefEnd = document.positionAt(offset + reference.length);
-			} else if (match[5]) { // [ref]
-				reference = match[5];
+			} else if (match[4]) { // [ref]
+				reference = match[4].trim();
+				if (!reference) {
+					continue;
+				}
+
 				const offset = linkStartOffset + 1;
 				hrefStart = document.positionAt(offset);
 				const line = getLine(document, hrefStart.line);
 
 				// See if link looks like link definition
-				if (linkStart.character === 0 && line[match[0].length - match[1].length] === ':') {
+				if (linkStart.character === 0 && line[match[0].length] === ':') {
 					continue;
 				}
 
@@ -563,7 +571,7 @@ export class MdLinkComputer {
 				continue;
 			}
 
-			const linkEnd = translatePosition(linkStart, { characterDelta: match[0].length - match[1].length });
+			const linkEnd = translatePosition(linkStart, { characterDelta: match[0].length });
 			const hrefRange = { start: hrefStart, end: hrefEnd };
 			yield {
 				kind: MdLinkKind.Link,

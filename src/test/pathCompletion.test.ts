@@ -432,6 +432,20 @@ suite('Path completions', () => {
 		]);
 	}));
 
+	test(`Should escape '%' used in file name`, withStore(async (store) => {
+		const workspace = store.add(new InMemoryWorkspace([
+			new InMemoryDocument(workspacePath('a%b.md'), ''),
+		]));
+
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+			`[](./${CURSOR}`,
+		), workspace);
+
+		assertCompletionsEqual(completions, [
+			{ label: 'a%b.md', insertText: 'a%25b.md' },
+		]);
+	}));
+
 	suite('Cross file header completions', () => {
 
 		test('Should return completions for headers in current doc', withStore(async (store) => {
@@ -646,6 +660,20 @@ suite('Path completions', () => {
 	
 			assertCompletionsEqual(completions, [
 				{ label: '#header', insertText: 'テ%20ス%20ト.md#header' },
+			]);
+		}));
+
+		test(`Should escape '%' used in file name`, withStore(async (store) => {
+			const workspace = store.add(new InMemoryWorkspace([
+				new InMemoryDocument(workspacePath('a%b.md'), '# Header'),
+			]));
+	
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`[](##${CURSOR}`,
+			), workspace, undefined, {includeWorkspaceHeaderCompletions: IncludeWorkspaceHeaderCompletions.onDoubleHash});
+	
+			assertCompletionsEqual(completions, [
+				{ label: '#header', insertText: 'a%25b.md#header' },
 			]);
 		}));
 	});

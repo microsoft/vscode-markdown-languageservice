@@ -662,6 +662,36 @@ suite('Link computer', () => {
 		]);
 	});
 
+	test('Should find reference link with nested brackets', async () => {
+		const links = await getLinksForText(joinLines(
+			`[[test]]`,
+			``,
+			`[test]: http://example.com`,
+		));
+
+		assertLinksEqual(links, [
+			makeRange(0, 2, 0, 6),
+			makeRange(2, 8, 2, 26),
+		]);
+	});
+
+	test('Should find reference link with escaped brackets', async () => {
+		const links = await getLinksForText(joinLines(
+			String.raw`[some text][\[test\]]`,
+			String.raw`[\[test\]][]`,
+			String.raw`[\[test\]]`,
+			String.raw``,
+			String.raw`[\[test\]]: http://example.com`,
+		));
+
+		assertLinksEqual(links, [
+			makeRange(0, 12, 0, 20),
+			makeRange(1, 1, 1, 9),
+			makeRange(2, 1, 2, 9),
+			makeRange(4, 12, 4, 30),
+		]);
+	});
+
 	test('Should find src in block html <img>', async () => {
 		const links = await getLinksForText(joinLines(
 			`<img src="cat.png">`,

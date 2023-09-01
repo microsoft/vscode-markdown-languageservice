@@ -451,7 +451,37 @@ suite('Diagnostic Computer', () => {
 
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const diagnostics = await getComputedDiagnostics(store, doc, workspace, { });
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace, {});
+		assertDiagnosticsEqual(diagnostics, []);
+	}));
+
+	test('Should detect reference link shorthand with nested brackets', withStore(async (store) => {
+		const docUri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(docUri, joinLines(
+			`[[test]]`,
+			``,
+			`[test]: http://example.com`,
+		));
+
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace, {});
+		assertDiagnosticsEqual(diagnostics, []);
+	}));
+
+	test('Should detect reference links shorthand with escaped brackets', withStore(async (store) => {
+		const docUri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(docUri, joinLines(
+			String.raw`[abc][\[test\]]`,
+			String.raw`[\[test\]][]`,
+			String.raw`[\[test\]]`,
+			String.raw``,
+			String.raw`[\[test\]]: http://example.com`,
+		));
+
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace, {});
 		assertDiagnosticsEqual(diagnostics, []);
 	}));
 

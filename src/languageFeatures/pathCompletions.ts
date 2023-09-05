@@ -510,7 +510,7 @@ export class MdPathCompletionProvider {
 		}
 
 		if (!hasBalancedParens(name)) {
-			name = name.replace(/([()])/g, '\\$1');
+			name = name.replace(/([()])/g, '\\$1'); // CodeQL [SM02383] This code is for editing text, not sanitizing rendered markdown
 		}
 
 		return name.replaceAll(' ', '%20');

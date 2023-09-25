@@ -511,8 +511,8 @@ suite('Rename', () => {
 			newUri: workspacePath('new File.md'), // Rename on disk should use file extension
 		}, {
 			uri: uri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 7, 0, 11), '</new File>'), // Links should continue to use extension-less paths
-				lsp.TextEdit.replace(makeRange(1, 7, 1, 11), '</new File>'),
+				lsp.TextEdit.replace(makeRange(0, 7, 0, 18), '</new File#header>'), // Links should continue to use extension-less paths
+				lsp.TextEdit.replace(makeRange(1, 7, 1, 17), '</new File#other>'),
 			]
 		});
 	}));

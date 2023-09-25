@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.0-alpha.7 — September 25, 2023
+- Fix path updates for angle bracket links with fragments.
+
 ## 0.4.0-alpha.6 — September 5, 2023
 - Fix path completions when file name contains a literal `%`. In these cases the `%` needs to be encoded to prevent it from being incorrectly decoded on link click
 - Fix more cases for link detection for links containing escaped characters.

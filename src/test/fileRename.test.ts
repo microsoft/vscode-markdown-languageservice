@@ -90,7 +90,7 @@ suite('File Rename', () => {
 		});
 	}));
 
-	test('Rename file should ignore fragments', withStore(async (store) => {
+	test('Rename file should preserve fragments', withStore(async (store) => {
 		const uri = workspacePath('doc.md');
 		const doc = new InMemoryDocument(uri, joinLines(
 			`[abc](/old.md#frag)`,
@@ -106,10 +106,10 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 6, 0, 13), '/new.md'),
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 12), 'new.md'),
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 14), './new.md'),
-				lsp.TextEdit.replace(makeRange(3, 7, 3, 15), './new.md'),
+				lsp.TextEdit.replace(makeRange(0, 6, 0, 18), '/new.md#frag'),
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 17), 'new.md#frag'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 19), './new.md#frag'),
+				lsp.TextEdit.replace(makeRange(3, 7, 3, 20), './new.md#frag'),
 			]
 		});
 	}));
@@ -130,10 +130,10 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace, { preferredMdPathExtensionStyle: PreferredMdPathExtensionStyle.removeExtension });
 		assertEditsEqual(response!.edit, {
 			uri: docUri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 6, 0, 13), '/new'),
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 12), 'new'),
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 14), './new'),
-				lsp.TextEdit.replace(makeRange(3, 7, 3, 15), './new'),
+				lsp.TextEdit.replace(makeRange(0, 6, 0, 18), '/new#frag'),
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 17), 'new#frag'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 19), './new#frag'),
+				lsp.TextEdit.replace(makeRange(3, 7, 3, 20), './new#frag'),
 			]
 		});
 	}));
@@ -154,10 +154,10 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri: docUri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 6, 0, 10), '/new'),
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 9), 'new'),
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 11), './new'),
-				lsp.TextEdit.replace(makeRange(3, 7, 3, 12), './new'),
+				lsp.TextEdit.replace(makeRange(0, 6, 0, 15), '/new#frag'),
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 14), 'new#frag'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 16), './new#frag'),
+				lsp.TextEdit.replace(makeRange(3, 7, 3, 17), './new#frag'),
 			]
 		});
 	}));
@@ -241,9 +241,9 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri: newUri, edits: [
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 14), '../other.md'),
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 16), '../other.md'),
-				lsp.TextEdit.replace(makeRange(3, 7, 3, 17), '../other.md'),
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 19), '../other.md#frag'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 21), '../other.md#frag'),
+				lsp.TextEdit.replace(makeRange(3, 7, 3, 22), '../other.md#frag'),
 			]
 		});
 	}));
@@ -264,9 +264,9 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri: newUri, edits: [
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 11), '../other'),
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 13), '../other'),
-				lsp.TextEdit.replace(makeRange(3, 7, 3, 14), '../other'),
+				lsp.TextEdit.replace(makeRange(1, 6, 1, 16), '../other#frag'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 18), '../other#frag'),
+				lsp.TextEdit.replace(makeRange(3, 7, 3, 19), '../other#frag'),
 			]
 		});
 	}));
@@ -569,11 +569,11 @@ suite('File Rename', () => {
 		assertEditsEqual(response!.edit, {
 			// Here we need to be using the new path to 'doc'
 			uri: newDocUri, edits: [
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 18), 'newReadme.md'),
-				lsp.TextEdit.replace(makeRange(3, 6, 3, 20), './newReadme.md'),
+				lsp.TextEdit.replace(makeRange(2, 6, 2, 25), 'newReadme.md#header'),
+				lsp.TextEdit.replace(makeRange(3, 6, 3, 27), './newReadme.md#header'),
 
-				lsp.TextEdit.replace(makeRange(6, 8, 6, 20), 'newReadme.md'),
-				lsp.TextEdit.replace(makeRange(7, 8, 7, 22), './newReadme.md'),
+				lsp.TextEdit.replace(makeRange(6, 8, 6, 27), 'newReadme.md#header'),
+				lsp.TextEdit.replace(makeRange(7, 8, 7, 29), './newReadme.md#header'),
 			]
 		});
 	}));
@@ -688,5 +688,57 @@ suite('File Rename', () => {
 				lsp.TextEdit.replace(makeRange(7, 6, 7, 11), '</par(en>'),
 			]
 		}); 
+	}));
+
+	test('Should handle renames for angle bracket link with fragment when angle brackets are removed (#150)', withStore(async (store) => {
+		const uri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(uri, joinLines(
+			`[text](foo.md#abc 'text')`,
+			`[text](<foo.md#abc>)`,
+			``,
+			`[def1]: foo.md#abc`,
+			`[def2]: <foo.md#abc> 'text'`,
+		));
+
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const oldUri = workspacePath('foo.md');
+		const newUri = workspacePath('bar.md');
+
+		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
+		assertEditsEqual(response!.edit, {
+			uri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 7, 0, 17), 'bar.md#abc'),
+				lsp.TextEdit.replace(makeRange(1, 7, 1, 19), 'bar.md#abc'),
+				lsp.TextEdit.replace(makeRange(3, 8, 3, 18), 'bar.md#abc'),
+				lsp.TextEdit.replace(makeRange(4, 8, 4, 20), 'bar.md#abc'),
+			]
+		});
+	}));
+
+	test('Should handle renames for angle bracket link with fragment when angle brackets are added (#150)', withStore(async (store) => {
+		const uri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(uri, joinLines(
+			`[text](foo.md#abc 'text')`,
+			`[text](<foo.md#abc>)`,
+			``,
+			`[def1]: foo.md#abc 'text'`,
+			`[def2]: <foo.md#abc>`,
+		));
+
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const oldUri = workspacePath('foo.md');
+		const newUri = workspacePath('foo space.md');
+
+		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
+		assertEditsEqual(response!.edit, {
+			uri, edits: [
+				lsp.TextEdit.replace(makeRange(0, 7, 0, 17), '<foo space.md#abc>'),
+				lsp.TextEdit.replace(makeRange(1, 8, 1, 18), 'foo space.md#abc'),
+				lsp.TextEdit.replace(makeRange(3, 8, 3, 18), '<foo space.md#abc>'),
+				lsp.TextEdit.replace(makeRange(4, 9, 4, 19), 'foo space.md#abc'),
+			]
+		});
 	}));
 });

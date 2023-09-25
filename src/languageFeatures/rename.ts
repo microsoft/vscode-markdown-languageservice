@@ -288,28 +288,38 @@ export function getFilePathRange(link: MdLink): lsp.Range {
 	return link.source.hrefRange;
 }
 
-export function getLinkRenameEdit(link: MdLink, newName: string): lsp.TextEdit {
-	const pathRange = getFilePathRange(link);
+function newPathWithFragmentIfNeeded(newPath: string, link: MdLink): string {
+	if (link.href.kind === HrefKind.Internal && link.href.fragment) {
+		return newPath + '#' + link.href.fragment;
+	}
+	return newPath;
+}
+
+export function getLinkRenameEdit(link: MdLink, newPathText: string): lsp.TextEdit {
+	const linkRange = link.source.hrefRange;
 
 	// TODO: this won't be correct if the file name contains `\`
-	const newLinkText = newName.replace(/\\/g, '/');
-	
+	newPathText = newPathWithFragmentIfNeeded(newPathText.replace(/\\/g, '/'), link);
+
 	if (link.source.isAngleBracketLink) {
-		if (!needsAngleBracketLink(newLinkText)) {
+		if (!needsAngleBracketLink(newPathText)) {
 			// Remove the angle brackets
-			const range = makeRange(translatePosition(pathRange.start, { characterDelta: -1 }), translatePosition(pathRange.end, { characterDelta: 1 }));
-			return { range, newText: newLinkText };
+			const range = makeRange(
+				translatePosition(linkRange.start, { characterDelta: -1 }),
+				translatePosition(linkRange.end, { characterDelta: 1 }));
+
+			return { range, newText: newPathText };
 		} else {
-			return { range: pathRange, newText: escapeForAngleBracketLink(newLinkText) };
+			return { range: linkRange, newText: escapeForAngleBracketLink(newPathText) };
 		}
 	}
 
 	// We might need to use angle brackets for the link
-	if (needsAngleBracketLink(newLinkText)) {
-		return { range: pathRange, newText: `<${escapeForAngleBracketLink(newLinkText)}>` };
+	if (needsAngleBracketLink(newPathText)) {
+		return { range: linkRange, newText: `<${escapeForAngleBracketLink(newPathText)}>` };
 	}
 
-	return { range: pathRange, newText: newLinkText };
+	return { range: linkRange, newText: newPathText };
 }
 
 

@@ -294,6 +294,14 @@ suite('Diagnostic Computer', () => {
 			`- [x]`,
 			`- [X]`,
 			`- [ ]`,
+			``,
+			`* [x]`,
+			`* [X]`,
+			`* [ ]`,
+			``,
+			`+ [x]`,
+			`+ [X]`,
+			`+ [ ]`,
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc1]));
 
@@ -498,7 +506,7 @@ suite('Diagnostic Computer', () => {
 		const doc2 = new InMemoryDocument(workspacePath('a%20b.md'), joinLines(''));
 		const workspace = store.add(new InMemoryWorkspace([doc1, doc2]));
 
-		const diagnostics = await getComputedDiagnostics(store, doc1, workspace, { });
+		const diagnostics = await getComputedDiagnostics(store, doc1, workspace, {});
 		assertDiagnosticsEqual(diagnostics, [
 			makeRange(0, 4, 0, 13),
 			makeRange(1, 4, 1, 12),

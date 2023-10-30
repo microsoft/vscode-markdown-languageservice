@@ -742,6 +742,14 @@ suite('Link computer', () => {
 			makeRange(2, 8, 2, 19),
 		]);
 	});
+
+	test('Should not find reference links in inline code (#153)', async () => {
+		const links = await getLinksForText(joinLines(
+			'- `[!xyz].js` `ab.js` `[^xyz].js` `[!x-z].js`。',
+		));
+
+		assertLinksEqual(links, []);
+	});
 });
 
 

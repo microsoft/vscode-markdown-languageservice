@@ -506,6 +506,18 @@ suite('Diagnostic Computer', () => {
 			makeRange(6, 5, 6, 11),
 		]);
 	}));
+
+	test('Should not detect errors in inline code (#153)', withStore(async (store) => {
+		const docUri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(docUri, joinLines(
+			'- `[!xyz].js` `ab.js` `[^xyz].js` `[!x-z].js`。',
+		));
+
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace, {});
+		assertDiagnosticsEqual(diagnostics, []);
+	}));
 });
 
 

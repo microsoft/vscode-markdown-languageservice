@@ -561,7 +561,7 @@ export class MdLinkComputer {
 				}
 
 				// See if link looks like a checkbox
-				const checkboxMatch = line.match(/^\s*[\-\*]\s*\[x\]/i);
+				const checkboxMatch = line.match(/^\s*[\-\*\+]\s*\[x\]/i);
 				if (checkboxMatch && hrefStart.character <= checkboxMatch[0].length) {
 					continue;
 				}

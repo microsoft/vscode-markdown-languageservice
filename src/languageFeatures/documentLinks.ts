@@ -302,19 +302,19 @@ const referenceLinkPattern = new RegExp(
 	// [text][ref] or [text][]
 	/**/r`(?<prefix>` + // Start link prefix
 	/****/r`!?` + // Optional image ref
-	/****/r`\[((?:` +// Link text
+	/****/r`\[(?<text>(?:` +// Link text
 	/******/r`\\.|` + // escaped character, or...
 	/******/r`[^\[\]\\]|` + // non bracket char, or...
 	/******/r`\[[^\[\]]*\]` + // matched bracket pair
 	/****/`)*)\]` + // end link  text
 	/****/r`\[\s*` + // Start of link def
 	/**/r`)` + // end link prefix
-	/**/r`((?:[^\\\]]|\\.)*?)\]` + // link def
+	/**/r`(?<ref>(?:[^\\\]]|\\.)*?)\]` + // link def
 
 	/**/r`|` +
 
 	// [shorthand]
-	/****/r`\[\s*((?:\\.|[^\[\]])+?)\s*\]` +
+	/****/r`\[\s*(?<shorthand>(?:\\.|[^\[\]\\])+?)\s*\]` +
 	r`)` +
 	r`(?![\(])`,  // Must not be followed by a paren to avoid matching normal links
 	'gm');
@@ -510,6 +510,10 @@ export class MdLinkComputer {
 
 	*#getReferenceLinksInText(document: ITextDocument, text: string, startingOffset: number, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
 		for (const match of text.matchAll(referenceLinkPattern)) {
+			if (!match.groups) {
+				continue;
+			}
+
 			const linkStartOffset = startingOffset + (match.index ?? 0);
 			const linkStart = document.positionAt(linkStartOffset);
 			if (noLinkRanges.contains(linkStart)) {
@@ -518,9 +522,9 @@ export class MdLinkComputer {
 
 			let hrefStart: lsp.Position;
 			let hrefEnd: lsp.Position;
-			let reference = match[3];
+			let reference = match.groups['ref'];
 			if (reference === '') { // [ref][],
-				reference = match[2].trim();
+				reference = match.groups['text'].trim();
 				if (!reference) {
 					continue;
 				}
@@ -528,7 +532,7 @@ export class MdLinkComputer {
 				hrefStart = document.positionAt(offset);
 				hrefEnd = document.positionAt(offset + reference.length);
 			} else if (reference) { // [text][ref]
-				const text = match[2];
+				const text = match.groups['text'];
 				if (!text) {
 					// Handle the case ![][cat]
 					if (!match[0].startsWith('!')) {
@@ -545,8 +549,8 @@ export class MdLinkComputer {
 				const offset = linkStartOffset + pre.length;
 				hrefStart = document.positionAt(offset);
 				hrefEnd = document.positionAt(offset + reference.length);
-			} else if (match[4]) { // [ref]
-				reference = match[4].trim();
+			} else if (match.groups['shorthand']) { // [ref]
+				reference = match.groups['shorthand'].trim();
 				if (!reference) {
 					continue;
 				}

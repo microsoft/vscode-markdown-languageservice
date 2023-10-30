@@ -750,6 +750,15 @@ suite('Link computer', () => {
 
 		assertLinksEqual(links, []);
 	});
+
+	test('Should not catastrophical backtrack on slashes', async () => {
+		const links = await getLinksForText(joinLines(
+			`# symbol`,
+			String.raw`[\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\`,
+		));
+
+		assertLinksEqual(links, []);
+	});
 });
 
 

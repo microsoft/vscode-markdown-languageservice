@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0-alpha.8 — October 31, 2023
+- Fix potential catastrophic backtracking in a regular expression.
+- Fix some false positives for link validation.
+
 ## 0.4.0-alpha.7 — September 25, 2023
 - Fix path updates for angle bracket links with fragments.
 

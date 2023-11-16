@@ -331,6 +331,43 @@ const autoLinkPattern = /(?<!\\)\<(\w+:[^\>\s]+)\>/g;
  */
 const definitionPattern = /^([\t ]*(?<!\\)\[(?!\^)((?:\\\]|[^\]])+)\]:\s*)([^<]\S*|<(?:\\[<>]|[^<>])+>)/gm;
 
+class InlineRanges {
+
+	public static create() {
+		return new InlineRanges();
+	}
+
+	readonly #map: Map</* line number */ number, lsp.Range[]>;
+
+	private constructor(data?: ReadonlyMap<number, lsp.Range[]>) {
+		this.#map = new Map(data);
+	}
+
+	public get(line: number): lsp.Range[] {
+		return this.#map.get(line) || [];
+	}
+
+	public add(range: lsp.Range): void {
+		// Register the range for all lines that it covers
+		for (let line = range.start.line; line <= range.end.line; line++) {
+			let ranges = this.#map.get(line);
+			if (!ranges) {
+				ranges = [];
+				this.#map.set(line, ranges);
+			}
+			ranges.push(range);
+		}
+	}
+
+	public concat(newRanges: Iterable<lsp.Range>): InlineRanges {
+		const result = new InlineRanges(this.#map);
+		for (const range of newRanges) {
+			result.add(range);
+		}
+		return result;
+	}
+}
+
 const inlineCodePattern = /(?<!`)(`+)((?:.+?|.*?(?:(?:\r?\n).+?)*?)(?:\r?\n)?\1)(?!`)/gm;
 
 class NoLinkRanges {
@@ -339,21 +376,12 @@ class NoLinkRanges {
 			.filter(t => (t.type === 'code_block' || t.type === 'fence' || t.type === 'html_block') && !!t.map)
 			.map(t => ({ type: t.type, range: t.map as [number, number] }));
 
-		const inlineRanges = new Map</* line number */ number, lsp.Range[]>();
+		const inlineRanges = InlineRanges.create();
 		const text = document.getText();
 		for (const match of text.matchAll(inlineCodePattern)) {
 			const startOffset = match.index ?? 0;
 			const startPosition = document.positionAt(startOffset);
-
-			const range: lsp.Range = { start: startPosition, end: document.positionAt(startOffset + match[0].length) };
-			for (let line = range.start.line; line <= range.end.line; ++line) {
-				let entry = inlineRanges.get(line);
-				if (!entry) {
-					entry = [];
-					inlineRanges.set(line, entry);
-				}
-				entry.push(range);
-			}
+			inlineRanges.add(makeRange(startPosition, document.positionAt(startOffset + match[0].length)));
 		}
 
 		return new NoLinkRanges(multiline, inlineRanges);
@@ -368,7 +396,7 @@ class NoLinkRanges {
 		/**
 		 * Inline code spans where links should not be detected
 		 */
-		public readonly inline: ReadonlyMap</* line number */ number, lsp.Range[]>
+		public readonly inline: InlineRanges,
 	) { }
 
 	contains(position: lsp.Position, excludeType = ''): boolean {
@@ -377,18 +405,7 @@ class NoLinkRanges {
 	}
 
 	concatInline(inlineRanges: Iterable<lsp.Range>): NoLinkRanges {
-		const newInline = new Map(this.inline);
-		for (const range of inlineRanges) {
-			for (let line = range.start.line; line <= range.end.line; ++line) {
-				let entry = newInline.get(line);
-				if (!entry) {
-					entry = [];
-					newInline.set(line, entry);
-				}
-				entry.push(range);
-			}
-		}
-		return new NoLinkRanges(this.multiline, newInline);
+		return new NoLinkRanges(this.multiline, this.inline.concat(inlineRanges));
 	}
 }
 

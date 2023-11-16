@@ -2,6 +2,7 @@
 
 ## 0.4.0-alpha.9 — Unreleased
 - Use fuzzy matching for workspace symbol search.
+- Fix some false positive link detection on escaped links.
 
 ## 0.4.0-alpha.8 — October 31, 2023
 - Fix potential catastrophic backtracking in a regular expression.

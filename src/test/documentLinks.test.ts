@@ -302,6 +302,29 @@ suite('Link computer', () => {
 		]);
 	});
 
+	test('Should not include links with escaped leading characters (#15)', async () => {
+		const links = await getLinksForText(joinLines(
+			`\\[text](http://example.com)`,
+			`\\<http://example.com>`,
+			``,
+			`\\[def]: http://example.com`,
+		));
+		assertLinksEqual(links, []);
+	});
+
+	test('Should find angle bracket link in escaped link (#15)', async () => {
+		// Somewhat contrived example, but it's valid markdown and the auto links should be found
+		const links = await getLinksForText(joinLines(
+			`\\[text](<http://example.com>)`,
+			``,
+			`\\[text]: <http://example.com>`,
+		));
+		assertLinksEqual(links, [
+			makeRange(0, 9, 0, 27),
+			makeRange(2, 10, 2, 28),
+		]);
+	});
+
 	test('Should not consider links in code fenced with backticks', async () => {
 		const links = await getLinksForText(joinLines(
 			'```',

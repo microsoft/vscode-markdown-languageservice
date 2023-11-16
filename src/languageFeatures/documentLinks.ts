@@ -271,6 +271,8 @@ function stripAngleBrackets(link: string) {
  * Matches `[text](link)` or `[text](<link>)`
  */
 const linkPattern = new RegExp(
+	r`(?<!\\)` + // Must not start with escape
+
 	// text
 	r`(!?\[` + // open prefix match -->
 	/**/r`(?:` +
@@ -322,12 +324,12 @@ const referenceLinkPattern = new RegExp(
 /**
  * Matches `<http://example.com>`
  */
-const autoLinkPattern = /\<(\w+:[^\>\s]+)\>/g;
+const autoLinkPattern = /(?<!\\)\<(\w+:[^\>\s]+)\>/g;
 
 /**
  * Matches `[text]: link`
  */
-const definitionPattern = /^([\t ]*\[(?!\^)((?:\\\]|[^\]])+)\]:\s*)([^<]\S*|<(?:\\[<>]|[^<>])+>)/gm;
+const definitionPattern = /^([\t ]*(?<!\\)\[(?!\^)((?:\\\]|[^\]])+)\]:\s*)([^<]\S*|<(?:\\[<>]|[^<>])+>)/gm;
 
 const inlineCodePattern = /(?<!`)(`+)((?:.+?|.*?(?:(?:\r?\n).+?)*?)(?:\r?\n)?\1)(?!`)/gm;
 

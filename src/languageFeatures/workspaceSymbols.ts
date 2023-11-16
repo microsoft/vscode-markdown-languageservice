@@ -10,6 +10,7 @@ import { Disposable } from '../util/dispose';
 import { IWorkspace } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
 import { MdDocumentSymbolProvider } from './documentSymbols';
+import { fuzzyContains } from '../util/string';
 
 export class MdWorkspaceSymbolProvider extends Disposable {
 
@@ -33,7 +34,9 @@ export class MdWorkspaceSymbolProvider extends Disposable {
 		}
 
 		const normalizedQueryStr = query.toLowerCase();
-		return allSymbols.flat().filter(symbolInformation => symbolInformation.name.toLowerCase().includes(normalizedQueryStr));
+		return allSymbols.flat().filter(symbolInformation => {
+			return fuzzyContains(symbolInformation.name.toLowerCase(), normalizedQueryStr);
+		});
 	}
 
 	public async provideDocumentSymbolInformation(document: ITextDocument, token: CancellationToken): Promise<lsp.SymbolInformation[]> {

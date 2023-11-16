@@ -27,6 +27,13 @@ function getWorkspaceSymbols(store: DisposableStore, workspace: IWorkspace, quer
 	return workspaceSymbolProvider.provideWorkspaceSymbols(query, noopToken);
 }
 
+function assertSymbolsMatch(symbols: readonly lsp.WorkspaceSymbol[], expectedNames: readonly string[]): void {
+	assert.strictEqual(symbols.length, expectedNames.length);
+	for (let i = 0; i < symbols.length; i++) {
+		assert.strictEqual(symbols[i].name, expectedNames[i]);
+	}
+}
+
 suite('Workspace symbols', () => {
 	test('Should not return anything for empty workspace', withStore(async (store) => {
 		const workspace = store.add(new InMemoryWorkspace([]));
@@ -38,10 +45,7 @@ suite('Workspace symbols', () => {
 			new InMemoryDocument(workspacePath('test.md'), `# header1\nabc\n## header2`)
 		]));
 
-		const symbols = await getWorkspaceSymbols(store, workspace, '');
-		assert.strictEqual(symbols.length, 2);
-		assert.strictEqual(symbols[0].name, '# header1');
-		assert.strictEqual(symbols[1].name, '## header2');
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, ''), ['# header1', '## header2']);
 	}));
 
 	test('Should return all content basic workspace', withStore(async (store) => {
@@ -68,10 +72,7 @@ suite('Workspace symbols', () => {
 
 		// Update file
 		workspace.updateDocument(new InMemoryDocument(testFileName, `# new header\nabc\n## header2`, 2 /* version */));
-		const newSymbols = await getWorkspaceSymbols(store, workspace, '');
-		assert.strictEqual(newSymbols.length, 2);
-		assert.strictEqual(newSymbols[0].name, '# new header');
-		assert.strictEqual(newSymbols[1].name, '## header2');
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, ''), ['# new header', '## header2']);
 	}));
 
 	test('Should remove results when file is deleted', withStore(async (store) => {
@@ -112,9 +113,7 @@ suite('Workspace symbols', () => {
 			))
 		]));
 
-		const symbols = await getWorkspaceSymbols(store, workspace, '');
-		assert.strictEqual(symbols.length, 1);
-		assert.strictEqual(symbols[0].name, '# header1');
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, ''), ['# header1']);
 	}));
 
 	test('Should match case insensitively', withStore(async (store) => {
@@ -122,17 +121,19 @@ suite('Workspace symbols', () => {
 			new InMemoryDocument(workspacePath('test.md'), `# aBc1\nabc\n## ABc2`)
 		]));
 
-		{
-			const symbols = await getWorkspaceSymbols(store, workspace, 'ABC');
-			assert.strictEqual(symbols.length, 2);
-			assert.strictEqual(symbols[0].name, '# aBc1');
-			assert.strictEqual(symbols[1].name, '## ABc2');
-		}
-		{
-			const symbols = await getWorkspaceSymbols(store, workspace, 'abc');
-			assert.strictEqual(symbols.length, 2);
-			assert.strictEqual(symbols[0].name, '# aBc1');
-			assert.strictEqual(symbols[1].name, '## ABc2');
-		}
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'ABC'), ['# aBc1', '## ABc2']);
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'abc'), ['# aBc1', '## ABc2']);
+	}));
+
+	test('Should match fuzzyily', withStore(async (store) => {
+		const workspace = store.add(new InMemoryWorkspace([
+			new InMemoryDocument(workspacePath('test.md'), `# cat dog fish`)
+		]));
+
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'cat'), ['# cat dog fish']);
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'cdf'), ['# cat dog fish']);
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'catfish'), ['# cat dog fish']);
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'fishcat'), []); // wrong order
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'ccat'), []); 
 	}));
 });

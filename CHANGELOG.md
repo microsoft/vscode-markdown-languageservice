@@ -1,8 +1,13 @@
 # Changelog
 
-## 0.4.0-alpha.9 — Unreleased
+## 0.4.0 — January 24, 2024
+Highlights of previous alpha releases:
+
+- Enable document links, references, and rename for HTML fragments in Markdown.
+- Fix potential catastrophic backtracking in a regular expression.
+- Avoid adding extra encoding on completions.
 - Use fuzzy matching for workspace symbol search.
-- Fix some false positive link detection on escaped links.
+- Fix a number of cases around link detection / validation.
 
 ## 0.4.0-alpha.8 — October 31, 2023
 - Fix potential catastrophic backtracking in a regular expression.

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as assert from 'assert';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { MdLinkProvider } from '../../languageFeatures/documentLinks';
 import { MdExtractLinkDefinitionCodeActionProvider } from '../../languageFeatures/codeActions/extractLinkDef';
 import { MdTableOfContentsProvider } from '../../tableOfContents';

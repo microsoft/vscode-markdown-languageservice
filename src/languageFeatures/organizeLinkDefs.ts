@@ -3,8 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CancellationToken } from 'vscode-languageserver';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { makeRange } from '../types/range';
 import { getLine, ITextDocument } from '../types/textDocument';
 import { isEmptyOrWhitespace } from '../util/string';
@@ -18,7 +17,7 @@ export class MdOrganizeLinkDefinitionProvider {
 		this.#linkProvider = linkProvider;
 	}
 
-	async getOrganizeLinkDefinitionEdits(doc: ITextDocument, options: { readonly removeUnused?: boolean }, token: CancellationToken): Promise<lsp.TextEdit[]> {
+	async getOrganizeLinkDefinitionEdits(doc: ITextDocument, options: { readonly removeUnused?: boolean }, token: lsp.CancellationToken): Promise<lsp.TextEdit[]> {
 		const links = await this.#linkProvider.getLinks(doc);
 		if (token.isCancellationRequested) {
 			return [];

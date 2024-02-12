@@ -3,8 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CancellationToken } from 'vscode-languageserver';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
 import { IWorkspace } from '../workspace';
@@ -27,7 +26,7 @@ export class MdWorkspaceSymbolProvider extends Disposable {
 		this.#cache = this._register(new MdWorkspaceInfoCache(workspace, (doc, token) => this.provideDocumentSymbolInformation(doc, token)));
 	}
 
-	public async provideWorkspaceSymbols(query: string, token: CancellationToken): Promise<lsp.WorkspaceSymbol[]> {
+	public async provideWorkspaceSymbols(query: string, token: lsp.CancellationToken): Promise<lsp.WorkspaceSymbol[]> {
 		const allSymbols = await this.#cache.values();
 		if (token.isCancellationRequested) {
 			return [];
@@ -39,7 +38,7 @@ export class MdWorkspaceSymbolProvider extends Disposable {
 		});
 	}
 
-	public async provideDocumentSymbolInformation(document: ITextDocument, token: CancellationToken): Promise<lsp.SymbolInformation[]> {
+	public async provideDocumentSymbolInformation(document: ITextDocument, token: lsp.CancellationToken): Promise<lsp.SymbolInformation[]> {
 		const docSymbols = await this.#symbolProvider.provideDocumentSymbols(document, {}, token);
 		if (token.isCancellationRequested) {
 			return [];

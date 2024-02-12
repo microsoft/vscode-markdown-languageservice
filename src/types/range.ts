@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Position, Range } from 'vscode-languageserver-types';
+import { Position, Range } from 'vscode-languageserver-protocol';
 import { arePositionsEqual, isBefore, isPosition } from './position';
 
 export function isRange(thing: any): thing is Range {

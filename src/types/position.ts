@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Position } from 'vscode-languageserver-types';
+import { Position } from 'vscode-languageserver-protocol';
 
 export function arePositionsEqual(a: Position, b: Position): boolean {
 	return a.line === b.line && a.character === b.character;

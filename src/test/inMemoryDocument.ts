@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
 import { ITextDocument } from '../types/textDocument';
 

@@ -4,8 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 import * as l10n from '@vscode/l10n';
 import * as path from 'path';
-import { CancellationToken } from 'vscode-languageserver';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { URI, Utils } from 'vscode-uri';
 import { LsConfiguration, defaultMarkdownFileExtension } from '../config';
 import { ILogger, LogLevel } from '../logging';
@@ -68,7 +67,7 @@ export class MdRenameProvider extends Disposable {
 		this.#logger = logger;
 	}
 
-	public async prepareRename(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<undefined | { range: lsp.Range; placeholder: string }> {
+	public async prepareRename(document: ITextDocument, position: lsp.Position, token: lsp.CancellationToken): Promise<undefined | { range: lsp.Range; placeholder: string }> {
 		this.#logger.log(LogLevel.Debug, 'RenameProvider.prepareRename', { document: document.uri, version: document.version });
 
 		const allRefsInfo = await this.#getAllReferences(document, position, token);
@@ -120,7 +119,7 @@ export class MdRenameProvider extends Disposable {
 		return references.find(ref => ref.isDefinition && ref.kind === MdReferenceKind.Header) as MdHeaderReference | undefined;
 	}
 
-	public async provideRenameEdits(document: ITextDocument, position: lsp.Position, newName: string, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined> {
+	public async provideRenameEdits(document: ITextDocument, position: lsp.Position, newName: string, token: lsp.CancellationToken): Promise<lsp.WorkspaceEdit | undefined> {
 		this.#logger.log(LogLevel.Debug, 'RenameProvider.provideRenameEdits', { document: document.uri, version: document.version });
 
 		const allRefsInfo = await this.#getAllReferences(document, position, token);
@@ -145,7 +144,7 @@ export class MdRenameProvider extends Disposable {
 		return undefined;
 	}
 
-	async #renameFilePath(triggerDocument: URI, triggerHref: InternalHref, allRefsInfo: MdReferencesResponse, newName: string, token: CancellationToken): Promise<lsp.WorkspaceEdit> {
+	async #renameFilePath(triggerDocument: URI, triggerHref: InternalHref, allRefsInfo: MdReferencesResponse, newName: string, token: lsp.CancellationToken): Promise<lsp.WorkspaceEdit> {
 		const builder = new WorkspaceEditBuilder();
 
 		const targetUri = await statLinkToMarkdownFile(this.#configuration, this.#workspace, triggerHref.path) ?? triggerHref.path;
@@ -236,7 +235,7 @@ export class MdRenameProvider extends Disposable {
 		return builder.getEdit();
 	}
 
-	async #getAllReferences(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<MdReferencesResponse | undefined> {
+	async #getAllReferences(document: ITextDocument, position: lsp.Position, token: lsp.CancellationToken): Promise<MdReferencesResponse | undefined> {
 		const version = document.version;
 
 		if (this.#cachedRefs
@@ -321,5 +320,3 @@ export function getLinkRenameEdit(link: MdLink, newPathText: string): lsp.TextEd
 
 	return { range: linkRange, newText: newPathText };
 }
-
-

@@ -3,8 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CancellationToken } from 'vscode-languageserver';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
 import { ILogger, LogLevel } from './logging';
 import { IMdParser, Token } from './parser';
@@ -67,12 +66,12 @@ export interface TocEntry {
 
 export class TableOfContents {
 
-	public static async create(parser: IMdParser, document: ITextDocument, token: CancellationToken): Promise<TableOfContents> {
+	public static async create(parser: IMdParser, document: ITextDocument, token: lsp.CancellationToken): Promise<TableOfContents> {
 		const entries = await this.#buildToc(parser, document, token);
 		return new TableOfContents(entries, parser.slugifier);
 	}
 
-	public static async createForContainingDoc(parser: IMdParser, workspace: IWorkspace, document: ITextDocument, token: CancellationToken): Promise<TableOfContents> {
+	public static async createForContainingDoc(parser: IMdParser, workspace: IWorkspace, document: ITextDocument, token: lsp.CancellationToken): Promise<TableOfContents> {
 		const context = workspace.getContainingDocument?.(getDocUri(document));
 		if (context) {
 			const entries = (await Promise.all(Array.from(context.children, async cell => {
@@ -88,7 +87,7 @@ export class TableOfContents {
 		return this.create(parser, document, token);
 	}
 
-	static async #buildToc(parser: IMdParser, document: ITextDocument, token: CancellationToken): Promise<TocEntry[]> {
+	static async #buildToc(parser: IMdParser, document: ITextDocument, token: lsp.CancellationToken): Promise<TocEntry[]> {
 		const docUri = getDocUri(document);
 
 		const toc: TocEntry[] = [];
@@ -266,7 +265,7 @@ export class MdTableOfContentsProvider extends Disposable {
 		return this.#cache.getForDocument(doc);
 	}
 
-	public getForContainingDoc(doc: ITextDocument, token: CancellationToken): Promise<TableOfContents> {
+	public getForContainingDoc(doc: ITextDocument, token: lsp.CancellationToken): Promise<TableOfContents> {
 		return TableOfContents.createForContainingDoc(this.#parser, this.#workspace, doc, token);
 	}
 }

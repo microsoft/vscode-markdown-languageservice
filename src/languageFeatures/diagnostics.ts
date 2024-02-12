@@ -5,8 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import * as picomatch from 'picomatch';
-import { CancellationToken, DiagnosticSeverity, Emitter, Event } from 'vscode-languageserver';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
 import { LsConfiguration } from '../config';
 import { MdTableOfContentsProvider } from '../tableOfContents';
@@ -82,11 +81,11 @@ export interface DiagnosticOptions {
 	readonly ignoreLinks: readonly string[];
 }
 
-function toSeverity(level: DiagnosticLevel | undefined): DiagnosticSeverity | undefined {
+function toSeverity(level: DiagnosticLevel | undefined): lsp.DiagnosticSeverity | undefined {
 	switch (level) {
-		case DiagnosticLevel.error: return DiagnosticSeverity.Error;
-		case DiagnosticLevel.warning: return DiagnosticSeverity.Warning;
-		case DiagnosticLevel.hint: return DiagnosticSeverity.Hint;
+		case DiagnosticLevel.error: return lsp.DiagnosticSeverity.Error;
+		case DiagnosticLevel.warning: return lsp.DiagnosticSeverity.Warning;
+		case DiagnosticLevel.hint: return lsp.DiagnosticSeverity.Hint;
 		case DiagnosticLevel.ignore: return undefined;
 		case undefined: return undefined;
 	}
@@ -177,7 +176,7 @@ export class DiagnosticComputer {
 	public async compute(
 		doc: ITextDocument,
 		options: DiagnosticOptions,
-		token: CancellationToken,
+		token: lsp.CancellationToken,
 	): Promise<{
 		readonly diagnostics: lsp.Diagnostic[];
 		readonly links: readonly MdLink[];
@@ -211,7 +210,7 @@ export class DiagnosticComputer {
 		};
 	}
 
-	async #validateFragmentLinks(doc: ITextDocument, options: DiagnosticOptions, links: readonly MdLink[], token: CancellationToken): Promise<lsp.Diagnostic[]> {
+	async #validateFragmentLinks(doc: ITextDocument, options: DiagnosticOptions, links: readonly MdLink[], token: lsp.CancellationToken): Promise<lsp.Diagnostic[]> {
 		const severity = toSeverity(options.validateFragmentLinks);
 		if (typeof severity === 'undefined') {
 			return [];
@@ -349,7 +348,7 @@ export class DiagnosticComputer {
 		options: DiagnosticOptions,
 		links: readonly MdLink[],
 		statCache: ResourceMap<{ readonly exists: boolean }>,
-		token: CancellationToken,
+		token: lsp.CancellationToken,
 	): Promise<lsp.Diagnostic[]> {
 		const pathErrorSeverity = toSeverity(options.validateFileLinks);
 		if (typeof pathErrorSeverity === 'undefined') {
@@ -451,7 +450,7 @@ export interface IPullDiagnosticsManager {
 	/**
 	 * Event fired when a file that Markdown document is linking to changes.
 	 */
-	readonly onLinkedToFileChanged: Event<{
+	readonly onLinkedToFileChanged: lsp.Event<{
 		readonly changedResource: URI;
 		readonly linkingResources: readonly URI[];
 	}>;
@@ -459,7 +458,7 @@ export interface IPullDiagnosticsManager {
 	/**
 	 * Compute the current diagnostics for a file.
 	 */
-	computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]>;
+	computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: lsp.CancellationToken): Promise<lsp.Diagnostic[]>;
 
 	/**
 	 * Clean up resources that help provide diagnostics for a document. 
@@ -472,7 +471,7 @@ export interface IPullDiagnosticsManager {
 
 class FileLinkState extends Disposable {
 
-	readonly #onDidChangeLinkedToFile = this._register(new Emitter<{
+	readonly #onDidChangeLinkedToFile = this._register(new lsp.Emitter<{
 		readonly changedResource: URI;
 		readonly linkingFiles: Iterable<URI>;
 		readonly exists: boolean;
@@ -598,7 +597,7 @@ export class DiagnosticsManager extends Disposable implements IPullDiagnosticsMa
 	readonly #computer: DiagnosticComputer;
 	readonly #linkWatcher: FileLinkState;
 
-	readonly #onLinkedToFileChanged = this._register(new Emitter<{
+	readonly #onLinkedToFileChanged = this._register(new lsp.Emitter<{
 		readonly changedResource: URI;
 		readonly linkingResources: readonly URI[];
 	}>());
@@ -653,7 +652,7 @@ export class DiagnosticsManager extends Disposable implements IPullDiagnosticsMa
 		}));
 	}
 
-	public async computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]> {
+	public async computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: lsp.CancellationToken): Promise<lsp.Diagnostic[]> {
 		const results = await this.#computer.compute(doc, options, token);
 		if (token.isCancellationRequested) {
 			return [];

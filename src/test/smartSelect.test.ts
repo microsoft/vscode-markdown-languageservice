@@ -4,9 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { CancellationTokenSource } from 'vscode-languageserver';
-import * as lsp from 'vscode-languageserver-types';
-import { Position } from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
 import { MdSelectionRangeProvider } from '../languageFeatures/smartSelect';
 import { MdTableOfContentsProvider } from '../tableOfContents';
@@ -707,11 +705,11 @@ function assertLineNumbersEqual(selectionRange: lsp.SelectionRange, startLine: n
 	assert.strictEqual(selectionRange.range.end.line, endLine, `failed on end line ${message}`);
 }
 
-function getSelectionRangesForDocument(contents: string, pos?: Position[]): Promise<lsp.SelectionRange[] | undefined> {
+function getSelectionRangesForDocument(contents: string, pos?: lsp.Position[]): Promise<lsp.SelectionRange[] | undefined> {
 	const doc = new InMemoryDocument(testFileName, contents);
 	const workspace = new InMemoryWorkspace([doc]);
 	const engine = createNewMarkdownEngine();
 	const provider = new MdSelectionRangeProvider(engine, new MdTableOfContentsProvider(engine, workspace, nulLogger), nulLogger);
 	const positions = pos ? pos : getCursorPositions(contents, doc);
-	return provider.provideSelectionRanges(doc, positions, new CancellationTokenSource().token);
+	return provider.provideSelectionRanges(doc, positions, new lsp.CancellationTokenSource().token);
 }

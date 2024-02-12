@@ -3,8 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CancellationToken } from 'vscode-languageserver';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { ILogger, LogLevel } from '../logging';
 import { IMdParser, Token, TokenWithMap } from '../parser';
 import { MdTableOfContentsProvider } from '../tableOfContents';
@@ -34,7 +33,7 @@ export class MdFoldingProvider {
 		this.#logger = logger;
 	}
 
-	public async provideFoldingRanges(document: ITextDocument, token: CancellationToken): Promise<lsp.FoldingRange[]> {
+	public async provideFoldingRanges(document: ITextDocument, token: lsp.CancellationToken): Promise<lsp.FoldingRange[]> {
 		this.#logger.log(LogLevel.Debug, 'MdFoldingProvider.provideFoldingRanges', { document: document.uri, version: document.version });
 
 		const foldables = await Promise.all([
@@ -46,7 +45,7 @@ export class MdFoldingProvider {
 		return result.length > rangeLimit ? result.slice(0, rangeLimit) : result;
 	}
 
-	async #getRegions(document: ITextDocument, token: CancellationToken): Promise<lsp.FoldingRange[]> {
+	async #getRegions(document: ITextDocument, token: lsp.CancellationToken): Promise<lsp.FoldingRange[]> {
 		const tokens = await this.#parser.tokenize(document);
 		if (token.isCancellationRequested) {
 			return [];
@@ -71,7 +70,7 @@ export class MdFoldingProvider {
 		}
 	}
 
-	async #getHeaderFoldingRanges(document: ITextDocument, token: CancellationToken): Promise<lsp.FoldingRange[]> {
+	async #getHeaderFoldingRanges(document: ITextDocument, token: lsp.CancellationToken): Promise<lsp.FoldingRange[]> {
 		const toc = await this.#tocProvider.getForDocument(document);
 		if (token.isCancellationRequested) {
 			return [];
@@ -86,7 +85,7 @@ export class MdFoldingProvider {
 		});
 	}
 
-	async #getBlockFoldingRanges(document: ITextDocument, token: CancellationToken): Promise<lsp.FoldingRange[]> {
+	async #getBlockFoldingRanges(document: ITextDocument, token: lsp.CancellationToken): Promise<lsp.FoldingRange[]> {
 		const tokens = await this.#parser.tokenize(document);
 		if (token.isCancellationRequested) {
 			return [];

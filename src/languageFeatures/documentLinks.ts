@@ -5,8 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import { HTMLElement, parse } from 'node-html-parser';
-import type { CancellationToken } from 'vscode-languageserver';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { URI, Utils } from 'vscode-uri';
 import { LsConfiguration } from '../config';
 import { ILogger, LogLevel } from '../logging';
@@ -443,7 +442,7 @@ export class MdLinkComputer {
 		this.#workspace = workspace;
 	}
 
-	public async getAllLinks(document: ITextDocument, token: CancellationToken): Promise<MdLink[]> {
+	public async getAllLinks(document: ITextDocument, token: lsp.CancellationToken): Promise<MdLink[]> {
 		const tokens = await this.#tokenizer.tokenize(document);
 		if (token.isCancellationRequested) {
 			return [];
@@ -829,7 +828,7 @@ export class MdLinkProvider extends Disposable {
 		return this.#linkCache.getForDocument(document);
 	}
 
-	public async provideDocumentLinks(document: ITextDocument, token: CancellationToken): Promise<lsp.DocumentLink[]> {
+	public async provideDocumentLinks(document: ITextDocument, token: lsp.CancellationToken): Promise<lsp.DocumentLink[]> {
 		const { links, definitions } = await this.getLinks(document);
 		if (token.isCancellationRequested) {
 			return [];
@@ -838,7 +837,7 @@ export class MdLinkProvider extends Disposable {
 		return coalesce(links.map(data => this.#toValidDocumentLink(data, definitions)));
 	}
 
-	public async resolveDocumentLink(link: lsp.DocumentLink, token: CancellationToken): Promise<lsp.DocumentLink | undefined> {
+	public async resolveDocumentLink(link: lsp.DocumentLink, token: lsp.CancellationToken): Promise<lsp.DocumentLink | undefined> {
 		const href = this.#reviveLinkHrefData(link);
 		if (!href) {
 			return undefined;
@@ -864,7 +863,7 @@ export class MdLinkProvider extends Disposable {
 		return link;
 	}
 
-	public async resolveLinkTarget(linkText: string, sourceDoc: URI, token: CancellationToken): Promise<ResolvedDocumentLinkTarget | undefined> {
+	public async resolveLinkTarget(linkText: string, sourceDoc: URI, token: lsp.CancellationToken): Promise<ResolvedDocumentLinkTarget | undefined> {
 		const href = createHref(sourceDoc, linkText, this.#workspace);
 		if (href?.kind !== HrefKind.Internal) {
 			return undefined;
@@ -878,7 +877,7 @@ export class MdLinkProvider extends Disposable {
 		return this.#resolveInternalLinkTarget(resolved.resource, resolved.linkFragment, token);
 	}
 
-	async #resolveInternalLinkTarget(linkPath: URI, linkFragment: string, token: CancellationToken): Promise<ResolvedDocumentLinkTarget> {
+	async #resolveInternalLinkTarget(linkPath: URI, linkFragment: string, token: lsp.CancellationToken): Promise<ResolvedDocumentLinkTarget> {
 		let target = linkPath;
 
 		// If there's a containing document, don't bother with trying to resolve the

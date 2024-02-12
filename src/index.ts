@@ -3,8 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import type { CancellationToken } from 'vscode-languageserver';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration, LsConfiguration } from './config';
 import { MdExtractLinkDefinitionCodeActionProvider } from './languageFeatures/codeActions/extractLinkDef';
@@ -50,7 +49,7 @@ export interface IMdLanguageService {
 	 *
 	 * Note that you must invoke {@link IMdLanguageService.resolveDocumentLink} on each link before executing the link.
 	 */
-	getDocumentLinks(document: ITextDocument, token: CancellationToken): Promise<lsp.DocumentLink[]>;
+	getDocumentLinks(document: ITextDocument, token: lsp.CancellationToken): Promise<lsp.DocumentLink[]>;
 
 	/**
 	 * Resolves a link from {@link IMdLanguageService.getDocumentLinks}.
@@ -59,7 +58,7 @@ export interface IMdLanguageService {
 	 *
 	 * @returns The resolved link or `undefined` if the passed in link should be used
 	 */
-	resolveDocumentLink(link: lsp.DocumentLink, token: CancellationToken): Promise<lsp.DocumentLink | undefined>;
+	resolveDocumentLink(link: lsp.DocumentLink, token: lsp.CancellationToken): Promise<lsp.DocumentLink | undefined>;
 
 	/**
 	 * Try to resolve the resources that a link in a markdown file points to.
@@ -69,14 +68,14 @@ export interface IMdLanguageService {
 	 * 
 	 * @returns The resolved target or undefined if it could not be resolved.
 	 */
-	resolveLinkTarget(linkText: string, fromResource: URI, token: CancellationToken): Promise<ResolvedDocumentLinkTarget | undefined>;
+	resolveLinkTarget(linkText: string, fromResource: URI, token: lsp.CancellationToken): Promise<ResolvedDocumentLinkTarget | undefined>;
 
 	/**
 	 * Get the symbols of a markdown file.
 	 *
 	 * @returns The headers and optionally also the link definitions in the file
 	 */
-	getDocumentSymbols(document: ITextDocument, options: { readonly includeLinkDefinitions?: boolean }, token: CancellationToken): Promise<lsp.DocumentSymbol[]>;
+	getDocumentSymbols(document: ITextDocument, options: { readonly includeLinkDefinitions?: boolean }, token: lsp.CancellationToken): Promise<lsp.DocumentSymbol[]>;
 
 	/**
 	 * Get the folding ranges of a markdown file.
@@ -87,43 +86,43 @@ export interface IMdLanguageService {
 	 * - Regions
 	 * - List and other block element
 	 */
-	getFoldingRanges(document: ITextDocument, token: CancellationToken): Promise<lsp.FoldingRange[]>;
+	getFoldingRanges(document: ITextDocument, token: lsp.CancellationToken): Promise<lsp.FoldingRange[]>;
 
 	/**
 	 * Get the selection ranges of a markdown file.
 	 */
-	getSelectionRanges(document: ITextDocument, positions: lsp.Position[], token: CancellationToken): Promise<lsp.SelectionRange[] | undefined>;
+	getSelectionRanges(document: ITextDocument, positions: lsp.Position[], token: lsp.CancellationToken): Promise<lsp.SelectionRange[] | undefined>;
 
 	/**
 	 * Get the symbols for all markdown files in the current workspace.
 	 *
 	 * Returns all headers in the workspace.
 	 */
-	getWorkspaceSymbols(query: string, token: CancellationToken): Promise<lsp.WorkspaceSymbol[]>;
+	getWorkspaceSymbols(query: string, token: lsp.CancellationToken): Promise<lsp.WorkspaceSymbol[]>;
 
 	/**
 	 * Get completions items at a given position in a markdown file.
 	 */
-	getCompletionItems(document: ITextDocument, position: lsp.Position, context: PathCompletionOptions, token: CancellationToken): Promise<lsp.CompletionItem[]>;
+	getCompletionItems(document: ITextDocument, position: lsp.Position, context: PathCompletionOptions, token: lsp.CancellationToken): Promise<lsp.CompletionItem[]>;
 
 	/**
 	 * Get the references to a symbol at the current location.
 	 *
 	 * Supports finding references to headers and links.
 	 */
-	getReferences(document: ITextDocument, position: lsp.Position, context: lsp.ReferenceContext, token: CancellationToken): Promise<lsp.Location[]>;
+	getReferences(document: ITextDocument, position: lsp.Position, context: lsp.ReferenceContext, token: lsp.CancellationToken): Promise<lsp.Location[]>;
 
 	/**
 	 * Get the references to a given file.
 	 */
-	getFileReferences(resource: URI, token: CancellationToken): Promise<lsp.Location[]>;
+	getFileReferences(resource: URI, token: lsp.CancellationToken): Promise<lsp.Location[]>;
 
 	/**
 	 * Get the definition of the symbol at the current location.
 	 *
 	 * Supports finding headers from fragments links or reference link definitions.
 	 */
-	getDefinition(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<lsp.Definition | undefined>;
+	getDefinition(document: ITextDocument, position: lsp.Position, token: lsp.CancellationToken): Promise<lsp.Definition | undefined>;
 
 	/**
 	 * Organizes all link definitions in the file by grouping them to the bottom of the file, sorting them, and optionally
@@ -132,21 +131,21 @@ export interface IMdLanguageService {
 	 * @returns A set of text edits. May be empty if no edits are required (e.g. the definitions are already sorted at
 	 * the bottom of the file).
 	 */
-	organizeLinkDefinitions(document: ITextDocument, options: { readonly removeUnused?: boolean }, token: CancellationToken): Promise<lsp.TextEdit[]>;
+	organizeLinkDefinitions(document: ITextDocument, options: { readonly removeUnused?: boolean }, token: lsp.CancellationToken): Promise<lsp.TextEdit[]>;
 
 	/**
 	 * Prepare for showing rename UI.
 	 *
 	 * Indicates if rename is supported. If it is, returns the range of symbol being renamed as well as the placeholder to show to the user for the rename.
 	 */
-	prepareRename(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<{ range: lsp.Range; placeholder: string } | undefined>;
+	prepareRename(document: ITextDocument, position: lsp.Position, token: lsp.CancellationToken): Promise<{ range: lsp.Range; placeholder: string } | undefined>;
 
 	/**
 	 * Get the edits for a rename operation.
 	 *
 	 * @returns A workspace edit that performs the rename or undefined if the rename cannot be performed.
 	 */
-	getRenameEdit(document: ITextDocument, position: lsp.Position, nameName: string, token: CancellationToken): Promise<lsp.WorkspaceEdit | undefined>;
+	getRenameEdit(document: ITextDocument, position: lsp.Position, nameName: string, token: lsp.CancellationToken): Promise<lsp.WorkspaceEdit | undefined>;
 
 	/**
 	 * Get the edits for a file rename. This update links to the renamed files as well as links within the renamed files.
@@ -157,19 +156,19 @@ export interface IMdLanguageService {
 	 *
 	 * @returns An object with a workspace edit that performs the rename and a list of old file uris that effected the edit. Returns undefined if the rename cannot be performed. 
 	 */
-	getRenameFilesInWorkspaceEdit(edits: readonly FileRename[], token: CancellationToken): Promise<{ participatingRenames: readonly FileRename[]; edit: lsp.WorkspaceEdit } | undefined>;
+	getRenameFilesInWorkspaceEdit(edits: readonly FileRename[], token: lsp.CancellationToken): Promise<{ participatingRenames: readonly FileRename[]; edit: lsp.WorkspaceEdit } | undefined>;
 
 	/**
 	 * Get code actions for a selection in a file.
 	 *
 	 * Returned code actions may be disabled.
 	 */
-	getCodeActions(document: ITextDocument, range: lsp.Range, context: lsp.CodeActionContext, token: CancellationToken): Promise<lsp.CodeAction[]>;
+	getCodeActions(document: ITextDocument, range: lsp.Range, context: lsp.CodeActionContext, token: lsp.CancellationToken): Promise<lsp.CodeAction[]>;
 
 	/**
 	 * Get document highlights for a position in the document.
 	 */
-	getDocumentHighlights(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<lsp.DocumentHighlight[]>;
+	getDocumentHighlights(document: ITextDocument, position: lsp.Position, token: lsp.CancellationToken): Promise<lsp.DocumentHighlight[]>;
 
 	/**
 	 * Compute diagnostics for a given file.
@@ -177,7 +176,7 @@ export interface IMdLanguageService {
 	 * Note that this function is stateless and re-validates all links every time you make the request. Use {@link IMdLanguageService.createPullDiagnosticsManager}
 	 * to more efficiently get diagnostics.
 	 */
-	computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]>;
+	computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: lsp.CancellationToken): Promise<lsp.Diagnostic[]>;
 
 	/**
 	 * Create a stateful object that is more efficient at computing diagnostics across repeated calls and workspace changes.
@@ -259,7 +258,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 		getWorkspaceSymbols: workspaceSymbolProvider.provideWorkspaceSymbols.bind(workspaceSymbolProvider),
 		getCompletionItems: pathCompletionProvider.provideCompletionItems.bind(pathCompletionProvider),
 		getReferences: referencesProvider.provideReferences.bind(referencesProvider),
-		getFileReferences: async (resource: URI, token: CancellationToken): Promise<lsp.Location[]> => {
+		getFileReferences: async (resource: URI, token: lsp.CancellationToken): Promise<lsp.Location[]> => {
 			return (await referencesProvider.getReferencesToFileInWorkspace(resource, token)).map(x => x.location);
 		},
 		getDefinition: definitionsProvider.provideDefinition.bind(definitionsProvider),
@@ -267,16 +266,16 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 		prepareRename: renameProvider.prepareRename.bind(renameProvider),
 		getRenameEdit: renameProvider.provideRenameEdits.bind(renameProvider),
 		getRenameFilesInWorkspaceEdit: fileRenameProvider.getRenameFilesInWorkspaceEdit.bind(fileRenameProvider),
-		getCodeActions: async (doc: ITextDocument, range: lsp.Range, context: lsp.CodeActionContext, token: CancellationToken): Promise<lsp.CodeAction[]> => {
+		getCodeActions: async (doc: ITextDocument, range: lsp.Range, context: lsp.CodeActionContext, token: lsp.CancellationToken): Promise<lsp.CodeAction[]> => {
 			return (await Promise.all([
 				extractCodeActionProvider.getActions(doc, range, context, token),
 				Array.from(removeLinkDefinitionActionProvider.getActions(doc, range, context)),
 			])).flat();
 		},
-		getDocumentHighlights: (document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<lsp.DocumentHighlight[]> => {
+		getDocumentHighlights: (document: ITextDocument, position: lsp.Position, token: lsp.CancellationToken): Promise<lsp.DocumentHighlight[]> => {
 			return documentHighlightProvider.getDocumentHighlights(document, position, token);
 		},
-		computeDiagnostics: async (doc: ITextDocument, options: DiagnosticOptions, token: CancellationToken): Promise<lsp.Diagnostic[]> => {
+		computeDiagnostics: async (doc: ITextDocument, options: DiagnosticOptions, token: lsp.CancellationToken): Promise<lsp.Diagnostic[]> => {
 			return (await diagnosticsComputer.compute(doc, options, token))?.diagnostics;
 		},
 		createPullDiagnosticsManager: () => {

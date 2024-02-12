@@ -2,8 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { CancellationToken } from 'vscode-languageserver';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
 import { LsConfiguration } from '../config';
 import { ILogger, LogLevel } from '../logging';
@@ -98,14 +97,14 @@ export class MdReferencesProvider extends Disposable {
 		this.#logger = logger;
 	}
 
-	async provideReferences(document: ITextDocument, position: lsp.Position, context: lsp.ReferenceContext, token: CancellationToken): Promise<lsp.Location[]> {
+	async provideReferences(document: ITextDocument, position: lsp.Position, context: lsp.ReferenceContext, token: lsp.CancellationToken): Promise<lsp.Location[]> {
 		const allRefs = await this.getReferencesAtPosition(document, position, token);
 		return allRefs
 			.filter(ref => context.includeDeclaration || !ref.isDefinition)
 			.map(ref => ref.location);
 	}
 
-	public async getReferencesAtPosition(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<MdReference[]> {
+	public async getReferencesAtPosition(document: ITextDocument, position: lsp.Position, token: lsp.CancellationToken): Promise<MdReference[]> {
 		this.#logger.log(LogLevel.Debug, 'ReferencesProvider.getReferencesAtPosition', { document: document.uri, version: document.version });
 
 		const toc = await this.#tocProvider.getForDocument(document);
@@ -121,7 +120,7 @@ export class MdReferencesProvider extends Disposable {
 		}
 	}
 
-	public async getReferencesToFileInWorkspace(resource: URI, token: CancellationToken): Promise<MdReference[]> {
+	public async getReferencesToFileInWorkspace(resource: URI, token: lsp.CancellationToken): Promise<MdReference[]> {
 		this.#logger.log(LogLevel.Debug, 'ReferencesProvider.getAllReferencesToFileInWorkspace', { resource });
 
 		const allLinksInWorkspace = await this.#getAllLinksInWorkspace();
@@ -132,7 +131,7 @@ export class MdReferencesProvider extends Disposable {
 		return Array.from(this.#findLinksToFile(resource, allLinksInWorkspace, undefined));
 	}
 
-	async #getReferencesToHeader(document: ITextDocument, header: TocEntry, token: CancellationToken): Promise<MdReference[]> {
+	async #getReferencesToHeader(document: ITextDocument, header: TocEntry, token: lsp.CancellationToken): Promise<MdReference[]> {
 		const links = await this.#getAllLinksInWorkspace();
 		if (token.isCancellationRequested) {
 			return [];
@@ -167,7 +166,7 @@ export class MdReferencesProvider extends Disposable {
 		return references;
 	}
 
-	async #getReferencesToLinkAtPosition(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<MdReference[]> {
+	async #getReferencesToLinkAtPosition(document: ITextDocument, position: lsp.Position, token: lsp.CancellationToken): Promise<MdReference[]> {
 		const docLinks = (await this.#linkCache.getForDocs([document]))[0];
 		if (token.isCancellationRequested) {
 			return [];
@@ -191,7 +190,7 @@ export class MdReferencesProvider extends Disposable {
 		return [];
 	}
 
-	async #getReferencesToLink(docLinks: Iterable<MdLink>, sourceLink: MdLink, triggerPosition: lsp.Position, token: CancellationToken): Promise<MdReference[]> {
+	async #getReferencesToLink(docLinks: Iterable<MdLink>, sourceLink: MdLink, triggerPosition: lsp.Position, token: lsp.CancellationToken): Promise<MdReference[]> {
 		if (sourceLink.href.kind === HrefKind.Reference) {
 			return Array.from(this.#getReferencesToLinkReference(docLinks, sourceLink.href.ref, { resource: sourceLink.source.resource, range: sourceLink.source.hrefRange }));
 		}

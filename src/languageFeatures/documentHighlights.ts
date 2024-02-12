@@ -3,8 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CancellationToken } from 'vscode-languageserver';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
 import { LsConfiguration } from '../config';
 import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOfContents';
@@ -31,7 +30,7 @@ export class MdDocumentHighlightProvider {
 		this.#linkProvider = linkProvider;
 	}
 
-	public async getDocumentHighlights(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<lsp.DocumentHighlight[]> {
+	public async getDocumentHighlights(document: ITextDocument, position: lsp.Position, token: lsp.CancellationToken): Promise<lsp.DocumentHighlight[]> {
 		const toc = await this.#tocProvider.getForDocument(document);
 		if (token.isCancellationRequested) {
 			return [];

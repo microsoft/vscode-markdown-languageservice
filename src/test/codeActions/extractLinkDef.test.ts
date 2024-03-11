@@ -301,4 +301,19 @@ suite('Extract link definition code action', () => {
 			`[def]: http://example.com`,
 		));
 	}));
+
+	test('Extract should extract entire autolink', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(
+			`Lorem <https://daringfireball.net/projects/markdown> dolor`,
+		));
+		const actions = await getActions(store, doc, { line: 0, character: 20 });
+		assertActiveActionCount(actions, 1);
+
+		const newContent = applyActionEdit(doc, actions[0]);
+		assert.strictEqual(newContent, joinLines(
+			`Lorem [def] dolor`,
+			``,
+			`[def]: https://daringfireball.net/projects/markdown`,
+		));
+	}));
 });

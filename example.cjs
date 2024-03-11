@@ -5,7 +5,7 @@
 const mdls = require('.');
 const MarkdownIt = require('markdown-it');
 const { URI } = require('vscode-uri');
-const { CancellationTokenSource, Emitter } = require('vscode-languageserver');
+const { CancellationTokenSource, Emitter } = require('vscode-languageserver-protocol');
 const { TextDocument } = require('vscode-languageserver-textdocument');
 
 // First we need to create the services that the markdown language service depends on.
@@ -16,12 +16,12 @@ const mdIt = MarkdownIt({ html: true });
 
 /** @type {mdls.IMdParser} */
 const parser = new class {
-	slugifier = mdls.githubSlugifier
+	slugifier = mdls.githubSlugifier;
 
 	async tokenize(document) {
 		return mdIt.parse(document.getText(), {});
 	}
-}
+};
 
 // Create a virtual document that holds our file content
 const myDocument = TextDocument.create(
@@ -73,7 +73,7 @@ const workspace = new class {
 
 	async readDirectory(/** @type {URI} */resource) {
 		// Not implemented
-		return []
+		return [];
 	}
 
 
@@ -106,7 +106,7 @@ async function main() {
 	const cts = new CancellationTokenSource();
 	try {
 		const symbols = await languageService.getDocumentSymbols(myDocument, { includeLinkDefinitions: true }, cts.token);
-		console.log(JSON.stringify(symbols, null, 2))
+		console.log(JSON.stringify(symbols, null, 2));
 	} finally {
 		cts.dispose();
 	}

@@ -5,7 +5,7 @@
 
 import * as assert from 'assert';
 import * as path from 'path';
-import { Emitter } from 'vscode-languageserver';
+import { Emitter } from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
 import { getDocUri, ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';

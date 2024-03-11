@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CancellationToken, CancellationTokenSource } from 'vscode-languageserver';
+import { CancellationToken, CancellationTokenSource } from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
 import { getDocUri, ITextDocument } from './types/textDocument';
 import { Disposable } from './util/dispose';

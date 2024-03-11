@@ -3,8 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as path from 'path';
-import { CancellationToken } from 'vscode-languageserver';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { URI, Utils } from 'vscode-uri';
 import { LsConfiguration, PreferredMdPathExtensionStyle, isExcludedPath } from '../config';
 import { ITextDocument, getDocUri } from '../types/textDocument';
@@ -50,7 +49,7 @@ export class MdFileRenameProvider extends Disposable {
 		this.#referencesProvider = referencesProvider;
 	}
 
-	async getRenameFilesInWorkspaceEdit(edits: readonly FileRename[], token: CancellationToken): Promise<FileRenameResponse | undefined> {
+	async getRenameFilesInWorkspaceEdit(edits: readonly FileRename[], token: lsp.CancellationToken): Promise<FileRenameResponse | undefined> {
 		const builder = new WorkspaceEditBuilder();
 		const participatingRenames: FileRename[] = [];
 
@@ -72,7 +71,7 @@ export class MdFileRenameProvider extends Disposable {
 		return { participatingRenames, edit: builder.getEdit() };
 	}
 
-	async #addSingleFileRenameEdits(edit: FileRename, allEdits: readonly FileRename[], builder: WorkspaceEditBuilder, token: CancellationToken): Promise<boolean> {
+	async #addSingleFileRenameEdits(edit: FileRename, allEdits: readonly FileRename[], builder: WorkspaceEditBuilder, token: lsp.CancellationToken): Promise<boolean> {
 		let didParticipate = false;
 
 		// Update all references to the file
@@ -92,7 +91,7 @@ export class MdFileRenameProvider extends Disposable {
 		return didParticipate;
 	}
 
-	async #addDirectoryRenameEdits(edit: FileRename, builder: WorkspaceEditBuilder, token: CancellationToken): Promise<boolean> {
+	async #addDirectoryRenameEdits(edit: FileRename, builder: WorkspaceEditBuilder, token: lsp.CancellationToken): Promise<boolean> {
 		// First update every link that points to something in the moved dir
 		const allLinksInWorkspace = await this.#linkCache.entries();
 		if (token.isCancellationRequested) {
@@ -217,7 +216,7 @@ export class MdFileRenameProvider extends Disposable {
 	/**
 	 * Update links across the workspace for the new file name
 	 */
-	async #addEditsForReferencesToFile(edit: FileRename, builder: WorkspaceEditBuilder, token: CancellationToken): Promise<boolean> {
+	async #addEditsForReferencesToFile(edit: FileRename, builder: WorkspaceEditBuilder, token: lsp.CancellationToken): Promise<boolean> {
 		if (isExcludedPath(this.#config, edit.newUri)) {
 			return false;
 		}

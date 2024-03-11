@@ -5,8 +5,7 @@
 
 import * as assert from 'assert';
 import * as os from 'os';
-import * as lsp from 'vscode-languageserver-types';
-import { Position, Range } from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import * as URI from 'vscode-uri';
 import { DiagnosticLevel, DiagnosticOptions } from '../languageFeatures/diagnostics';
 import { DisposableStore } from '../util/dispose';
@@ -20,7 +19,7 @@ export function workspacePath(...segments: string[]): URI.URI {
 	return URI.Utils.joinPath(workspaceRoot, ...segments);
 }
 
-export function assertRangeEqual(expected: Range, actual: Range, message?: string) {
+export function assertRangeEqual(expected: lsp.Range, actual: lsp.Range, message?: string) {
 	assert.strictEqual(expected.start.line, actual.start.line, `${message || ''}. Range start line not equal`);
 	assert.strictEqual(expected.start.character, actual.start.character, `${message || ''}. Range start character not equal`);
 	assert.strictEqual(expected.end.line, actual.end.line, `${message || ''}. Range end line not equal`);
@@ -40,8 +39,8 @@ export function withStore<R>(fn: (this: Mocha.Context, store: DisposableStore) =
 
 export const CURSOR = '$$CURSOR$$';
 
-export function getCursorPositions(contents: string, doc: InMemoryDocument): Position[] {
-	const positions: Position[] = [];
+export function getCursorPositions(contents: string, doc: InMemoryDocument): lsp.Position[] {
+	const positions: lsp.Position[] = [];
 	let index = 0;
 	let wordLength = 0;
 	while (index !== -1) {

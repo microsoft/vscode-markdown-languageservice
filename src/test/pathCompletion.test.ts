@@ -4,8 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import * as ls from 'vscode-languageserver';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration, LsConfiguration, PreferredMdPathExtensionStyle } from '../config';
 import { MdLinkProvider } from '../languageFeatures/documentLinks';
@@ -32,7 +31,7 @@ async function getCompletionsAtCursor(store: DisposableStore, doc: InMemoryDocum
 
 	const completions = await provider.provideCompletionItems(doc, cursorPositions[0], {
 		triggerCharacter: undefined,
-		triggerKind: ls.CompletionTriggerKind.Invoked,
+		triggerKind: lsp.CompletionTriggerKind.Invoked,
 		...context
 	}, noopToken);
 

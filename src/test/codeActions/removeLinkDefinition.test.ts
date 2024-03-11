@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as assert from 'assert';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { getLsConfiguration } from '../../config';
 import { MdRemoveLinkDefinitionCodeActionProvider } from '../../languageFeatures/codeActions/removeLinkDefinition';
 import { DiagnosticComputer } from '../../languageFeatures/diagnostics';
@@ -170,5 +170,3 @@ suite('Remove link definition code action', () => {
 		));
 	}));
 });
-
-

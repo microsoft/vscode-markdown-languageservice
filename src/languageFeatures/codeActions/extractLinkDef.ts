@@ -4,8 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import { CancellationToken } from 'vscode-languageserver';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { comparePosition, translatePosition } from '../../types/position';
 import { makeRange, rangeIntersects } from '../../types/range';
 import { getDocUri, getLine, ITextDocument } from '../../types/textDocument';
@@ -42,7 +41,7 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 		this.#linkProvider = linkProvider;
 	}
 
-	async getActions(doc: ITextDocument, range: lsp.Range, context: lsp.CodeActionContext, token: CancellationToken): Promise<lsp.CodeAction[]> {
+	async getActions(doc: ITextDocument, range: lsp.Range, context: lsp.CodeActionContext, token: lsp.CancellationToken): Promise<lsp.CodeAction[]> {
 		if (!this.#isEnabled(context)) {
 			return [];
 		}

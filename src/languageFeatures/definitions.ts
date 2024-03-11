@@ -2,8 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { CancellationToken } from 'vscode-languageserver';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { LsConfiguration } from '../config';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { rangeContains } from '../types/range';
@@ -31,7 +30,7 @@ export class MdDefinitionProvider {
 		this.#linkCache = linkCache;
 	}
 
-	async provideDefinition(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<lsp.Definition | undefined> {
+	async provideDefinition(document: ITextDocument, position: lsp.Position, token: lsp.CancellationToken): Promise<lsp.Definition | undefined> {
 		const toc = await this.#tocProvider.getForDocument(document);
 		if (token.isCancellationRequested) {
 			return [];
@@ -45,7 +44,7 @@ export class MdDefinitionProvider {
 		return this.#getDefinitionOfLinkAtPosition(document, position, token);
 	}
 
-	async #getDefinitionOfLinkAtPosition(document: ITextDocument, position: lsp.Position, token: CancellationToken): Promise<lsp.Definition | undefined> {
+	async #getDefinitionOfLinkAtPosition(document: ITextDocument, position: lsp.Position, token: lsp.CancellationToken): Promise<lsp.Definition | undefined> {
 		const docLinks = (await this.#linkCache.getForDocs([document]))[0];
 
 		for (const link of docLinks) {
@@ -60,7 +59,7 @@ export class MdDefinitionProvider {
 		return undefined;
 	}
 
-	async #getDefinitionOfLink(sourceLink: MdLink, allLinksInFile: readonly MdLink[], token: CancellationToken): Promise<lsp.Definition | undefined> {
+	async #getDefinitionOfLink(sourceLink: MdLink, allLinksInFile: readonly MdLink[], token: lsp.CancellationToken): Promise<lsp.Definition | undefined> {
 		if (sourceLink.href.kind === HrefKind.Reference) {
 			return this.#getDefinitionOfRef(sourceLink.href.ref, allLinksInFile);
 		}

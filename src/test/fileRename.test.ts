@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
 import { getLsConfiguration, LsConfiguration, PreferredMdPathExtensionStyle } from '../config';
 import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks';

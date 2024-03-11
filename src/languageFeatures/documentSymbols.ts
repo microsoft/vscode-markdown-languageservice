@@ -3,8 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CancellationToken } from 'vscode-languageserver';
-import * as lsp from 'vscode-languageserver-types';
+import * as lsp from 'vscode-languageserver-protocol';
 import { ILogger, LogLevel } from '../logging';
 import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOfContents';
 import { isBefore } from '../types/position';
@@ -39,7 +38,7 @@ export class MdDocumentSymbolProvider {
 		this.#logger = logger;
 	}
 
-	public async provideDocumentSymbols(document: ITextDocument, options: ProvideDocumentSymbolOptions, token: CancellationToken): Promise<lsp.DocumentSymbol[]> {
+	public async provideDocumentSymbols(document: ITextDocument, options: ProvideDocumentSymbolOptions, token: lsp.CancellationToken): Promise<lsp.DocumentSymbol[]> {
 		this.#logger.log(LogLevel.Debug, 'DocumentSymbolProvider.provideDocumentSymbols', { document: document.uri, version: document.version });
 
 		const linkSymbols = await (options.includeLinkDefinitions ? this.#provideLinkDefinitionSymbols(document, token) : []);
@@ -69,7 +68,7 @@ export class MdDocumentSymbolProvider {
 		return root.children;
 	}
 
-	async #provideLinkDefinitionSymbols(document: ITextDocument, token: CancellationToken): Promise<lsp.DocumentSymbol[]> {
+	async #provideLinkDefinitionSymbols(document: ITextDocument, token: lsp.CancellationToken): Promise<lsp.DocumentSymbol[]> {
 		const { links } = await this.#linkProvider.getLinks(document);
 		if (token.isCancellationRequested) {
 			return [];

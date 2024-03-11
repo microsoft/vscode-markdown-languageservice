@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0-alpha.1 — March 11, 2024
+- Fix lsp type references. Thanks @remcohaszing!
+- Fix extracting of auto links.
+
 ## 0.4.0 — January 24, 2024
 Highlights of previous alpha releases:
 

@@ -4,15 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Position, Range } from 'vscode-languageserver-protocol';
-import { arePositionsEqual, isBefore, isPosition } from './position';
-
-export function isRange(thing: any): thing is Range {
-	if (!thing) {
-		return false;
-	}
-	return isPosition((<Range>thing).start)
-		&& isPosition((<Range>thing.end));
-}
+import { arePositionsEqual, isBefore } from './position';
 
 export function makeRange(startLine: number, startCharacter: number, endLine: number, endCharacter: number): Range;
 export function makeRange(start: Position, end: Position): Range;
@@ -38,7 +30,7 @@ export function modifyRange(range: Range, start?: Position, end?: Position): Ran
 }
 
 export function rangeContains(range: Range, other: Position | Range): boolean {
-	if (isRange(other)) {
+	if (Range.is(other)) {
 		return rangeContains(range, other.start) && rangeContains(range, other.end);
 	}
 	return !isBefore(other, range.start) && !isBefore(range.end, other);

@@ -9,7 +9,7 @@ import { comparePosition, translatePosition } from '../../types/position';
 import { makeRange, rangeIntersects } from '../../types/range';
 import { getDocUri, getLine, ITextDocument } from '../../types/textDocument';
 import { WorkspaceEditBuilder } from '../../util/editBuilder';
-import { ExternalHref, HrefKind, InternalHref, LinkDefinitionSet, MdDocumentLinksInfo, MdInlineLink, MdLink, MdLinkDefinition, MdLinkKind, MdLinkProvider } from '../documentLinks';
+import { ExternalHref, HrefKind, InternalHref, LinkDefinitionSet, MdAutoLink, MdDocumentLinksInfo, MdInlineLink, MdLink, MdLinkDefinition, MdLinkKind, MdLinkProvider } from '../documentLinks';
 import { getExistingDefinitionBlock } from '../organizeLinkDefs';
 import { codeActionKindContains } from './util';
 
@@ -84,8 +84,11 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 
 		// Rewrite all inline occurrences of the link
 		for (const link of linkInfo.links) {
-			if (link.kind === MdLinkKind.Link && this.#matchesHref(targetLink.href, link)) {
-				builder.replace(resource, link.source.targetRange, `[${placeholder}]`);
+			if (link.kind === MdLinkKind.Link || link.kind === MdLinkKind.AutoLink) {
+				if (this.#matchesHref(targetLink.href, link)) {
+					const targetRange = link.kind === MdLinkKind.AutoLink ? link.source.range : link.source.targetRange;
+					builder.replace(resource, targetRange, `[${placeholder}]`);
+				}
 			}
 		}
 
@@ -113,10 +116,12 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 		};
 	}
 
-	#getLinkTargetText(doc: ITextDocument, link: MdInlineLink) {
-		const afterHrefRange = makeRange(
-			translatePosition(link.source.targetRange.start, { characterDelta: 1 }),
-			translatePosition(link.source.targetRange.end, { characterDelta: -1 }));
+	#getLinkTargetText(doc: ITextDocument, link: MdInlineLink | MdAutoLink) {
+		const afterHrefRange = link.kind === MdLinkKind.AutoLink
+			? link.source.targetRange
+			: makeRange(
+				translatePosition(link.source.targetRange.start, { characterDelta: 1 }),
+				translatePosition(link.source.targetRange.end, { characterDelta: -1 }));
 		return doc.getText(afterHrefRange);
 	}
 

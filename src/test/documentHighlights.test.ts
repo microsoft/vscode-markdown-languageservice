@@ -270,4 +270,27 @@ suite('Document highlights', () => {
 			assertHighlightsEqual(highlights, ...expected);
 		}
 	}));
+
+	test('Should highlight auto links', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`text [link](http://example.com)`,
+			`text <http://example.com>`,
+
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const expected = [
+			{ range: makeRange(0, 12, 0, 30) },
+			{ range: makeRange(1, 6, 1, 24) },
+		];
+
+		{
+			const highlights = await getDocumentHighlights(store, doc, { line: 0, character: 20 }, workspace);
+			assertHighlightsEqual(highlights, ...expected);
+		}
+		{
+			const highlights = await getDocumentHighlights(store, doc, { line: 1, character: 20 }, workspace);
+			assertHighlightsEqual(highlights, ...expected);
+		}
+	}));
 });

@@ -147,8 +147,12 @@ export interface MdLinkSource {
 }
 
 export enum MdLinkKind {
+	/** Standard Markdown link syntax: `[text][ref]` or `[text](http://example.com)` */
 	Link = 1,
+	/** Link definition: `[def]: http://example.com` */
 	Definition = 2,
+	/** Auto link: `<http://example.com>` */
+	AutoLink = 3,
 }
 
 export interface MdInlineLink<HrefType = LinkHref> {
@@ -167,7 +171,13 @@ export interface MdLinkDefinition {
 	readonly href: ExternalHref | InternalHref;
 }
 
-export type MdLink = MdInlineLink | MdLinkDefinition;
+export interface MdAutoLink {
+	readonly kind: MdLinkKind.AutoLink;
+	readonly source: MdLinkSource;
+	readonly href: ExternalHref
+}
+
+export type MdLink = MdInlineLink | MdLinkDefinition | MdAutoLink;
 
 function createHref(
 	sourceDocUri: URI,
@@ -497,7 +507,7 @@ export class MdLinkComputer {
 
 			const link = match[1];
 			const linkTarget = createHref(docUri, link, this.#workspace);
-			if (!linkTarget) {
+			if (linkTarget?.kind !== HrefKind.External) {
 				continue;
 			}
 
@@ -506,10 +516,10 @@ export class MdLinkComputer {
 			const hrefEnd = translatePosition(hrefStart, { characterDelta: link.length });
 			const hrefRange = { start: hrefStart, end: hrefEnd };
 			yield {
-				kind: MdLinkKind.Link,
+				kind: MdLinkKind.AutoLink,
 				href: linkTarget,
 				source: {
-					isAngleBracketLink: true,
+					isAngleBracketLink: false,
 					hrefText: link,
 					resource: docUri,
 					targetRange: hrefRange,

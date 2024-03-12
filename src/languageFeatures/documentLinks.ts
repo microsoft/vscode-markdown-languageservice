@@ -685,11 +685,9 @@ export class MdLinkComputer {
 		}
 	}
 
-	static #toAttrEntry(attr: string) {
+	static readonly #linkAttrsByTag = new Map(Array.from(htmlTagPathAttrs.entries(), ([key, value]) => [key, value.map(attr => {
 		return { attr, regexp: new RegExp(`(${attr}=["'])([^'"]*)["']`, 'i') };
-	}
-
-	static readonly #linkAttrsByTag = new Map(Array.from(htmlTagPathAttrs.entries(), ([key, value]) => [key, value.map(MdLinkComputer.#toAttrEntry)]));
+	})]));
 
 	*#getHtmlLinksFromNode(document: ITextDocument, node: HTMLElement, noLinkRanges: NoLinkRanges): Iterable<MdLink> {
 		const attrs = MdLinkComputer.#linkAttrsByTag.get(node.tagName);

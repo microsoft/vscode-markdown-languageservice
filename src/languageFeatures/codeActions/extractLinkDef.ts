@@ -20,16 +20,16 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 	static #kind = lsp.CodeActionKind.RefactorExtract + '.linkDefinition';
 
 	public static readonly notOnLinkAction: lsp.CodeAction = {
-		title: MdExtractLinkDefinitionCodeActionProvider.genericTitle,
-		kind: MdExtractLinkDefinitionCodeActionProvider.#kind,
+		title: this.genericTitle,
+		kind: this.#kind,
 		disabled: {
 			reason: l10n.t('Not on link'),
 		}
 	};
 
 	public static readonly alreadyRefLinkAction: lsp.CodeAction = {
-		title: MdExtractLinkDefinitionCodeActionProvider.genericTitle,
-		kind: MdExtractLinkDefinitionCodeActionProvider.#kind,
+		title: this.genericTitle,
+		kind: this.#kind,
 		disabled: {
 			reason: l10n.t('Link is already a reference'),
 		}

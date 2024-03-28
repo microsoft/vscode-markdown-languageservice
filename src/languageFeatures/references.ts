@@ -151,7 +151,7 @@ export class MdReferencesProvider extends Disposable {
 		for (const link of links) {
 			if (link.href.kind === HrefKind.Internal
 				&& looksLikeLinkToResource(this.#configuration, link.href, getDocUri(document))
-				&& this.#parser.slugifier.fromHeading(link.href.fragment).value === header.slug.value
+				&& this.#parser.slugifier.fromFragment(link.href.fragment).equals(header.slug)
 			) {
 				references.push({
 					kind: MdReferenceKind.Link,
@@ -228,7 +228,7 @@ export class MdReferencesProvider extends Disposable {
 
 		if (resolvedResource && this.#isMarkdownPath(resolvedResource) && sourceLink.href.fragment && sourceLink.source.fragmentRange && rangeContains(sourceLink.source.fragmentRange, triggerPosition)) {
 			const toc = await this.#tocProvider.get(resolvedResource);
-			const entry = toc.lookup(sourceLink.href.fragment);
+			const entry = toc?.lookup(sourceLink.href.fragment);
 			if (entry) {
 				references.push({
 					kind: MdReferenceKind.Header,

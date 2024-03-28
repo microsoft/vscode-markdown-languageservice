@@ -9,11 +9,11 @@ import { MdRemoveLinkDefinitionCodeActionProvider } from '../../languageFeatures
 import { DiagnosticComputer } from '../../languageFeatures/diagnostics';
 import { MdLinkProvider } from '../../languageFeatures/documentLinks';
 import { MdTableOfContentsProvider } from '../../tableOfContents';
+import { InMemoryDocument } from '../../types/inMemoryDocument';
 import { makeRange } from '../../types/range';
 import { noopToken } from '../../util/cancellation';
 import { DisposableStore } from '../../util/dispose';
 import { createNewMarkdownEngine } from '../engine';
-import { InMemoryDocument } from '../inMemoryDocument';
 import { InMemoryWorkspace } from '../inMemoryWorkspace';
 import { nulLogger } from '../nulLogging';
 import { applyActionEdit, defaultDiagnosticsOptions, joinLines, withStore, workspacePath } from '../util';

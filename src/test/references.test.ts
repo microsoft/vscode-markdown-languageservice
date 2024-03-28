@@ -10,12 +10,12 @@ import { getLsConfiguration } from '../config';
 import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks';
 import { MdReferencesProvider } from '../languageFeatures/references';
 import { MdTableOfContentsProvider } from '../tableOfContents';
+import { InMemoryDocument } from '../types/inMemoryDocument';
 import { comparePosition } from '../types/position';
 import { noopToken } from '../util/cancellation';
 import { DisposableStore } from '../util/dispose';
 import { IWorkspace } from '../workspace';
 import { createNewMarkdownEngine } from './engine';
-import { InMemoryDocument } from './inMemoryDocument';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
 import { joinLines, withStore, workspacePath, workspaceRoot } from './util';
@@ -682,6 +682,60 @@ suite('References', () => {
 			{
 				const refs = await getReferences(store, subDoc, { line: 0, character: 10 }, workspace);
 				assert.strictEqual(refs?.length, 2);
+			}
+		}));
+
+		test('Should find references to repeated headers', withStore(async (store) => {
+			const docUri = workspacePath('doc.md');
+			const other1Uri = workspacePath('other.md');
+
+			const doc = new InMemoryDocument(docUri, joinLines(
+				`# header`,
+				`# header`,
+				`[h1](#header)`,
+				`[h2](#header-1)`,
+			));
+
+			const otherDoc = new InMemoryDocument(other1Uri, joinLines(
+				`[h1](./doc#header)`,
+				`[h2](./doc#header-1)`
+			));
+			const workspace = store.add(new InMemoryWorkspace([
+				doc,
+				otherDoc,
+			]));
+
+			{
+				const firstHeaderLocations = [
+					{ uri: docUri, line: 0 },
+					{ uri: docUri, line: 2 },
+					{ uri: other1Uri, line: 0 },
+				];
+
+				// Trigger h1
+				assertReferencesEqual(await getReferences(store, doc, { line: 0, character: 10 }, workspace), ...firstHeaderLocations);
+
+				// Trigger doc link to h1
+				assertReferencesEqual(await getReferences(store, doc, { line: 2, character: 10 }, workspace), ...firstHeaderLocations);
+
+				// Trigger other link to h1
+				assertReferencesEqual(await getReferences(store, otherDoc, { line: 0, character: 12 }, workspace), ...firstHeaderLocations);
+			}
+			{
+				const secondHeaderLocations = [
+					{ uri: docUri, line: 1 },
+					{ uri: docUri, line: 3 },
+					{ uri: other1Uri, line: 1 },
+				];
+
+				// Trigger h2
+				assertReferencesEqual(await getReferences(store, doc, { line: 1, character: 10 }, workspace), ...secondHeaderLocations);
+
+				// Trigger doc link to h2
+				assertReferencesEqual(await getReferences(store, doc, { line: 3, character: 10 }, workspace), ...secondHeaderLocations);
+
+				// Trigger other link to h2
+				assertReferencesEqual(await getReferences(store, otherDoc, { line: 1, character: 12 }, workspace), ...secondHeaderLocations);
 			}
 		}));
 	});

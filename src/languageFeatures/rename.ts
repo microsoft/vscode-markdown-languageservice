@@ -8,7 +8,10 @@ import * as lsp from 'vscode-languageserver-protocol';
 import { URI, Utils } from 'vscode-uri';
 import { LsConfiguration, defaultMarkdownFileExtension } from '../config';
 import { ILogger, LogLevel } from '../logging';
+import { IMdParser } from '../parser';
 import { ISlugifier } from '../slugify';
+import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOfContents';
+import { InMemoryDocument } from '../types/inMemoryDocument';
 import { arePositionsEqual, translatePosition } from '../types/position';
 import { makeRange, modifyRange, rangeContains } from '../types/range';
 import { ITextDocument, getDocUri } from '../types/textDocument';
@@ -47,14 +50,18 @@ export class MdRenameProvider extends Disposable {
 
 	readonly #configuration: LsConfiguration;
 	readonly #workspace: IWorkspace;
+	readonly #parser: IMdParser;
 	readonly #referencesProvider: MdReferencesProvider;
+	readonly #tableOfContentProvider: MdTableOfContentsProvider;
 	readonly #slugifier: ISlugifier;
 	readonly #logger: ILogger;
 
 	public constructor(
 		configuration: LsConfiguration,
 		workspace: IWorkspace,
+		parser: IMdParser,
 		referencesProvider: MdReferencesProvider,
+		tableOfContentProvider: MdTableOfContentsProvider,
 		slugifier: ISlugifier,
 		logger: ILogger,
 	) {
@@ -62,7 +69,9 @@ export class MdRenameProvider extends Disposable {
 
 		this.#configuration = configuration;
 		this.#workspace = workspace;
+		this.#parser = parser;
 		this.#referencesProvider = referencesProvider;
+		this.#tableOfContentProvider = tableOfContentProvider;
 		this.#slugifier = slugifier;
 		this.#logger = logger;
 	}
@@ -136,7 +145,7 @@ export class MdRenameProvider extends Disposable {
 		} else if (triggerRef.kind === MdReferenceKind.Link && triggerRef.link.href.kind === HrefKind.External) {
 			return this.#renameExternalLink(allRefsInfo, newName);
 		} else if (triggerRef.kind === MdReferenceKind.Header || (triggerRef.kind === MdReferenceKind.Link && triggerRef.link.source.fragmentRange && rangeContains(triggerRef.link.source.fragmentRange, position) && (triggerRef.link.kind === MdLinkKind.Definition || triggerRef.link.kind === MdLinkKind.Link && triggerRef.link.href.kind === HrefKind.Internal))) {
-			return this.#renameFragment(allRefsInfo, newName);
+			return this.#renameFragment(allRefsInfo, newName, token);
 		} else if (triggerRef.kind === MdReferenceKind.Link && !(triggerRef.link.source.fragmentRange && rangeContains(triggerRef.link.source.fragmentRange, position)) && (triggerRef.link.kind === MdLinkKind.Link || triggerRef.link.kind === MdLinkKind.Definition) && triggerRef.link.href.kind === HrefKind.Internal) {
 			return this.#renameFilePath(triggerRef.link.source.resource, triggerRef.link.href, allRefsInfo, newName, token);
 		}
@@ -191,18 +200,87 @@ export class MdRenameProvider extends Disposable {
 		return getLinkRenameEdit(ref.link, newLinkText ?? newName);
 	}
 
-	#renameFragment(allRefsInfo: MdReferencesResponse, newName: string): lsp.WorkspaceEdit {
-		const slug = this.#slugifier.fromHeading(newName).value;
-
+	async #renameFragment(allRefsInfo: MdReferencesResponse, newHeaderText: string, token: lsp.CancellationToken): Promise<lsp.WorkspaceEdit | undefined> {
 		const builder = new WorkspaceEditBuilder();
+		let newSlug = this.#slugifier.fromHeading(newHeaderText);
+
+		const existingHeader = allRefsInfo.references.find(x => x.kind === MdReferenceKind.Header);
+		if (existingHeader) {
+			// If there's a real header we're renaming, we need to handle cases where there are duplicate header ids.
+			// There are two cases of this to consider:
+			//
+			// - The new name duplicates an existing header. In this case, we need to use the unique slug of the new header
+			// but also potentially update links to the other duplicated headers. 
+			//
+			// - The old header was duplicated. This may result in links to other instances of the duplicated headers changing
+			//
+			// In both cases, there could be a cascading effect where multiple headers/links are updated.
+			// For instance:
+			//
+			// ``
+			// # Header
+			// # Header <- rename here
+			// # Header
+			// ```
+			//
+			// In this case we need to rename the third header as well plus all reference to it.
+			const doc = await this.#workspace.openMarkdownDocument(URI.parse(existingHeader.location.uri));
+			if (token.isCancellationRequested) {
+				return;
+			}
+
+			if (doc) {
+				const editedDoc = new InMemoryDocument(URI.parse(existingHeader.location.uri), doc.getText());
+				editedDoc.updateContent(editedDoc.applyEdits([lsp.TextEdit.replace(existingHeader.location.range, '# ' + newHeaderText)]));
+
+				const [oldToc, newToc] = await Promise.all([
+					this.#tableOfContentProvider.getForDocument(doc),
+					TableOfContents.create(this.#parser, editedDoc, token) // Don't use cache for new temp doc
+				]);
+				if (token.isCancellationRequested) {
+					return;
+				}
+
+				const changedHeaders: TocEntry[] = [];
+				oldToc.entries.forEach((oldEntry, index) => {
+					const newEntry = newToc.entries[index];
+					if (!newEntry) {
+						return;
+					}
+
+					if (oldEntry.headerLocation.range.start.line === existingHeader.location.range.start.line) {
+						newSlug = newEntry.slug; // Take the new slug from the edited document
+						return;
+					}
+
+					if (newEntry && !oldEntry.slug.equals(newEntry.slug)) {
+						changedHeaders.push(newEntry);
+					}
+				});
+
+				for (const changedHeader of changedHeaders) {
+					const refs = await this.#getAllReferences(doc, changedHeader.headerLocation.range.start, token);
+					if (token.isCancellationRequested) {
+						return;
+					}
+
+					for (const ref of refs?.references ?? []) {
+						if (ref.kind === MdReferenceKind.Link) {
+							builder.replace(ref.link.source.resource, ref.link.source.fragmentRange ?? ref.location.range, changedHeader.slug.value);
+						}
+					}
+				}
+			}
+		}
+
 		for (const ref of allRefsInfo.references) {
 			switch (ref.kind) {
 				case MdReferenceKind.Header:
-					builder.replace(URI.parse(ref.location.uri), ref.headerTextLocation.range, newName);
+					builder.replace(URI.parse(ref.location.uri), ref.headerTextLocation.range, newHeaderText);
 					break;
 
 				case MdReferenceKind.Link:
-					builder.replace(ref.link.source.resource, ref.link.source.fragmentRange ?? ref.location.range, !ref.link.source.fragmentRange || ref.link.href.kind === HrefKind.External ? newName : slug);
+					builder.replace(ref.link.source.resource, ref.link.source.fragmentRange ?? ref.location.range, !ref.link.source.fragmentRange || ref.link.href.kind === HrefKind.External ? newHeaderText : newSlug.value);
 					break;
 			}
 		}

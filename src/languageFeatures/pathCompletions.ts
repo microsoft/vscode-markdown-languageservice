@@ -15,13 +15,13 @@ import { translatePosition } from '../types/position';
 import { makeRange } from '../types/range';
 import { ITextDocument, getDocUri, getLine } from '../types/textDocument';
 import { looksLikeMarkdownFilePath } from '../util/file';
+import { escapeForAngleBracketLink, hasBalancedParens } from '../util/mdLinks';
 import { computeRelativePath } from '../util/path';
 import { Schemes } from '../util/schemes';
 import { r } from '../util/string';
 import { FileStat, IWorkspace, getWorkspaceFolder, openLinkToMarkdownFile } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
 import { MdLinkProvider, htmlTagPathAttrs } from './documentLinks';
-import { escapeForAngleBracketLink, hasBalancedParens } from '../util/mdLinks';
 
 enum CompletionContextKind {
 	/** `[...](|)` */

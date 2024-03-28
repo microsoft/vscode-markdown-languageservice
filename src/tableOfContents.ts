@@ -7,7 +7,7 @@ import * as lsp from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
 import { ILogger, LogLevel } from './logging';
 import { IMdParser, Token } from './parser';
-import { githubSlugifier, ISlugifier, Slug } from './slugify';
+import { ISlug, ISlugifier } from './slugify';
 import { makeRange } from './types/range';
 import { getDocUri, getLine, ITextDocument } from './types/textDocument';
 import { Disposable } from './util/dispose';
@@ -15,7 +15,7 @@ import { IWorkspace } from './workspace';
 import { MdDocumentInfoCache } from './workspaceCache';
 
 export interface TocEntry {
-	readonly slug: Slug;
+	readonly slug: ISlug;
 	readonly text: string;
 	readonly level: number;
 	readonly line: number;
@@ -96,7 +96,7 @@ export class TableOfContents {
 			return [];
 		}
 
-		const existingSlugEntries = new Map<string, { count: number }>();
+		const slugBuilder = parser.slugifier.createBuilder();
 
 		type HeaderInfo = { open: Token; body: Token[] };
 
@@ -129,15 +129,7 @@ export class TableOfContents {
 			const lineNumber = open.map[0];
 			const line = getLine(document, lineNumber);
 			const bodyText = TableOfContents.#getHeaderTitleAsPlainText(body);
-
-			let slug = parser.slugifier.fromHeading(bodyText);
-			const existingSlugEntry = existingSlugEntries.get(slug.value);
-			if (existingSlugEntry) {
-				++existingSlugEntry.count;
-				slug = parser.slugifier.fromHeading(slug.value + '-' + existingSlugEntry.count);
-			} else {
-				existingSlugEntries.set(slug.value, { count: 0 });
-			}
+			const slug = slugBuilder.add(bodyText);
 
 			const headerLocation: lsp.Location = {
 				uri: docUri.toString(),
@@ -214,8 +206,6 @@ export class TableOfContents {
 			.trim();
 	}
 
-	public static readonly empty = new TableOfContents([], githubSlugifier);
-
 	readonly #slugifier: ISlugifier;
 
 	private constructor(
@@ -257,8 +247,8 @@ export class MdTableOfContentsProvider extends Disposable {
 		}));
 	}
 
-	public async get(resource: URI): Promise<TableOfContents> {
-		return await this.#cache.get(resource) ?? TableOfContents.empty;
+	public get(resource: URI): Promise<TableOfContents | undefined> {
+		return this.#cache.get(resource);
 	}
 
 	public getForDocument(doc: ITextDocument): Promise<TableOfContents> {

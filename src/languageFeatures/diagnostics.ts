@@ -8,6 +8,7 @@ import * as picomatch from 'picomatch';
 import * as lsp from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
 import { LsConfiguration } from '../config';
+import { ILogger, LogLevel } from '../logging';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { translatePosition } from '../types/position';
 import { modifyRange } from '../types/range';
@@ -18,7 +19,6 @@ import { Limiter } from '../util/limiter';
 import { ResourceMap } from '../util/resourceMap';
 import { FileStat, IWorkspace, IWorkspaceWithWatching, statLinkToMarkdownFile } from '../workspace';
 import { HrefKind, InternalHref, LinkDefinitionSet, MdLink, MdLinkDefinition, MdLinkKind, MdLinkProvider, MdLinkSource, parseLocationInfoFromFragment, ReferenceLinkMap } from './documentLinks';
-import { ILogger, LogLevel } from '../logging';
 
 /**
  * The severity at which diagnostics are reported
@@ -407,7 +407,7 @@ export class DiagnosticComputer {
 									continue;
 								}
 
-								if (!toc.lookup(link.fragment) && !this.#isIgnoredLink(options, link.source.pathText) && !this.#isIgnoredLink(options, link.source.hrefText)) {
+								if (!toc?.lookup(link.fragment) && !this.#isIgnoredLink(options, link.source.pathText) && !this.#isIgnoredLink(options, link.source.hrefText)) {
 									const range = (link.source.fragmentRange && modifyRange(link.source.fragmentRange, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 }), undefined)) ?? link.source.hrefRange;
 									diagnostics.push({
 										code: DiagnosticCode.link_noSuchHeaderInFile,

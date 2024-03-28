@@ -62,7 +62,7 @@ export class MdDocumentInfoCache<T> extends Disposable {
 		return this.#resetEntry(doc)?.value;
 	}
 
-	public async getForDocument(document: ITextDocument): Promise<T> {
+	public getForDocument(document: ITextDocument): Promise<T> {
 		const existing = this.#cache.get(getDocUri(document));
 		if (existing) {
 			return existing.value.value;

@@ -6,10 +6,10 @@
 import * as assert from 'assert';
 import { URI } from 'vscode-uri';
 import { TableOfContents } from '../tableOfContents';
+import { InMemoryDocument } from '../types/inMemoryDocument';
 import { ITextDocument } from '../types/textDocument';
 import { noopToken } from '../util/cancellation';
 import { createNewMarkdownEngine } from './engine';
-import { InMemoryDocument } from './inMemoryDocument';
 import { joinLines } from './util';
 
 

@@ -8,8 +8,8 @@ import * as os from 'os';
 import * as lsp from 'vscode-languageserver-protocol';
 import * as URI from 'vscode-uri';
 import { DiagnosticLevel, DiagnosticOptions } from '../languageFeatures/diagnostics';
+import { InMemoryDocument } from '../types/inMemoryDocument';
 import { DisposableStore } from '../util/dispose';
-import { InMemoryDocument } from './inMemoryDocument';
 
 export const joinLines = (...args: string[]) => args.join('\n');
 

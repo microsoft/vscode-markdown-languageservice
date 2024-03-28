@@ -12,12 +12,12 @@ import { MdReferencesProvider } from '../languageFeatures/references';
 import { MdRenameProvider } from '../languageFeatures/rename';
 import { githubSlugifier } from '../slugify';
 import { MdTableOfContentsProvider } from '../tableOfContents';
+import { InMemoryDocument } from '../types/inMemoryDocument';
 import { makeRange } from '../types/range';
 import { noopToken } from '../util/cancellation';
 import { DisposableStore } from '../util/dispose';
 import { IWorkspace } from '../workspace';
 import { createNewMarkdownEngine } from './engine';
-import { InMemoryDocument } from './inMemoryDocument';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
 import { assertRangeEqual, joinLines, withStore, workspacePath } from './util';
@@ -32,7 +32,7 @@ function prepareRename(store: DisposableStore, doc: InMemoryDocument, pos: lsp.P
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const linkCache = store.add(createWorkspaceLinkCache(engine, workspace));
 	const referenceComputer = store.add(new MdReferencesProvider(config, engine, workspace, tocProvider, linkCache, nulLogger));
-	const renameProvider = store.add(new MdRenameProvider(config, workspace, referenceComputer, githubSlugifier, nulLogger));
+	const renameProvider = store.add(new MdRenameProvider(config, workspace, engine, referenceComputer, tocProvider, githubSlugifier, nulLogger));
 	return renameProvider.prepareRename(doc, pos, noopToken);
 }
 
@@ -45,7 +45,7 @@ function getRenameEdits(store: DisposableStore, doc: InMemoryDocument, pos: lsp.
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const linkCache = store.add(createWorkspaceLinkCache(engine, workspace));
 	const referencesProvider = store.add(new MdReferencesProvider(config, engine, workspace, tocProvider, linkCache, nulLogger));
-	const renameProvider = store.add(new MdRenameProvider(config, workspace, referencesProvider, githubSlugifier, nulLogger));
+	const renameProvider = store.add(new MdRenameProvider(config, workspace, engine, referencesProvider, tocProvider, githubSlugifier, nulLogger));
 	return renameProvider.provideRenameEdits(doc, pos, newName, noopToken);
 }
 
@@ -306,6 +306,57 @@ suite('Rename', () => {
 				uri, edits: [
 					lsp.TextEdit.replace(makeRange(0, 4, 0, 9), 'New Header'),
 					lsp.TextEdit.replace(makeRange(1, 10, 1, 15), 'new-header'),
+				]
+			});
+		}));
+
+		test('Rename should add unique id when new name duplicates existing header', withStore(async (store) => {
+			const uri = workspacePath('doc.md');
+			const doc = new InMemoryDocument(uri, joinLines(
+				`# header a`,
+				`# header b`,
+				`# header a`,
+				`[h1](#header-a)`,
+				`[h1](#header-b)`,
+				`[h1](#header-a-1)`,
+			));
+
+			const workspace = store.add(new InMemoryWorkspace([doc]));
+			{
+				const edit = await getRenameEdits(store, doc, { line: 1, character: 0 }, 'header a', workspace);
+				assertEditsEqual(edit!, {
+					uri, edits: [
+						// Update link to duplicated header after new header 
+						lsp.TextEdit.replace(makeRange(5, 6, 5, 16), 'header-a-2'),
+
+						// And the header itself
+						lsp.TextEdit.replace(makeRange(1, 2, 1, 10), 'header a'),
+						lsp.TextEdit.replace(makeRange(4, 6, 4, 14), 'header-a-1'),
+
+					]
+				});
+			}
+		}));
+
+		test('Rename should remove ids when renaming duplicated header to new name', withStore(async (store) => {
+			const uri = workspacePath('doc.md');
+			const doc = new InMemoryDocument(uri, joinLines(
+				`# header`,
+				`# header`,
+				`[h1](#header)`,
+				`[h1](#header-1)`
+			));
+
+			const workspace = store.add(new InMemoryWorkspace([doc]));
+			const edit = await getRenameEdits(store, doc, { line: 0, character: 0 }, 'New Header', workspace);
+			assertEditsEqual(edit!, {
+				uri, edits: [
+					// Update previously duplicated header
+					lsp.TextEdit.replace(makeRange(3, 6, 3, 14), 'header'),
+
+					// And main header
+					lsp.TextEdit.replace(makeRange(0, 2, 0, 8), 'New Header'),
+					lsp.TextEdit.replace(makeRange(2, 6, 2, 12), 'new-header'),
 				]
 			});
 		}));

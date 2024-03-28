@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0-alpha.2 — March 28, 2024
+- Fix renaming for cases where headers are duplicated.
+- Give slugifiers control over how duplicate header ids are generated instead of hardcoding.
+
 ## 0.5.0-alpha.1 — March 11, 2024
 - Fix lsp type references. Thanks @remcohaszing!
 - Fix extracting of auto links.

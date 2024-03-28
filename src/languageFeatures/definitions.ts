@@ -74,7 +74,7 @@ export class MdDefinitionProvider {
 		}
 
 		const toc = await this.#tocProvider.get(resolvedResource);
-		return toc.lookup(sourceLink.href.fragment)?.headerLocation;
+		return toc?.lookup(sourceLink.href.fragment)?.headerLocation;
 	}
 
 	#getDefinitionOfRef(ref: string, allLinksInFile: readonly MdLink[]) {

@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
+import { InMemoryDocument } from '../types/inMemoryDocument';
 import { MdDocumentInfoCache } from '../workspaceCache';
-import { InMemoryDocument } from './inMemoryDocument';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 
 import { workspacePath } from './util';

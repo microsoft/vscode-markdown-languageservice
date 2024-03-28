@@ -6,10 +6,10 @@
 import * as lsp from 'vscode-languageserver-protocol';
 import { ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
+import { fuzzyContains } from '../util/string';
 import { IWorkspace } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
 import { MdDocumentSymbolProvider } from './documentSymbols';
-import { fuzzyContains } from '../util/string';
 
 export class MdWorkspaceSymbolProvider extends Disposable {
 

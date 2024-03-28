@@ -1,7 +1,7 @@
 {
   "name": "vscode-markdown-languageservice",
   "description": "Markdown language service",
-  "version": "0.5.0-alpha.1",
+  "version": "0.5.0-alpha.2",
   "author": "Microsoft Corporation",
   "license": "MIT",
   "engines": {
@@ -19,6 +19,7 @@
     "node-html-parser": "^6.1.5",
     "picomatch": "^2.3.1",
     "vscode-languageserver-protocol": "^3.17.1",
+    "vscode-languageserver-textdocument": "^1.0.11",
     "vscode-uri": "^3.0.7"
   },
   "devDependencies": {
@@ -33,8 +34,8 @@
     "markdown-it": "^13.0.1",
     "mkdirp": "^1.0.4",
     "mocha": "^10.0.0",
-    "typescript": "^5.4.2",
-    "vscode-languageserver-textdocument": "^1.0.8"
+    "source-map-support": "^0.5.21",
+    "typescript": "^5.4.2"
   },
   "scripts": {
     "api-extractor": "mkdirp etc && npx api-extractor run --local",
@@ -42,7 +43,7 @@
     "watch": "tsc -b tsconfig.json --watch",
     "lint": "eslint \"src/**/*.ts\"",
     "prepublishOnly": "npm run compile && npm run api-extractor",
-    "test": "mocha 'out/test/**/*.test.js' --ui=tdd --timeout=2000 --exit"
+    "test": "mocha -r source-map-support/register 'out/test/**/*.test.js' --ui=tdd --timeout=2000 --exit"
   },
   "repository": {
     "type": "git",

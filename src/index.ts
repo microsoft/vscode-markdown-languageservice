@@ -16,7 +16,7 @@ import { MdDocumentSymbolProvider } from './languageFeatures/documentSymbols';
 import { FileRename, MdFileRenameProvider } from './languageFeatures/fileRename';
 import { MdFoldingProvider } from './languageFeatures/folding';
 import { MdOrganizeLinkDefinitionProvider } from './languageFeatures/organizeLinkDefs';
-import { PathCompletionOptions, MdPathCompletionProvider } from './languageFeatures/pathCompletions';
+import { MdPathCompletionProvider, PathCompletionOptions } from './languageFeatures/pathCompletions';
 import { MdReferencesProvider } from './languageFeatures/references';
 import { MdRenameProvider } from './languageFeatures/rename';
 import { MdSelectionRangeProvider } from './languageFeatures/smartSelect';
@@ -35,7 +35,7 @@ export { IncludeWorkspaceHeaderCompletions, PathCompletionOptions as MdPathCompl
 export { RenameNotSupportedAtLocationError } from './languageFeatures/rename';
 export { ILogger, LogLevel } from './logging';
 export { IMdParser, Token } from './parser';
-export { githubSlugifier, ISlugifier } from './slugify';
+export { githubSlugifier, ISlugifier, ISlug } from './slugify';
 export { ITextDocument } from './types/textDocument';
 export { ContainingDocumentContext, FileStat, FileWatcherOptions, IFileSystemWatcher, IWorkspace, IWorkspaceWithWatching } from './workspace';
 
@@ -230,7 +230,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const linkCache = createWorkspaceLinkCache(init.parser, init.workspace);
 	const referencesProvider = new MdReferencesProvider(config, init.parser, init.workspace, tocProvider, linkCache, logger);
 	const definitionsProvider = new MdDefinitionProvider(config, init.workspace, tocProvider, linkCache);
-	const renameProvider = new MdRenameProvider(config, init.workspace, referencesProvider, init.parser.slugifier, logger);
+	const renameProvider = new MdRenameProvider(config, init.workspace, init.parser, referencesProvider, tocProvider, init.parser.slugifier, logger);
 	const fileRenameProvider = new MdFileRenameProvider(config, init.workspace, linkCache, referencesProvider);
 	const diagnosticsComputer = new DiagnosticComputer(config, init.workspace, linkProvider, tocProvider, logger);
 	const docSymbolProvider = new MdDocumentSymbolProvider(tocProvider, linkProvider, logger);

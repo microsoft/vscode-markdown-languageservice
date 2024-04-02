@@ -4,14 +4,13 @@
 *--------------------------------------------------------------------------------------------*/
 import * as lsp from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
-import { IMdParser } from '../parser';
 import { InMemoryDocument } from '../types/inMemoryDocument';
+import { isBefore, isBeforeOrEqual } from '../types/position';
 import { rangeContains } from '../types/range';
 import { getDocUri, ITextDocument } from '../types/textDocument';
 import { computeRelativePath } from '../util/path';
-import { IWorkspace } from '../workspace';
 import { createAddDefinitionEdit } from './codeActions/extractLinkDef';
-import { HrefKind, LinkDefinitionSet, MdLinkComputer, MdLinkDefinition } from './documentLinks';
+import { HrefKind, LinkDefinitionSet, MdLinkDefinition, MdLinkProvider } from './documentLinks';
 
 class PasteLinksCopyMetadata {
 
@@ -35,22 +34,21 @@ class PasteLinksCopyMetadata {
 
 export class MdUpdatePastedLinksProvider {
 
-    readonly #linkComputer: MdLinkComputer;
+    readonly #linkProvider: MdLinkProvider;
 
     constructor(
-        tokenizer: IMdParser,
-        workspace: IWorkspace,
+        linkProvider: MdLinkProvider,
     ) {
-        this.#linkComputer = new MdLinkComputer(tokenizer, workspace);
+        this.#linkProvider = linkProvider;
     }
 
     async prepareDocumentPaste(document: ITextDocument, _ranges: readonly lsp.Range[], token: lsp.CancellationToken): Promise<string> {
-        const links = await this.#linkComputer.getAllLinks(document, token);
+        const linkInfo = await this.#linkProvider.getLinks(document);
         if (token.isCancellationRequested) {
             return '';
         }
 
-        const metadata = new PasteLinksCopyMetadata(getDocUri(document), new LinkDefinitionSet(links));
+        const metadata = new PasteLinksCopyMetadata(getDocUri(document), linkInfo.definitions);
         return metadata.toJSON();
     }
 
@@ -80,17 +78,16 @@ export class MdUpdatePastedLinksProvider {
         // Find the links in the pasted text by applying the paste edits to an in-memory document.
         // Use `copySource` as the doc uri to make sure links are resolved in its context
         const editedDoc = new InMemoryDocument(metadata.source, targetDocument.getText());
-        editedDoc.updateContent(editedDoc.applyEdits(sortedPastes));
+        editedDoc.replaceContents(editedDoc.previewEdits(sortedPastes));
 
-        const allLinks = await this.#linkComputer.getAllLinks(editedDoc, token);
+        const allLinks = await this.#linkProvider.getLinksWithoutCaching(editedDoc, token);
         if (token.isCancellationRequested) {
             return;
         }
 
         const pastedRanges = this.#computedPastedRanges(sortedPastes, targetDocument, editedDoc);
 
-        const currentDefinitionSet = new LinkDefinitionSet(allLinks);
-        const linksToRewrite = allLinks
+        const linksToRewrite = allLinks.links
             // We only rewrite relative links and references
             .filter(link => {
                 if (link.href.kind === HrefKind.Reference) {
@@ -119,7 +116,7 @@ export class MdUpdatePastedLinksProvider {
                 }
 
                 // If there's an existing definition with the same exact ref, we don't need to add it again
-                if (currentDefinitionSet.lookup(link.href.ref)?.source.hrefText === originalRef.source.hrefText) {
+                if (allLinks.definitions.lookup(link.href.ref)?.source.hrefText === originalRef.source.hrefText) {
                     continue;
                 }
 
@@ -136,29 +133,59 @@ export class MdUpdatePastedLinksProvider {
                     newHrefText += '#' + link.href.fragment;
                 }
 
-                 if (link.source.hrefText !== newHrefText) {
+                if (link.source.hrefText !== newHrefText) {
                     rewriteLinksEdits.push(lsp.TextEdit.replace(link.source.hrefRange, newHrefText));
                 }
             }
         }
-        
-        // Plus add an edit that inserts new definitions
-        if (newDefinitionsToAdd.length) {
-            rewriteLinksEdits.push(createAddDefinitionEdit(editedDoc, [...currentDefinitionSet], newDefinitionsToAdd.map(def => ({ placeholder: def.ref.text, definitionText: def.source.hrefText }))));
-        }
 
-        // If nothing was rewritten we can just use normal text paste.
-        if (!rewriteLinksEdits.length) {
+        // If nothing was rewritten we can just use normal text paste
+        if (!rewriteLinksEdits.length && !newDefinitionsToAdd.length) {
             return;
         }
 
-        // Generate the final edits by grabbing text from the edited document
-        const finalDoc = new InMemoryDocument(editedDoc.$uri, editedDoc.applyEdits(rewriteLinksEdits));
+        // Generate a minimal set of edits for the pastes
+        const outEdits: lsp.TextEdit[] = [];
+        const finalDoc = new InMemoryDocument(editedDoc.$uri, editedDoc.previewEdits(rewriteLinksEdits));
 
-        // TODO: generate more minimal edit
-        return [
-            lsp.TextEdit.replace(lsp.Range.create(0, 0, 100_000, 0), finalDoc.getText()),
-        ];
+        let offsetAdjustment = 0;
+        for (let i = 0; i < pastedRanges.length; ++i) {
+            const pasteRange = pastedRanges[i];
+            const originalPaste = sortedPastes[i];
+
+            // Adjust the range to account for the `rewriteLinksEdits`
+            for (
+                let edit: lsp.TextEdit | undefined;
+                (edit = rewriteLinksEdits[0]) && isBefore(edit.range.start, pasteRange.start);
+                rewriteLinksEdits.shift()
+            ) {
+                offsetAdjustment += computeEditLengthChange(edit, editedDoc);
+            }
+            const startOffset = editedDoc.offsetAt(pasteRange.start) + offsetAdjustment;
+
+            for (
+                let edit: lsp.TextEdit | undefined;
+                (edit = rewriteLinksEdits[0]) && isBeforeOrEqual(edit.range.end, pasteRange.end);
+                rewriteLinksEdits.shift()
+            ) {
+                offsetAdjustment += computeEditLengthChange(edit, editedDoc);
+            }
+            const endOffset = editedDoc.offsetAt(pasteRange.end) + offsetAdjustment;
+
+            const range = lsp.Range.create(finalDoc.positionAt(startOffset), finalDoc.positionAt(endOffset));
+            outEdits.push(lsp.TextEdit.replace(originalPaste.range, finalDoc.getText(range)));
+        }
+
+        // Add an edit that inserts new definitions
+        if (newDefinitionsToAdd.length) {
+            const targetLinks = await this.#linkProvider.getLinks(targetDocument);
+            if (token.isCancellationRequested) {
+                return;
+            }
+            outEdits.push(createAddDefinitionEdit(targetDocument, Array.from(targetLinks.definitions), newDefinitionsToAdd.map(def => ({ placeholder: def.ref.text, definitionText: def.source.hrefText }))));
+        }
+
+        return outEdits;
     }
 
     #parseMetadata(rawCopyMetadata: string): PasteLinksCopyMetadata | undefined {
@@ -186,4 +213,8 @@ export class MdUpdatePastedLinksProvider {
 
         return pastedRanges;
     }
+}
+
+function computeEditLengthChange(edit: lsp.TextEdit, editedDoc: InMemoryDocument) {
+    return edit.newText.length - (editedDoc.offsetAt(edit.range.end) - editedDoc.offsetAt(edit.range.start));
 }

@@ -42,12 +42,19 @@ export class InMemoryDocument implements ITextDocument {
 		return this.#doc.getText(range);
 	}
 
-	updateContent(newContent: string) {
+	replaceContents(newContent: string): this {
 		++this.version;
-		this.#doc = TextDocument.create(this.uri, 'markdown', this.version, newContent);
+		TextDocument.update(this.#doc, [{ text: newContent }], this.version);
+		return this;
 	}
 
-	applyEdits(textEdits: lsp.TextEdit[]): string {
+	applyEdits(textEdits: readonly lsp.TextEdit[]): this {
+		++this.version;
+		TextDocument.update(this.#doc, textEdits.map(x => ({ range: x.range, text: x.newText })), this.version);
+		return this;
+	}
+
+	previewEdits(textEdits: lsp.TextEdit[]): string {
 		return TextDocument.applyEdits(this.#doc, textEdits);
 	}
 }

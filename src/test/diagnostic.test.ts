@@ -557,7 +557,7 @@ suite('Diagnostic Manager', () => {
 		assert.strictEqual(workspace.statCallList.length, 1);
 
 		// Edit doc
-		doc1.updateContent(joinLines(
+		doc1.replaceContents(joinLines(
 			`![i](/nosuch.png)`,
 			`[ref]`,
 			`[ref]: http://example.com`

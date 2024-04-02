@@ -5,22 +5,30 @@
 
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-protocol';
-import { LsConfiguration } from '../config';
+import { getLsConfiguration, LsConfiguration } from '../config';
 import { MdUpdatePastedLinksProvider } from '../languageFeatures/updatePastedLinks';
 import { InMemoryDocument } from '../types/inMemoryDocument';
 import { noopToken } from '../util/cancellation';
 import { IWorkspace } from '../workspace';
 import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
-import { joinLines, withStore, workspacePath } from './util';
+import { DisposableStore, joinLines, withStore, workspacePath } from './util';
+import { MdLinkProvider } from '../languageFeatures/documentLinks';
+import { MdTableOfContentsProvider } from '../tableOfContents';
+import { nulLogger } from './nulLogging';
 
 
-async function applyUpdateLinksEdits(docs: { copyFrom: InMemoryDocument, pasteTo: InMemoryDocument }, edits: readonly lsp.TextEdit[], workspace: IWorkspace, _configOverrides: Partial<LsConfiguration> = {}): Promise<string | undefined> {
+async function applyUpdateLinksEdits(store: DisposableStore, docs: { copyFrom: InMemoryDocument, pasteTo: InMemoryDocument }, edits: readonly lsp.TextEdit[], workspace: IWorkspace, _configOverrides: Partial<LsConfiguration> = {}): Promise<string | undefined> {
 	const engine = createNewMarkdownEngine();
-	const rewriteProvider = new MdUpdatePastedLinksProvider(engine, workspace);
+	const config = getLsConfiguration({});
+
+	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
+	const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
+	
+	const rewriteProvider = new MdUpdatePastedLinksProvider(linkProvider);
 	const metadata = await rewriteProvider.prepareDocumentPaste(docs.copyFrom, [], noopToken);
 	const rewriteEdits = await rewriteProvider.provideDocumentPasteEdits(docs.pasteTo, edits, metadata, noopToken);
-	return rewriteEdits && docs.pasteTo.applyEdits(rewriteEdits);
+	return rewriteEdits && docs.pasteTo.previewEdits(rewriteEdits);
 }
 
 
@@ -30,7 +38,7 @@ suite('Update pasted links', () => {
 		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines());
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const resultDocText = await applyUpdateLinksEdits(
+		const resultDocText = await applyUpdateLinksEdits(store,
 			{ copyFrom: new InMemoryDocument(workspacePath('other.md'), ''), pasteTo: doc },
 			[], workspace);
 		assert.strictEqual(resultDocText, undefined);
@@ -40,7 +48,7 @@ suite('Update pasted links', () => {
 		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines());
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const resultDocText = await applyUpdateLinksEdits(
+		const resultDocText = await applyUpdateLinksEdits(store,
 			{ copyFrom: new InMemoryDocument(workspacePath('other.md'), ''), pasteTo: doc },
 			[
 				lsp.TextEdit.replace(lsp.Range.create(0, 0, 0, 0), 'file.md')
@@ -52,7 +60,7 @@ suite('Update pasted links', () => {
 		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines());
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const resultDocText = await applyUpdateLinksEdits(
+		const resultDocText = await applyUpdateLinksEdits(store,
 			{ copyFrom: new InMemoryDocument(workspacePath('other.md'), ''), pasteTo: doc },
 			[
 				lsp.TextEdit.replace(lsp.Range.create(0, 0, 0, 0), '[link](http://example.com)')
@@ -64,7 +72,7 @@ suite('Update pasted links', () => {
 		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines());
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const resultDocText = await applyUpdateLinksEdits(
+		const resultDocText = await applyUpdateLinksEdits(store,
 			{ copyFrom: new InMemoryDocument(workspacePath('other.md'), ''), pasteTo: doc },
 			[
 				lsp.TextEdit.replace(lsp.Range.create(0, 0, 0, 0), '[link](/other.md)')
@@ -76,7 +84,7 @@ suite('Update pasted links', () => {
 		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines());
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const resultDocText = await applyUpdateLinksEdits(
+		const resultDocText = await applyUpdateLinksEdits(store,
 			{ copyFrom: new InMemoryDocument(workspacePath('sub/other.md'), ''), pasteTo: doc },
 			[
 				lsp.TextEdit.replace(lsp.Range.create(0, 0, 0, 0), '![](img.png "title")'),
@@ -89,7 +97,7 @@ suite('Update pasted links', () => {
 		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines());
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const resultDocText = await applyUpdateLinksEdits(
+		const resultDocText = await applyUpdateLinksEdits(store,
 			{ copyFrom: new InMemoryDocument(workspacePath('other.md'), ''), pasteTo: doc },
 			[
 				// Pasted relative link can be used both in original and pasted locations
@@ -107,7 +115,7 @@ suite('Update pasted links', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const resultDocText = await applyUpdateLinksEdits(
+		const resultDocText = await applyUpdateLinksEdits(store,
 			{ copyFrom: new InMemoryDocument(workspacePath('sub/other.md'), ''), pasteTo: doc },
 			[
 				lsp.TextEdit.replace(lsp.Range.create(1, 0, 1, 3), '![](img.png "title")'),
@@ -123,7 +131,7 @@ suite('Update pasted links', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const resultDocText = await applyUpdateLinksEdits(
+		const resultDocText = await applyUpdateLinksEdits(store,
 			{ copyFrom: new InMemoryDocument(workspacePath('sub/other.md'), ''), pasteTo: doc },
 			[
 				lsp.TextEdit.replace(lsp.Range.create(0, 0, 0, 3), '![](img.png "title") ![alt](../img2.png)'),
@@ -144,7 +152,7 @@ suite('Update pasted links', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const resultDocText = await applyUpdateLinksEdits(
+		const resultDocText = await applyUpdateLinksEdits(store,
 			{ copyFrom: new InMemoryDocument(workspacePath('sub/other.md'), ''), pasteTo: doc },
 			[
 				lsp.TextEdit.replace(lsp.Range.create(0, 0, 0, 3), '![](img.png "title") ![alt](../img2.png)'),
@@ -166,7 +174,7 @@ suite('Update pasted links', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const resultDocText = await applyUpdateLinksEdits(
+		const resultDocText = await applyUpdateLinksEdits(store,
 			{ copyFrom: new InMemoryDocument(workspacePath('sub/other.md'), ''), pasteTo: doc },
 			[
 				lsp.TextEdit.replace(lsp.Range.create(0, 4, 0, 7), '![](img.png "title")'),
@@ -185,7 +193,7 @@ suite('Update pasted links', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const resultDocText = await applyUpdateLinksEdits(
+		const resultDocText = await applyUpdateLinksEdits(store,
 			{ copyFrom: new InMemoryDocument(workspacePath('sub/other.md'), ''), pasteTo: doc },
 			[
 				lsp.TextEdit.replace(lsp.Range.create(0, 1, 0, 1), '[text1](x.md "title")'),
@@ -203,7 +211,7 @@ suite('Update pasted links', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const resultDocText = await applyUpdateLinksEdits(
+		const resultDocText = await applyUpdateLinksEdits(store,
 			{ copyFrom: new InMemoryDocument(workspacePath('sub/other.md'), ''), pasteTo: doc },
 			[
 				lsp.TextEdit.replace(lsp.Range.create(0, 0, 0, 10), '[ref]: ./file.md'),
@@ -220,7 +228,7 @@ suite('Update pasted links', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const resultDocText = await applyUpdateLinksEdits(
+		const resultDocText = await applyUpdateLinksEdits(store,
 			{ copyFrom: new InMemoryDocument(workspacePath('sub/other.md'), ''), pasteTo: doc },
 			[
 				lsp.TextEdit.replace(lsp.Range.create(0, 1, 0, 3), '<img src="./cat.png">'),
@@ -237,7 +245,7 @@ suite('Update pasted links', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const resultDocText = await applyUpdateLinksEdits(
+		const resultDocText = await applyUpdateLinksEdits(store,
 			{ copyFrom: new InMemoryDocument(workspacePath('sub/other.md'), ''), pasteTo: doc },
 			[
 				lsp.TextEdit.replace(lsp.Range.create(0, 7, 0, 7), '](./file.md)'),
@@ -252,7 +260,7 @@ suite('Update pasted links', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const resultDocText = await applyUpdateLinksEdits(
+		const resultDocText = await applyUpdateLinksEdits(store,
 			{ copyFrom: new InMemoryDocument(workspacePath('sub/other.md'), ''), pasteTo: doc },
 			[
 				lsp.TextEdit.replace(lsp.Range.create(0, 0, 0, 10), '[ref]: ./file.md'),
@@ -269,7 +277,7 @@ suite('Update pasted links', () => {
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
-		const resultDocText = await applyUpdateLinksEdits(
+		const resultDocText = await applyUpdateLinksEdits(store,
 			{ copyFrom: new InMemoryDocument(workspacePath('sub/other.md'), ''), pasteTo: doc },
 			[
 				lsp.TextEdit.replace(lsp.Range.create(0, 1, 0, 3), '[text](#header)'),
@@ -292,7 +300,7 @@ suite('Update pasted links', () => {
 			));
 			const workspace = store.add(new InMemoryWorkspace([doc1, doc2]));
 
-			const resultDocText = await applyUpdateLinksEdits(
+			const resultDocText = await applyUpdateLinksEdits(store,
 				{ copyFrom: doc2, pasteTo: doc1 },
 				[
 					lsp.TextEdit.replace(lsp.Range.create(0, 3, 0, 3), `[ref]`),
@@ -319,7 +327,7 @@ suite('Update pasted links', () => {
 			));
 			const workspace = store.add(new InMemoryWorkspace([doc1, doc2]));
 
-			const resultDocText = await applyUpdateLinksEdits(
+			const resultDocText = await applyUpdateLinksEdits(store,
 				{ copyFrom: doc2, pasteTo: doc1 },
 				[
 					lsp.TextEdit.replace(lsp.Range.create(1, 0, 1, 3), `[ref2]`),
@@ -346,7 +354,7 @@ suite('Update pasted links', () => {
 			));
 			const workspace = store.add(new InMemoryWorkspace([doc1, doc2]));
 
-			const resultDocText = await applyUpdateLinksEdits(
+			const resultDocText = await applyUpdateLinksEdits(store,
 				{ copyFrom: doc2, pasteTo: doc1 },
 				[
 					lsp.TextEdit.replace(lsp.Range.create(1, 0, 1, 3), `[ref]`),
@@ -366,7 +374,7 @@ suite('Update pasted links', () => {
 			));
 			const workspace = store.add(new InMemoryWorkspace([doc1, doc2]));
 
-			const resultDocText = await applyUpdateLinksEdits(
+			const resultDocText = await applyUpdateLinksEdits(store,
 				{ copyFrom: doc2, pasteTo: doc1 },
 				[
 					lsp.TextEdit.replace(lsp.Range.create(0, 3, 0, 3), `[ref1] [ref2] [ref1]`),

@@ -227,8 +227,8 @@ export class MdRenameProvider {
 			}
 
 			if (doc) {
-				const editedDoc = new InMemoryDocument(URI.parse(existingHeader.location.uri), doc.getText());
-				editedDoc.updateContent(editedDoc.applyEdits([lsp.TextEdit.replace(existingHeader.location.range, '# ' + newHeaderText)]));
+				const editedDoc = new InMemoryDocument(URI.parse(existingHeader.location.uri), doc.getText())
+					.applyEdits([lsp.TextEdit.replace(existingHeader.location.range, '# ' + newHeaderText)]);
 
 				const [oldToc, newToc] = await Promise.all([
 					this.#tableOfContentProvider.getForDocument(doc),

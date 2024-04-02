@@ -48,7 +48,7 @@ suite('Organize link definitions', () => {
 			`[a]: http://example.com`,
 		));
 		const edits = await getOrganizeEdits(store, doc);
-		const newContent = doc.applyEdits(edits);
+		const newContent = doc.previewEdits(edits);
 		assert.deepStrictEqual(newContent, joinLines(
 			`[a]: http://example.com`,
 			`[b]: http://example.com`,
@@ -62,7 +62,7 @@ suite('Organize link definitions', () => {
 			`y`,
 		));
 		const edits = await getOrganizeEdits(store, doc);
-		const newContent = doc.applyEdits(edits);
+		const newContent = doc.previewEdits(edits);
 		assert.deepStrictEqual(newContent, joinLines(
 			`x`,
 			``,
@@ -80,7 +80,7 @@ suite('Organize link definitions', () => {
 			``,
 		));
 		const edits = await getOrganizeEdits(store, doc);
-		const newContent = doc.applyEdits(edits);
+		const newContent = doc.previewEdits(edits);
 		assert.deepStrictEqual(newContent, joinLines(
 			`x`,
 			``,
@@ -98,7 +98,7 @@ suite('Organize link definitions', () => {
 			`[a]: http://example.com`,
 		));
 		const edits = await getOrganizeEdits(store, doc);
-		const newContent = doc.applyEdits(edits);
+		const newContent = doc.previewEdits(edits);
 		assert.deepStrictEqual(newContent, joinLines(
 			`x`,
 			``,
@@ -127,7 +127,7 @@ suite('Organize link definitions', () => {
 			`[GitHub Issue Tracker]: https://github.com/microsoft/vscode-mssql/issues`,
 		));
 		const edits = await getOrganizeEdits(store, doc);
-		const newContent = doc.applyEdits(edits);
+		const newContent = doc.previewEdits(edits);
 		assert.deepStrictEqual(newContent, joinLines(
 			`* [SQL Server documentation]`,
 			`* [SQL Server on Linux documentation]`,
@@ -156,7 +156,7 @@ suite('Organize link definitions', () => {
 			``,
 		));
 		const edits = await getOrganizeEdits(store, doc);
-		const newContent = doc.applyEdits(edits);
+		const newContent = doc.previewEdits(edits);
 		assert.deepStrictEqual(newContent, joinLines(
 			`x`,
 			``,
@@ -181,7 +181,7 @@ suite('Organize link definitions', () => {
 		));
 
 		const edits = await getOrganizeEdits(store, doc);
-		const newContent = doc.applyEdits(edits);
+		const newContent = doc.previewEdits(edits);
 		assert.deepStrictEqual(newContent, joinLines(
 			``,
 			`a`,
@@ -215,7 +215,7 @@ suite('Organize link definitions', () => {
 		));
 
 		const edits = await getOrganizeEdits(store, doc);
-		const newContent = doc.applyEdits(edits);
+		const newContent = doc.previewEdits(edits);
 		assert.deepStrictEqual(newContent, joinLines(
 			``,
 			`a`,
@@ -244,7 +244,7 @@ suite('Organize link definitions', () => {
 			`z`,
 		));
 		const edits = await getOrganizeEdits(store, doc);
-		const newContent = doc.applyEdits(edits);
+		const newContent = doc.previewEdits(edits);
 		assert.deepStrictEqual(newContent, joinLines(
 			`x`,
 			``,
@@ -265,7 +265,7 @@ suite('Organize link definitions', () => {
 			`[b]: http://example.com`,
 		));
 		const edits = await getOrganizeEdits(store, doc, /* removeUnused */ true);
-		const newContent = doc.applyEdits(edits);
+		const newContent = doc.previewEdits(edits);
 		assert.deepStrictEqual(newContent, joinLines(
 			`text [b] text`,
 			``,
@@ -282,7 +282,7 @@ suite('Organize link definitions', () => {
 			`[a]: http://example.com?a`,
 		));
 		const edits = await getOrganizeEdits(store, doc, /* removeUnused */ true);
-		const newContent = doc.applyEdits(edits);
+		const newContent = doc.previewEdits(edits);
 		assert.deepStrictEqual(newContent, joinLines(
 			`text [a] text [link][c]`,
 			``,

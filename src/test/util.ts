@@ -86,5 +86,5 @@ export function applyActionEdit(doc: InMemoryDocument, action: lsp.CodeAction): 
 	const edits = (action.edit?.documentChanges?.filter(change => {
 		return lsp.TextDocumentEdit.is(change) && change.textDocument.uri === doc.uri;
 	}) ?? []) as lsp.TextDocumentEdit[];
-	return doc.applyEdits(edits.map(edit => edit.edits).flat());
+	return doc.previewEdits(edits.flatMap(edit => edit.edits));
 }

@@ -42,6 +42,11 @@ export interface ITextDocument {
 	 * Converts an offset in the document into a {@link Position position}.
 	 */
 	positionAt(offset: number): Position;
+
+	/**
+	 * Converts a {@link Position position} to an offset in the document.
+	 */
+	offsetAt(position: Position): number;
 }
 
 export function getLine(doc: ITextDocument, line: number): string {

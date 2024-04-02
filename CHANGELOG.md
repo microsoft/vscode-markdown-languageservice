@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.0-alpha.3 — April 1, 2024
+- Add experimental support for update links in text copied across Markdown files.
+
 ## 0.5.0-alpha.2 — March 28, 2024
 - Fix renaming for cases where headers are duplicated.
 - Give slugifiers control over how duplicate header ids are generated instead of hardcoding.

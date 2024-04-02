@@ -34,6 +34,10 @@ export class InMemoryDocument implements ITextDocument {
 		return this.#doc.positionAt(offset);
 	}
 
+	offsetAt(position: lsp.Position): number {
+		return this.#doc.offsetAt(position);
+	}
+
 	getText(range?: lsp.Range): string {
 		return this.#doc.getText(range);
 	}

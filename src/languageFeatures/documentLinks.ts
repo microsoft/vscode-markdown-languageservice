@@ -12,7 +12,7 @@ import { ILogger, LogLevel } from '../logging';
 import { IMdParser, Token } from '../parser';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { translatePosition } from '../types/position';
-import { makeRange, rangeContains } from '../types/range';
+import { rangeContains } from '../types/range';
 import { ITextDocument, getDocUri, getLine } from '../types/textDocument';
 import { coalesce } from '../util/arrays';
 import { Disposable } from '../util/dispose';
@@ -390,7 +390,7 @@ class NoLinkRanges {
 		for (const match of text.matchAll(inlineCodePattern)) {
 			const startOffset = match.index ?? 0;
 			const startPosition = document.positionAt(startOffset);
-			inlineRanges.add(makeRange(startPosition, document.positionAt(startOffset + match[0].length)));
+			inlineRanges.add(lsp.Range.create(startPosition, document.positionAt(startOffset + match[0].length)));
 		}
 
 		return new NoLinkRanges(multiline, inlineRanges);
@@ -1003,7 +1003,7 @@ export class MdLinkProvider extends Disposable {
 		if (resource.fragment) {
 			// Match the args of `vscode.open`
 			return this.#createCommandUri('vscodeMarkdownLanguageservice.open', resource, {
-				selection: makeRange(pos, pos),
+				selection: lsp.Range.create(pos, pos),
 			});
 		}
 

@@ -12,7 +12,6 @@ import { LsConfiguration, isExcludedPath } from '../config';
 import { IMdParser } from '../parser';
 import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOfContents';
 import { translatePosition } from '../types/position';
-import { makeRange } from '../types/range';
 import { ITextDocument, getDocUri, getLine } from '../types/textDocument';
 import { looksLikeMarkdownFilePath } from '../util/file';
 import { escapeForAngleBracketLink, hasBalancedParens } from '../util/mdLinks';
@@ -191,7 +190,7 @@ export class MdPathCompletionProvider {
 					(context.linkPrefix.startsWith('#') && options.includeWorkspaceHeaderCompletions === IncludeWorkspaceHeaderCompletions.onSingleOrDoubleHash) ||
 					(context.linkPrefix.startsWith('##') && (options.includeWorkspaceHeaderCompletions === IncludeWorkspaceHeaderCompletions.onDoubleHash || options.includeWorkspaceHeaderCompletions === IncludeWorkspaceHeaderCompletions.onSingleOrDoubleHash))
 				) {
-					const insertRange = makeRange(context.linkTextStartPosition, position);
+					const insertRange = lsp.Range.create(context.linkTextStartPosition, position);
 					yield* this.#provideWorkspaceHeaderSuggestions(document, position, context, insertRange, token);
 					return;
 				}
@@ -200,7 +199,7 @@ export class MdPathCompletionProvider {
 
 				// Add anchor #links in current doc
 				if (context.linkPrefix.length === 0 || isAnchorInCurrentDoc) {
-					const insertRange = makeRange(context.linkTextStartPosition, position);
+					const insertRange = lsp.Range.create(context.linkTextStartPosition, position);
 					yield* this.#provideHeaderSuggestions(document, position, context, insertRange, token);
 				}
 
@@ -219,7 +218,7 @@ export class MdPathCompletionProvider {
 
 							if (otherDoc) {
 								const anchorStartPosition = translatePosition(position, { characterDelta: -(context.anchorInfo.anchorPrefix.length + 1) });
-								const range = makeRange(anchorStartPosition, position);
+								const range = lsp.Range.create(anchorStartPosition, position);
 								yield* this.#provideHeaderSuggestions(otherDoc, position, context, range, token);
 							}
 						}
@@ -347,8 +346,8 @@ export class MdPathCompletionProvider {
 	}
 
 	async *#provideReferenceSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
-		const insertionRange = makeRange(context.linkTextStartPosition, position);
-		const replacementRange = makeRange(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
+		const insertionRange = lsp.Range.create(context.linkTextStartPosition, position);
+		const replacementRange = lsp.Range.create(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
 
 		const { definitions } = await this.#linkProvider.getLinks(document);
 		if (token.isCancellationRequested) {
@@ -375,7 +374,7 @@ export class MdPathCompletionProvider {
 			return;
 		}
 
-		const replacementRange = makeRange(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
+		const replacementRange = lsp.Range.create(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
 		for (const entry of toc.entries) {
 			const completionItem = this.#createHeaderCompletion(entry, insertionRange, replacementRange);
 			completionItem.labelDetails = {
@@ -413,7 +412,7 @@ export class MdPathCompletionProvider {
 			return;
 		}
 
-		const replacementRange = makeRange(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
+		const replacementRange = lsp.Range.create(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
 		for (const [toDoc, toc] of tocs) {
 			const isHeaderInCurrentDocument = toDoc.toString() === getDocUri(document).toString();
 
@@ -449,10 +448,10 @@ export class MdPathCompletionProvider {
 		}
 
 		const pathSegmentStart = translatePosition(position, { characterDelta: valueBeforeLastSlash.length - context.linkPrefix.length });
-		const insertRange = makeRange(pathSegmentStart, position);
+		const insertRange = lsp.Range.create(pathSegmentStart, position);
 
 		const pathSegmentEnd = translatePosition(position, { characterDelta: context.linkSuffix.length });
-		const replacementRange = makeRange(pathSegmentStart, pathSegmentEnd);
+		const replacementRange = lsp.Range.create(pathSegmentStart, pathSegmentEnd);
 
 		let dirInfo: Iterable<readonly [string, FileStat]>;
 		try {

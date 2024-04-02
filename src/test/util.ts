@@ -9,7 +9,7 @@ import * as lsp from 'vscode-languageserver-protocol';
 import * as URI from 'vscode-uri';
 import { DiagnosticLevel, DiagnosticOptions } from '../languageFeatures/diagnostics';
 import { InMemoryDocument } from '../types/inMemoryDocument';
-import { DisposableStore } from '../util/dispose';
+import { Disposable, disposeAll, IDisposable } from '../util/dispose';
 
 export const joinLines = (...args: string[]) => args.join('\n');
 
@@ -24,6 +24,25 @@ export function assertRangeEqual(expected: lsp.Range, actual: lsp.Range, message
 	assert.strictEqual(expected.start.character, actual.start.character, `${message || ''}. Range start character not equal`);
 	assert.strictEqual(expected.end.line, actual.end.line, `${message || ''}. Range end line not equal`);
 	assert.strictEqual(expected.end.character, actual.end.character, `${message || ''}. Range end character not equal`);
+}
+
+export class DisposableStore extends Disposable {
+	readonly #items = new Set<IDisposable>();
+
+	public override dispose() {
+		super.dispose();
+		disposeAll(this.#items);
+		this.#items.clear();
+	}
+
+	public add<T extends IDisposable>(item: T): T {
+		if (this.isDisposed) {
+			console.warn('Adding to disposed store. Item will be leaked');
+		}
+
+		this.#items.add(item);
+		return item;
+	}
 }
 
 export function withStore<R>(fn: (this: Mocha.Context, store: DisposableStore) => Promise<R>) {

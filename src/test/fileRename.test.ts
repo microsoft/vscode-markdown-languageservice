@@ -12,14 +12,12 @@ import { FileRenameResponse, MdFileRenameProvider } from '../languageFeatures/fi
 import { MdReferencesProvider } from '../languageFeatures/references';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { InMemoryDocument } from '../types/inMemoryDocument';
-import { makeRange } from '../types/range';
 import { noopToken } from '../util/cancellation';
-import { DisposableStore } from '../util/dispose';
 import { IWorkspace } from '../workspace';
 import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
-import { assertRangeEqual, joinLines, withStore, workspacePath } from './util';
+import { assertRangeEqual, DisposableStore, joinLines, withStore, workspacePath } from './util';
 
 /**
  * Get all the edits for a file rename.
@@ -30,7 +28,7 @@ function getFileRenameEdits(store: DisposableStore, edits: ReadonlyArray<{ oldUr
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const linkCache = store.add(createWorkspaceLinkCache(engine, workspace));
 	const referencesProvider = store.add(new MdReferencesProvider(config, engine, workspace, tocProvider, linkCache, nulLogger));
-	const renameProvider = store.add(new MdFileRenameProvider(config, workspace, linkCache, referencesProvider));
+	const renameProvider = new MdFileRenameProvider(config, workspace, linkCache, referencesProvider);
 	return renameProvider.getRenameFilesInWorkspaceEdit(edits, noopToken);
 }
 
@@ -82,10 +80,10 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 6, 0, 13), '/new.md'),
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 12), 'new.md'),
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 14), './new.md'),
-				lsp.TextEdit.replace(makeRange(3, 7, 3, 15), './new.md'),
+				lsp.TextEdit.replace(lsp.Range.create(0, 6, 0, 13), '/new.md'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 6, 1, 12), 'new.md'),
+				lsp.TextEdit.replace(lsp.Range.create(2, 6, 2, 14), './new.md'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 7, 3, 15), './new.md'),
 			]
 		});
 	}));
@@ -106,10 +104,10 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 6, 0, 18), '/new.md#frag'),
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 17), 'new.md#frag'),
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 19), './new.md#frag'),
-				lsp.TextEdit.replace(makeRange(3, 7, 3, 20), './new.md#frag'),
+				lsp.TextEdit.replace(lsp.Range.create(0, 6, 0, 18), '/new.md#frag'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 6, 1, 17), 'new.md#frag'),
+				lsp.TextEdit.replace(lsp.Range.create(2, 6, 2, 19), './new.md#frag'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 7, 3, 20), './new.md#frag'),
 			]
 		});
 	}));
@@ -130,10 +128,10 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace, { preferredMdPathExtensionStyle: PreferredMdPathExtensionStyle.removeExtension });
 		assertEditsEqual(response!.edit, {
 			uri: docUri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 6, 0, 18), '/new#frag'),
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 17), 'new#frag'),
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 19), './new#frag'),
-				lsp.TextEdit.replace(makeRange(3, 7, 3, 20), './new#frag'),
+				lsp.TextEdit.replace(lsp.Range.create(0, 6, 0, 18), '/new#frag'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 6, 1, 17), 'new#frag'),
+				lsp.TextEdit.replace(lsp.Range.create(2, 6, 2, 19), './new#frag'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 7, 3, 20), './new#frag'),
 			]
 		});
 	}));
@@ -154,10 +152,10 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri: docUri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 6, 0, 15), '/new#frag'),
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 14), 'new#frag'),
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 16), './new#frag'),
-				lsp.TextEdit.replace(makeRange(3, 7, 3, 17), './new#frag'),
+				lsp.TextEdit.replace(lsp.Range.create(0, 6, 0, 15), '/new#frag'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 6, 1, 14), 'new#frag'),
+				lsp.TextEdit.replace(lsp.Range.create(2, 6, 2, 16), './new#frag'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 7, 3, 17), './new#frag'),
 			]
 		});
 	}));
@@ -180,10 +178,10 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri: docUri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 6, 0, 13), '</new with space.md>'),
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 12), '<new with space.md>'),
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 14), '<./new with space.md>'),
-				lsp.TextEdit.replace(makeRange(3, 7, 3, 15), '<./new with space.md>'),
+				lsp.TextEdit.replace(lsp.Range.create(0, 6, 0, 13), '</new with space.md>'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 6, 1, 12), '<new with space.md>'),
+				lsp.TextEdit.replace(lsp.Range.create(2, 6, 2, 14), '<./new with space.md>'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 7, 3, 15), '<./new with space.md>'),
 			]
 		});
 	}));
@@ -212,15 +210,15 @@ suite('File Rename', () => {
 
 		assertEditsEqual(response!.edit, {
 			uri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 6, 0, 14), '/kitty.png'),
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 13), 'kitty.png'),
-				lsp.TextEdit.replace(makeRange(4, 6, 4, 15), './kitty.png'),
-				lsp.TextEdit.replace(makeRange(6, 7, 6, 16), './kitty.png'),
+				lsp.TextEdit.replace(lsp.Range.create(0, 6, 0, 14), '/kitty.png'),
+				lsp.TextEdit.replace(lsp.Range.create(2, 6, 2, 13), 'kitty.png'),
+				lsp.TextEdit.replace(lsp.Range.create(4, 6, 4, 15), './kitty.png'),
+				lsp.TextEdit.replace(lsp.Range.create(6, 7, 6, 16), './kitty.png'),
 
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 14), '/hot/doggo.png'),
-				lsp.TextEdit.replace(makeRange(3, 6, 3, 13), 'hot/doggo.png'),
-				lsp.TextEdit.replace(makeRange(5, 6, 5, 15), './hot/doggo.png'),
-				lsp.TextEdit.replace(makeRange(7, 7, 7, 16), './hot/doggo.png'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 6, 1, 14), '/hot/doggo.png'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 6, 3, 13), 'hot/doggo.png'),
+				lsp.TextEdit.replace(lsp.Range.create(5, 6, 5, 15), './hot/doggo.png'),
+				lsp.TextEdit.replace(lsp.Range.create(7, 7, 7, 16), './hot/doggo.png'),
 			]
 		});
 	}));
@@ -241,9 +239,9 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri: newUri, edits: [
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 19), '../other.md#frag'),
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 21), '../other.md#frag'),
-				lsp.TextEdit.replace(makeRange(3, 7, 3, 22), '../other.md#frag'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 6, 1, 19), '../other.md#frag'),
+				lsp.TextEdit.replace(lsp.Range.create(2, 6, 2, 21), '../other.md#frag'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 7, 3, 22), '../other.md#frag'),
 			]
 		});
 	}));
@@ -264,9 +262,9 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri: newUri, edits: [
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 16), '../other#frag'),
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 18), '../other#frag'),
-				lsp.TextEdit.replace(makeRange(3, 7, 3, 19), '../other#frag'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 6, 1, 16), '../other#frag'),
+				lsp.TextEdit.replace(lsp.Range.create(2, 6, 2, 18), '../other#frag'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 7, 3, 19), '../other#frag'),
 			]
 		});
 	}));
@@ -297,17 +295,17 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 6, 0, 15), '/new/a.md'),
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 15), '/new/b.md'),
+				lsp.TextEdit.replace(lsp.Range.create(0, 6, 0, 15), '/new/a.md'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 6, 1, 15), '/new/b.md'),
 
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 14), 'new/a.md'),
-				lsp.TextEdit.replace(makeRange(3, 6, 3, 14), 'new/b.md'),
+				lsp.TextEdit.replace(lsp.Range.create(2, 6, 2, 14), 'new/a.md'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 6, 3, 14), 'new/b.md'),
 
-				lsp.TextEdit.replace(makeRange(4, 6, 4, 16), './new/a.md'),
-				lsp.TextEdit.replace(makeRange(5, 6, 5, 16), './new/b.md'),
+				lsp.TextEdit.replace(lsp.Range.create(4, 6, 4, 16), './new/a.md'),
+				lsp.TextEdit.replace(lsp.Range.create(5, 6, 5, 16), './new/b.md'),
 
-				lsp.TextEdit.replace(makeRange(6, 7, 6, 17), './new/a.md'),
-				lsp.TextEdit.replace(makeRange(7, 7, 7, 17), './new/b.md'),
+				lsp.TextEdit.replace(lsp.Range.create(6, 7, 6, 17), './new/a.md'),
+				lsp.TextEdit.replace(lsp.Range.create(7, 7, 7, 17), './new/b.md'),
 			]
 		});
 	}));
@@ -340,11 +338,11 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri: uri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 6, 0, 15), '/new/a.md'),
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 15), '/new/b.md'),
+				lsp.TextEdit.replace(lsp.Range.create(0, 6, 0, 15), '/new/a.md'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 6, 1, 15), '/new/b.md'),
 
-				lsp.TextEdit.replace(makeRange(8, 7, 8, 18), './a.md'),
-				lsp.TextEdit.replace(makeRange(9, 7, 9, 18), './b.md'),
+				lsp.TextEdit.replace(lsp.Range.create(8, 7, 8, 18), './a.md'),
+				lsp.TextEdit.replace(lsp.Range.create(9, 7, 9, 18), './b.md'),
 			]
 		});
 	}));
@@ -369,8 +367,8 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri: oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri: uri, edits: [
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 13), '../../a.md'),
-				lsp.TextEdit.replace(makeRange(3, 6, 3, 13), '../../b.md'),
+				lsp.TextEdit.replace(lsp.Range.create(2, 6, 2, 13), '../../a.md'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 6, 3, 13), '../../b.md'),
 			]
 		});
 	}));
@@ -395,8 +393,8 @@ suite('File Rename', () => {
 		assertEditsEqual(response!.edit, {
 			// Here we need to be using the new path to 'doc'
 			uri: docUri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 6, 0, 21), './other.md'),
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 19), '/newSub/other.md'),
+				lsp.TextEdit.replace(lsp.Range.create(0, 6, 0, 21), './other.md'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 6, 1, 19), '/newSub/other.md'),
 			]
 		});
 	}));
@@ -430,10 +428,10 @@ suite('File Rename', () => {
 		], workspace);
 		assertEditsEqual(response!.edit, {
 			uri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 6, 0, 14), '/new1.md'),
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 15), './new1.md'),
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 13), 'new2.md'),
-				lsp.TextEdit.replace(makeRange(3, 7, 3, 16), './new2.md'),
+				lsp.TextEdit.replace(lsp.Range.create(0, 6, 0, 14), '/new1.md'),
+				lsp.TextEdit.replace(lsp.Range.create(2, 6, 2, 15), './new1.md'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 6, 1, 13), 'new2.md'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 7, 3, 16), './new2.md'),
 			]
 		});
 
@@ -463,10 +461,10 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri: oldLinkedUri, newUri: newLinkedUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri: docUri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 6, 0, 16), '../other.md'),
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 14), '../other.md'),
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 11), '../other'),
-				lsp.TextEdit.replace(makeRange(3, 6, 3, 19), '/other.md'),
+				lsp.TextEdit.replace(lsp.Range.create(0, 6, 0, 16), '../other.md'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 6, 1, 14), '../other.md'),
+				lsp.TextEdit.replace(lsp.Range.create(2, 6, 2, 11), '../other'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 6, 3, 19), '/other.md'),
 			]
 		});
 	}));
@@ -496,8 +494,8 @@ suite('File Rename', () => {
 		assertEditsEqual(response!.edit, {
 			// Here we need to be using the new path to 'doc'
 			uri: newDocUri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 6, 0, 20), 'kitty.gif'),
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 22), './kitty.gif'),
+				lsp.TextEdit.replace(lsp.Range.create(0, 6, 0, 20), 'kitty.gif'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 6, 1, 22), './kitty.gif'),
 			]
 		});
 	}));
@@ -533,13 +531,13 @@ suite('File Rename', () => {
 		assertEditsEqual(response!.edit, {
 			// Here we need to be using the new path to 'doc'
 			uri: newDocUri, edits: [
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 21), '/new/old/sibling.md'),
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 15), '../../top.md'),
-				lsp.TextEdit.replace(makeRange(3, 6, 3, 23), './sibling.md'),
-				lsp.TextEdit.replace(makeRange(4, 6, 4, 13), './'),
-				lsp.TextEdit.replace(makeRange(5, 6, 5, 12), './'),
-				lsp.TextEdit.replace(makeRange(6, 6, 6, 10), '/new/old'),
-				lsp.TextEdit.replace(makeRange(7, 6, 7, 11), '/new/old'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 6, 1, 21), '/new/old/sibling.md'),
+				lsp.TextEdit.replace(lsp.Range.create(2, 6, 2, 15), '../../top.md'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 6, 3, 23), './sibling.md'),
+				lsp.TextEdit.replace(lsp.Range.create(4, 6, 4, 13), './'),
+				lsp.TextEdit.replace(lsp.Range.create(5, 6, 5, 12), './'),
+				lsp.TextEdit.replace(lsp.Range.create(6, 6, 6, 10), '/new/old'),
+				lsp.TextEdit.replace(lsp.Range.create(7, 6, 7, 11), '/new/old'),
 			]
 		});
 	}));
@@ -569,11 +567,11 @@ suite('File Rename', () => {
 		assertEditsEqual(response!.edit, {
 			// Here we need to be using the new path to 'doc'
 			uri: newDocUri, edits: [
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 25), 'newReadme.md#header'),
-				lsp.TextEdit.replace(makeRange(3, 6, 3, 27), './newReadme.md#header'),
+				lsp.TextEdit.replace(lsp.Range.create(2, 6, 2, 25), 'newReadme.md#header'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 6, 3, 27), './newReadme.md#header'),
 
-				lsp.TextEdit.replace(makeRange(6, 8, 6, 27), 'newReadme.md#header'),
-				lsp.TextEdit.replace(makeRange(7, 8, 7, 29), './newReadme.md#header'),
+				lsp.TextEdit.replace(lsp.Range.create(6, 8, 6, 27), 'newReadme.md#header'),
+				lsp.TextEdit.replace(lsp.Range.create(7, 8, 7, 29), './newReadme.md#header'),
 			]
 		});
 	}));
@@ -592,8 +590,8 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 7, 0, 14), '/sp ace.md'),
-				lsp.TextEdit.replace(makeRange(1, 7, 1, 13), 'sp ace.md'),
+				lsp.TextEdit.replace(lsp.Range.create(0, 7, 0, 14), '/sp ace.md'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 7, 1, 13), 'sp ace.md'),
 			]
 		});
 	}));
@@ -616,11 +614,11 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 6, 0, 15), '/<a>.md'), // Should remove link's <...>
-				lsp.TextEdit.replace(makeRange(1, 7, 1, 13), '\\<a\\>.md'), // Still need's link's <...>
-				lsp.TextEdit.replace(makeRange(2, 6, 2, 12), '<\\<a\\>.md>'),
-				lsp.TextEdit.replace(makeRange(4, 7, 4, 16), '/<a>.md'),
-				lsp.TextEdit.replace(makeRange(5, 8, 5, 14), '\\<a\\>.md'),
+				lsp.TextEdit.replace(lsp.Range.create(0, 6, 0, 15), '/<a>.md'), // Should remove link's <...>
+				lsp.TextEdit.replace(lsp.Range.create(1, 7, 1, 13), '\\<a\\>.md'), // Still need's link's <...>
+				lsp.TextEdit.replace(lsp.Range.create(2, 6, 2, 12), '<\\<a\\>.md>'),
+				lsp.TextEdit.replace(lsp.Range.create(4, 7, 4, 16), '/<a>.md'),
+				lsp.TextEdit.replace(lsp.Range.create(5, 8, 5, 14), '\\<a\\>.md'),
 			]
 		});
 	}));
@@ -642,9 +640,9 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 8, 0, 15), 'n<ew>.gif'),
-				lsp.TextEdit.replace(makeRange(1, 8, 1, 17), 'n<ew>.gif'),
-				lsp.TextEdit.replace(makeRange(3, 7, 3, 16), 'n<ew>.gif'),
+				lsp.TextEdit.replace(lsp.Range.create(0, 8, 0, 15), 'n<ew>.gif'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 8, 1, 17), 'n<ew>.gif'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 7, 3, 16), 'n<ew>.gif'),
 			]
 		});
 	}));
@@ -680,12 +678,12 @@ suite('File Rename', () => {
 		assertEditsEqual(response!.edit, {
 			// Here we need to be using the new path to 'doc'
 			uri: newDocUri, edits: [
-				lsp.TextEdit.replace(makeRange(1, 6, 1, 21), '</par(en/sibling.md>'),
-				lsp.TextEdit.replace(makeRange(3, 6, 3, 23), './sibling.md'),
-				lsp.TextEdit.replace(makeRange(4, 6, 4, 13), './'),
-				lsp.TextEdit.replace(makeRange(5, 6, 5, 12), './'),
-				lsp.TextEdit.replace(makeRange(6, 6, 6, 10), '</par(en>'),
-				lsp.TextEdit.replace(makeRange(7, 6, 7, 11), '</par(en>'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 6, 1, 21), '</par(en/sibling.md>'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 6, 3, 23), './sibling.md'),
+				lsp.TextEdit.replace(lsp.Range.create(4, 6, 4, 13), './'),
+				lsp.TextEdit.replace(lsp.Range.create(5, 6, 5, 12), './'),
+				lsp.TextEdit.replace(lsp.Range.create(6, 6, 6, 10), '</par(en>'),
+				lsp.TextEdit.replace(lsp.Range.create(7, 6, 7, 11), '</par(en>'),
 			]
 		}); 
 	}));
@@ -708,10 +706,10 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 7, 0, 17), 'bar.md#abc'),
-				lsp.TextEdit.replace(makeRange(1, 7, 1, 19), 'bar.md#abc'),
-				lsp.TextEdit.replace(makeRange(3, 8, 3, 18), 'bar.md#abc'),
-				lsp.TextEdit.replace(makeRange(4, 8, 4, 20), 'bar.md#abc'),
+				lsp.TextEdit.replace(lsp.Range.create(0, 7, 0, 17), 'bar.md#abc'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 7, 1, 19), 'bar.md#abc'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 8, 3, 18), 'bar.md#abc'),
+				lsp.TextEdit.replace(lsp.Range.create(4, 8, 4, 20), 'bar.md#abc'),
 			]
 		});
 	}));
@@ -734,10 +732,10 @@ suite('File Rename', () => {
 		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
 		assertEditsEqual(response!.edit, {
 			uri, edits: [
-				lsp.TextEdit.replace(makeRange(0, 7, 0, 17), '<foo space.md#abc>'),
-				lsp.TextEdit.replace(makeRange(1, 8, 1, 18), 'foo space.md#abc'),
-				lsp.TextEdit.replace(makeRange(3, 8, 3, 18), '<foo space.md#abc>'),
-				lsp.TextEdit.replace(makeRange(4, 9, 4, 19), 'foo space.md#abc'),
+				lsp.TextEdit.replace(lsp.Range.create(0, 7, 0, 17), '<foo space.md#abc>'),
+				lsp.TextEdit.replace(lsp.Range.create(1, 8, 1, 18), 'foo space.md#abc'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 8, 3, 18), '<foo space.md#abc>'),
+				lsp.TextEdit.replace(lsp.Range.create(4, 9, 4, 19), 'foo space.md#abc'),
 			]
 		});
 	}));

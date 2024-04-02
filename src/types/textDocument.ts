@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Position, Range } from 'vscode-languageserver-protocol';
+import * as lsp from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
-import { makeRange } from './range';
+import { maxLspUInt } from '../util/number';
 
 /**
  * A document in the workspace.
@@ -36,21 +36,21 @@ export interface ITextDocument {
 	 * 
 	 * @param range Optional range to get the text of. If not specified, the entire document content is returned.
 	 */
-	getText(range?: Range): string;
+	getText(range?: lsp.Range): string;
 
 	/**
-	 * Converts an offset in the document into a {@link Position position}.
+	 * Converts an offset in the document into a {@link lsp.Position position}.
 	 */
-	positionAt(offset: number): Position;
+	positionAt(offset: number): lsp.Position;
 
 	/**
-	 * Converts a {@link Position position} to an offset in the document.
+	 * Converts a {@link lsp.Position position} to an offset in the document.
 	 */
-	offsetAt(position: Position): number;
+	offsetAt(position: lsp.Position): number;
 }
 
 export function getLine(doc: ITextDocument, line: number): string {
-	return doc.getText(makeRange(line, 0, line, Number.MAX_VALUE)).replace(/\r?\n$/, '');
+	return doc.getText(lsp.Range.create(line, 0, line, maxLspUInt)).replace(/\r?\n$/, '');
 }
 
 export function getDocUri(doc: ITextDocument): URI {

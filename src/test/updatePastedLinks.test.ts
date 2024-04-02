@@ -99,6 +99,23 @@ suite('Update pasted links', () => {
 		assert.strictEqual(resultDocText, undefined);
 	}));
 
+	test('Should noop when pasting into code block', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			'```',
+			'xxx',
+			'```',
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const resultDocText = await applyUpdateLinksEdits(
+			{ copyFrom: new InMemoryDocument(workspacePath('sub/other.md'), ''), pasteTo: doc },
+			[
+				lsp.TextEdit.replace(lsp.Range.create(1, 0, 1, 3), '![](img.png "title")'),
+			], workspace);
+
+		assert.strictEqual(resultDocText, undefined);
+	}));
+
 	test('Should rewrite multiple pasted links', withStore(async (store) => {
 		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
 			'abc',

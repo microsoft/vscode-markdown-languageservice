@@ -11,12 +11,11 @@ import { MdReference, MdReferencesProvider } from '../languageFeatures/reference
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { InMemoryDocument } from '../types/inMemoryDocument';
 import { noopToken } from '../util/cancellation';
-import { DisposableStore } from '../util/dispose';
 import { IWorkspace } from '../workspace';
 import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
-import { joinLines, withStore, workspacePath } from './util';
+import { DisposableStore, joinLines, withStore, workspacePath } from './util';
 
 
 function getFileReferences(store: DisposableStore, resource: URI, workspace: IWorkspace) {

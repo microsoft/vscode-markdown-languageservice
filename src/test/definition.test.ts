@@ -12,12 +12,11 @@ import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { InMemoryDocument } from '../types/inMemoryDocument';
 import { noopToken } from '../util/cancellation';
-import { DisposableStore } from '../util/dispose';
 import { IWorkspace } from '../workspace';
 import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
-import { joinLines, withStore, workspacePath } from './util';
+import { DisposableStore, joinLines, withStore, workspacePath } from './util';
 
 
 function getDefinition(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position, workspace: IWorkspace) {

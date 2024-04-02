@@ -7,7 +7,7 @@ import { ILogger, LogLevel } from '../logging';
 import { IMdParser, Token, TokenWithMap } from '../parser';
 import { MdTableOfContentsProvider, TocEntry } from '../tableOfContents';
 import { translatePosition } from '../types/position';
-import { areRangesEqual, makeRange, modifyRange, rangeContains } from '../types/range';
+import { areRangesEqual, modifyRange, rangeContains } from '../types/range';
 import { getLine, ITextDocument } from '../types/textDocument';
 import { coalesce } from '../util/arrays';
 import { isEmptyOrWhitespace } from '../util/string';
@@ -96,7 +96,7 @@ function getHeadersForPosition(toc: readonly TocEntry[], position: lsp.Position)
 
 function createHeaderRange(header: TocEntry, isClosestHeaderToPosition: boolean, onHeaderLine: boolean, parent?: lsp.SelectionRange, startOfChildRange?: lsp.Position): lsp.SelectionRange | undefined {
 	const range = header.sectionLocation.range;
-	const contentRange = makeRange(translatePosition(range.start, { lineDelta: 1 }), range.end);
+	const contentRange = lsp.Range.create(translatePosition(range.start, { lineDelta: 1 }), range.end);
 	if (onHeaderLine && isClosestHeaderToPosition && startOfChildRange) {
 		// selection was made on this header line, so select header and its content until the start of its first child
 		// then all of its content
@@ -135,7 +135,7 @@ function createBlockRange(block: TokenWithMap, document: ITextDocument, cursorLi
 	} else if (isList(block) && isEmptyOrWhitespace(getLine(document, endLine))) {
 		endLine = endLine - 1;
 	}
-	const range = makeRange(startLine, 0, endLine, getLine(document, endLine).length);
+	const range = lsp.Range.create(startLine, 0, endLine, getLine(document, endLine).length);
 	if (parent && rangeContains(parent.range, range) && !areRangesEqual(parent.range, range)) {
 		return makeSelectionRange(range, parent);
 	} else if (parent && areRangesEqual(parent.range, range)) {
@@ -166,8 +166,8 @@ function createFencedRange(token: TokenWithMap, cursorLine: number, document: IT
 	const startLine = token.map[0];
 	const endLine = token.map[1] - 1;
 	const onFenceLine = cursorLine === startLine || cursorLine === endLine;
-	const fenceRange = makeRange(startLine, 0, endLine, getLine(document, endLine).length);
-	const contentRange = endLine - startLine > 2 && !onFenceLine ? makeRange(startLine + 1, 0, endLine - 1, getLine(document, endLine - 1).length) : undefined;
+	const fenceRange = lsp.Range.create(startLine, 0, endLine, getLine(document, endLine).length);
+	const contentRange = endLine - startLine > 2 && !onFenceLine ? lsp.Range.create(startLine + 1, 0, endLine - 1, getLine(document, endLine - 1).length) : undefined;
 	if (contentRange) {
 		return makeSelectionRange(contentRange, makeSelectionRange(fenceRange, parent));
 	} else {
@@ -187,8 +187,8 @@ function createBoldRange(lineText: string, cursorChar: number, cursorLine: numbe
 		const bold = matches[0][0];
 		const startIndex = lineText.indexOf(bold);
 		const cursorOnStars = cursorChar === startIndex || cursorChar === startIndex + 1 || cursorChar === startIndex + bold.length || cursorChar === startIndex + bold.length - 1;
-		const contentAndStars = makeSelectionRange(makeRange(cursorLine, startIndex, cursorLine, startIndex + bold.length), parent);
-		const content = makeSelectionRange(makeRange(cursorLine, startIndex + 2, cursorLine, startIndex + bold.length - 2), contentAndStars);
+		const contentAndStars = makeSelectionRange(lsp.Range.create(cursorLine, startIndex, cursorLine, startIndex + bold.length), parent);
+		const content = makeSelectionRange(lsp.Range.create(cursorLine, startIndex + 2, cursorLine, startIndex + bold.length - 2), contentAndStars);
 		return cursorOnStars ? contentAndStars : content;
 	}
 	return undefined;
@@ -211,8 +211,8 @@ function createOtherInlineRange(lineText: string, cursorChar: number, cursorLine
 		const match = isItalic ? matches[0][1] : matches[0][0];
 		const startIndex = lineText.indexOf(match);
 		const cursorOnType = cursorChar === startIndex || cursorChar === startIndex + match.length;
-		const contentAndType = makeSelectionRange(makeRange(cursorLine, startIndex, cursorLine, startIndex + match.length), parent);
-		const content = makeSelectionRange(makeRange(cursorLine, startIndex + 1, cursorLine, startIndex + match.length - 1), contentAndType);
+		const contentAndType = makeSelectionRange(lsp.Range.create(cursorLine, startIndex, cursorLine, startIndex + match.length), parent);
+		const content = makeSelectionRange(lsp.Range.create(cursorLine, startIndex + 1, cursorLine, startIndex + match.length - 1), contentAndType);
 		return cursorOnType ? contentAndType : content;
 	}
 	return undefined;
@@ -225,7 +225,7 @@ function createLinkRange(lineText: string, cursorChar: number, cursorLine: numbe
 	if (matches.length) {
 		// should only be one match, so select first and index 0 contains the entire match, so match = [text](url)
 		const link = matches[0][0];
-		const linkRange = makeSelectionRange(makeRange(cursorLine, lineText.indexOf(link), cursorLine, lineText.indexOf(link) + link.length), parent);
+		const linkRange = makeSelectionRange(lsp.Range.create(cursorLine, lineText.indexOf(link), cursorLine, lineText.indexOf(link) + link.length), parent);
 
 		const linkText = matches[0][1];
 		const url = matches[0][2];
@@ -237,8 +237,8 @@ function createLinkRange(lineText: string, cursorChar: number, cursorLine: numbe
 		// determine if cursor is on a bracket or paren and if so, return the [content] or (content), skipping over the content range
 		const cursorOnType = cursorChar === indexOfType || cursorChar === indexOfType + nearestType.length;
 
-		const contentAndNearestType = makeSelectionRange(makeRange(cursorLine, indexOfType, cursorLine, indexOfType + nearestType.length), linkRange);
-		const content = makeSelectionRange(makeRange(cursorLine, indexOfType + 1, cursorLine, indexOfType + nearestType.length - 1), contentAndNearestType);
+		const contentAndNearestType = makeSelectionRange(lsp.Range.create(cursorLine, indexOfType, cursorLine, indexOfType + nearestType.length), linkRange);
+		const content = makeSelectionRange(lsp.Range.create(cursorLine, indexOfType + 1, cursorLine, indexOfType + nearestType.length - 1), contentAndNearestType);
 		return cursorOnType ? contentAndNearestType : content;
 	}
 	return undefined;

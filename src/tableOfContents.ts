@@ -8,7 +8,6 @@ import { URI } from 'vscode-uri';
 import { ILogger, LogLevel } from './logging';
 import { IMdParser, Token } from './parser';
 import { ISlug, ISlugifier } from './slugify';
-import { makeRange } from './types/range';
 import { getDocUri, getLine, ITextDocument } from './types/textDocument';
 import { Disposable } from './util/dispose';
 import { IWorkspace } from './workspace';
@@ -133,12 +132,12 @@ export class TableOfContents {
 
 			const headerLocation: lsp.Location = {
 				uri: docUri.toString(),
-				range: makeRange(lineNumber, 0, lineNumber, line.length)
+				range: lsp.Range.create(lineNumber, 0, lineNumber, line.length)
 			};
 
 			const headerTextLocation: lsp.Location = {
 				uri: docUri.toString(),
-				range: makeRange(lineNumber, line.match(/^#+\s*/)?.[0].length ?? 0, lineNumber, line.length - (line.match(/\s*#*$/)?.[0].length ?? 0))
+				range: lsp.Range.create(lineNumber, line.match(/^#+\s*/)?.[0].length ?? 0, lineNumber, line.length - (line.match(/\s*#*$/)?.[0].length ?? 0))
 			};
 
 			toc.push({
@@ -166,7 +165,7 @@ export class TableOfContents {
 				...entry,
 				sectionLocation: {
 					uri: docUri.toString(),
-					range: makeRange(
+					range: lsp.Range.create(
 						entry.sectionLocation.range.start,
 						{ line: endLine, character: getLine(document, endLine).length })
 				}

@@ -33,10 +33,6 @@ export function disposeAll(disposables: Iterable<IDisposable>) {
 	}
 }
 
-export interface IDisposable {
-	dispose(): void;
-}
-
 export abstract class Disposable {
 	#isDisposed = false;
 
@@ -64,21 +60,3 @@ export abstract class Disposable {
 	}
 }
 
-export class DisposableStore extends Disposable {
-	readonly #items = new Set<IDisposable>();
-
-	public override dispose() {
-		super.dispose();
-		disposeAll(this.#items);
-		this.#items.clear();
-	}
-
-	public add<T extends IDisposable>(item: T): T {
-		if (this.isDisposed) {
-			console.warn('Adding to disposed store. Item will be leaked');
-		}
-
-		this.#items.add(item);
-		return item;
-	}
-}

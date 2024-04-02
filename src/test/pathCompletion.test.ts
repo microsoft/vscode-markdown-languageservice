@@ -12,12 +12,11 @@ import { IncludeWorkspaceHeaderCompletions, MdPathCompletionProvider, PathComple
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { InMemoryDocument } from '../types/inMemoryDocument';
 import { noopToken } from '../util/cancellation';
-import { DisposableStore } from '../util/dispose';
 import { IWorkspace } from '../workspace';
 import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
-import { CURSOR, getCursorPositions, joinLines, withStore, workspacePath } from './util';
+import { CURSOR, DisposableStore, getCursorPositions, joinLines, withStore, workspacePath } from './util';
 
 
 async function getCompletionsAtCursor(store: DisposableStore, doc: InMemoryDocument, workspace: IWorkspace, configOverrides: Partial<LsConfiguration> = {}, context: Partial<PathCompletionOptions> = {}) {

@@ -10,13 +10,11 @@ import { MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdDocumentSymbolProvider, ProvideDocumentSymbolOptions } from '../languageFeatures/documentSymbols';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { InMemoryDocument } from '../types/inMemoryDocument';
-import { makeRange } from '../types/range';
 import { noopToken } from '../util/cancellation';
-import { DisposableStore } from '../util/dispose';
 import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
-import { assertRangeEqual, joinLines, withStore, workspacePath } from './util';
+import { assertRangeEqual, DisposableStore, joinLines, withStore, workspacePath } from './util';
 
 
 function getSymbolsForFile(store: DisposableStore, fileContents: string, options: ProvideDocumentSymbolOptions = {}) {
@@ -190,8 +188,8 @@ suite('Document symbols', () => {
 			`[def 2]: http://example.com`,
 		), { includeLinkDefinitions: true });
 		assertDocumentSymbolsEqual(symbols, [
-			{ name: '[def]', range: makeRange(0, 0, 0, 25), selectionRange: makeRange(0, 1, 0, 4), },
-			{ name: '[def 2]', range: makeRange(2, 0, 2, 27), selectionRange: makeRange(2, 1, 2, 6), },
+			{ name: '[def]', range: lsp.Range.create(0, 0, 0, 25), selectionRange: lsp.Range.create(0, 1, 0, 4), },
+			{ name: '[def 2]', range: lsp.Range.create(2, 0, 2, 27), selectionRange: lsp.Range.create(2, 1, 2, 6), },
 		]);
 	}));
 
@@ -207,21 +205,21 @@ suite('Document symbols', () => {
 		), { includeLinkDefinitions: true });
 
 		assertDocumentSymbolsEqual(symbols, [
-			{ name: '[def 1]', range: makeRange(0, 0, 0, 27), selectionRange: makeRange(0, 1, 0, 6), },
+			{ name: '[def 1]', range: lsp.Range.create(0, 0, 0, 27), selectionRange: lsp.Range.create(0, 1, 0, 6), },
 			{
 				name: '# h1',
 				children: [
-					{ name: '[def 2]', range: makeRange(2, 0, 2, 27), selectionRange: makeRange(2, 1, 2, 6), },
+					{ name: '[def 2]', range: lsp.Range.create(2, 0, 2, 27), selectionRange: lsp.Range.create(2, 1, 2, 6), },
 					{
 						name: '#### h2',
 						children: [
-							{ name: '[def 3]', range: makeRange(4, 0, 4, 27), selectionRange: makeRange(4, 1, 4, 6), },
+							{ name: '[def 3]', range: lsp.Range.create(4, 0, 4, 27), selectionRange: lsp.Range.create(4, 1, 4, 6), },
 						]
 					},
 					{ name: '## h3', children: [] },
 				]
 			},
-			{ name: '[def 4]', range: makeRange(6, 0, 6, 27), selectionRange: makeRange(6, 1, 6, 6), },
+			{ name: '[def 4]', range: lsp.Range.create(6, 0, 6, 27), selectionRange: lsp.Range.create(6, 1, 6, 6), },
 		]);
 	}));
 });

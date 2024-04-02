@@ -11,14 +11,12 @@ import { MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { InMemoryDocument } from '../types/inMemoryDocument';
 import { comparePosition } from '../types/position';
-import { makeRange } from '../types/range';
 import { noopToken } from '../util/cancellation';
-import { DisposableStore } from '../util/dispose';
 import { IWorkspace } from '../workspace';
 import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
-import { assertRangeEqual, defaultDiagnosticsOptions, joinLines, withStore, workspacePath, workspaceRoot } from './util';
+import { assertRangeEqual, defaultDiagnosticsOptions, DisposableStore, joinLines, withStore, workspacePath, workspaceRoot } from './util';
 
 
 async function getComputedDiagnostics(store: DisposableStore, doc: InMemoryDocument, workspace: IWorkspace, options: Partial<DiagnosticOptions> = {}): Promise<lsp.Diagnostic[]> {
@@ -72,8 +70,8 @@ suite('Diagnostic Computer', () => {
 
 		const diagnostics = await getComputedDiagnostics(store, doc, workspace, { validateUnusedLinkDefinitions: DiagnosticLevel.ignore });
 		assertDiagnosticsEqual(diagnostics, [
-			makeRange(0, 6, 0, 22),
-			makeRange(3, 11, 3, 27),
+			lsp.Range.create(0, 6, 0, 22),
+			lsp.Range.create(3, 11, 3, 27),
 		]);
 	}));
 
@@ -90,8 +88,8 @@ suite('Diagnostic Computer', () => {
 
 		const diagnostics = await getComputedDiagnostics(store, doc, workspace, { validateUnusedLinkDefinitions: DiagnosticLevel.ignore });
 		assertDiagnosticsEqual(diagnostics, [
-			makeRange(2, 6, 2, 21),
-			makeRange(5, 11, 5, 26),
+			lsp.Range.create(2, 6, 2, 21),
+			lsp.Range.create(5, 11, 5, 26),
 		]);
 	}));
 
@@ -111,7 +109,7 @@ suite('Diagnostic Computer', () => {
 
 		const diagnostics = await getComputedDiagnostics(store, doc1, new InMemoryWorkspace([doc1, doc2]));
 		assertDiagnosticsEqual(diagnostics, [
-			makeRange(5, 14, 5, 35),
+			lsp.Range.create(5, 14, 5, 35),
 		]);
 	}));
 
@@ -141,7 +139,7 @@ suite('Diagnostic Computer', () => {
 
 		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
 		assertDiagnosticsEqual(diagnostics, [
-			makeRange(1, 11, 1, 18),
+			lsp.Range.create(1, 11, 1, 18),
 		]);
 	}));
 
@@ -214,7 +212,7 @@ suite('Diagnostic Computer', () => {
 			// But we should be able to override the default
 			const diagnostics = await getComputedDiagnostics(store, doc1, workspace, { validateFragmentLinks: DiagnosticLevel.ignore, validateMarkdownFileLinkFragments: DiagnosticLevel.warning });
 			assertDiagnosticsEqual(diagnostics, [
-				makeRange(1, 13, 1, 21),
+				lsp.Range.create(1, 13, 1, 21),
 			]);
 		}
 	}));
@@ -322,12 +320,12 @@ suite('Diagnostic Computer', () => {
 
 		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
 		assertDiagnosticsEqual(diagnostics, [
-			makeRange(0, 8, 0, 18),
-			makeRange(1, 8, 1, 18),
-			makeRange(2, 8, 2, 18),
-			makeRange(3, 7, 3, 17),
-			makeRange(4, 7, 4, 17),
-			makeRange(5, 7, 5, 17),
+			lsp.Range.create(0, 8, 0, 18),
+			lsp.Range.create(1, 8, 1, 18),
+			lsp.Range.create(2, 8, 2, 18),
+			lsp.Range.create(3, 7, 3, 17),
+			lsp.Range.create(4, 7, 4, 17),
+			lsp.Range.create(5, 7, 5, 17),
 		]);
 	}));
 
@@ -342,10 +340,10 @@ suite('Diagnostic Computer', () => {
 
 		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
 		assertDiagnosticsEqual(orderDiagnosticsByRange(diagnostics), [
-			makeRange(0, 12, 0, 20),
-			makeRange(1, 9, 1, 17),
-			makeRange(2, 17, 2, 25),
-			makeRange(3, 14, 3, 22),
+			lsp.Range.create(0, 12, 0, 20),
+			lsp.Range.create(1, 9, 1, 17),
+			lsp.Range.create(2, 17, 2, 25),
+			lsp.Range.create(3, 14, 3, 22),
 		]);
 	}));
 
@@ -363,10 +361,10 @@ suite('Diagnostic Computer', () => {
 			validateMarkdownFileLinkFragments: DiagnosticLevel.warning,
 		});
 		assertDiagnosticsEqual(orderDiagnosticsByRange(diagnostics), [
-			makeRange(0, 12, 0, 20),
-			makeRange(1, 9, 1, 17),
-			makeRange(2, 17, 2, 25),
-			makeRange(3, 14, 3, 22),
+			lsp.Range.create(0, 12, 0, 20),
+			lsp.Range.create(1, 9, 1, 17),
+			lsp.Range.create(2, 17, 2, 25),
+			lsp.Range.create(3, 14, 3, 22),
 		]);
 	}));
 
@@ -380,8 +378,8 @@ suite('Diagnostic Computer', () => {
 
 		const diagnostics = await getComputedDiagnostics(store, doc, workspace, { validateUnusedLinkDefinitions: DiagnosticLevel.ignore });
 		assertDiagnosticsEqual(diagnostics, [
-			makeRange(0, 8, 0, 18),
-			makeRange(2, 8, 2, 18),
+			lsp.Range.create(0, 8, 0, 18),
+			lsp.Range.create(2, 8, 2, 18),
 		]);
 
 		const [diag1, diag2] = diagnostics;
@@ -415,8 +413,8 @@ suite('Diagnostic Computer', () => {
 
 		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
 		assertDiagnosticsEqual(diagnostics, [
-			makeRange(3, 0, 3, 29),
-			makeRange(5, 0, 5, 30),
+			lsp.Range.create(3, 0, 3, 29),
+			lsp.Range.create(5, 0, 5, 30),
 		]);
 	}));
 
@@ -428,7 +426,7 @@ suite('Diagnostic Computer', () => {
 
 		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
 		assertDiagnosticsEqual(diagnostics, [
-			makeRange(0, 0, 0, 36),
+			lsp.Range.create(0, 0, 0, 36),
 		]);
 	}));
 
@@ -442,8 +440,8 @@ suite('Diagnostic Computer', () => {
 
 		const diagnostics = await getComputedDiagnostics(store, doc, workspace, { validateUnusedLinkDefinitions: DiagnosticLevel.ignore });
 		assertDiagnosticsEqual(diagnostics, [
-			makeRange(0, 1, 0, 4),
-			makeRange(2, 1, 2, 4),
+			lsp.Range.create(0, 1, 0, 4),
+			lsp.Range.create(2, 1, 2, 4),
 		]);
 	}));
 
@@ -508,10 +506,10 @@ suite('Diagnostic Computer', () => {
 
 		const diagnostics = await getComputedDiagnostics(store, doc1, workspace, {});
 		assertDiagnosticsEqual(diagnostics, [
-			makeRange(0, 4, 0, 13),
-			makeRange(1, 4, 1, 12),
-			makeRange(2, 4, 2, 14),
-			makeRange(6, 5, 6, 11),
+			lsp.Range.create(0, 4, 0, 13),
+			lsp.Range.create(1, 4, 1, 12),
+			lsp.Range.create(2, 4, 2, 14),
+			lsp.Range.create(6, 5, 6, 11),
 		]);
 	}));
 
@@ -550,8 +548,8 @@ suite('Diagnostic Manager', () => {
 
 		const firstRequest = await manager.computeDiagnostics(doc1, options, noopToken);
 		assertDiagnosticsEqual(firstRequest as lsp.Diagnostic[], [
-			makeRange(0, 5, 0, 16),
-			makeRange(1, 1, 1, 4),
+			lsp.Range.create(0, 5, 0, 16),
+			lsp.Range.create(1, 1, 1, 4),
 		]);
 		assert.strictEqual(workspace.statCallList.length, 1);
 
@@ -568,7 +566,7 @@ suite('Diagnostic Manager', () => {
 
 		const thirdRequest = await manager.computeDiagnostics(doc1, options, noopToken);
 		assertDiagnosticsEqual(thirdRequest as lsp.Diagnostic[], [
-			makeRange(0, 5, 0, 16),
+			lsp.Range.create(0, 5, 0, 16),
 		]);
 
 		await manager.computeDiagnostics(doc1, options, noopToken);
@@ -594,7 +592,7 @@ suite('Diagnostic Manager', () => {
 
 		const thirdRequest = await manager.computeDiagnostics(doc1, options, noopToken);
 		assertDiagnosticsEqual(thirdRequest as lsp.Diagnostic[], [
-			makeRange(0, 5, 0, 15),
+			lsp.Range.create(0, 5, 0, 15),
 		]);
 	}));
 

@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as lsp from 'vscode-languageserver-protocol';
-import { makeRange } from '../types/range';
 import { getLine, ITextDocument } from '../types/textDocument';
 import { isEmptyOrWhitespace } from '../util/string';
 import { HrefKind, MdLinkDefinition, MdLinkKind, MdLinkProvider } from './documentLinks';
+import { maxLspUInt } from '../util/number';
 
 export class MdOrganizeLinkDefinitionProvider {
 
@@ -37,7 +37,7 @@ export class MdOrganizeLinkDefinitionProvider {
 				// Don't replace trailing newline of last definition in group
 				edits.push({
 					newText: '',
-					range: makeRange(group.startLine, 0, group.endLine, getLine(doc, group.endLine).length),
+					range: lsp.Range.create(group.startLine, 0, group.endLine, getLine(doc, group.endLine).length),
 				});
 			}
 		}
@@ -72,13 +72,13 @@ export class MdOrganizeLinkDefinitionProvider {
 
 			edits.push({
 				newText: (hasLeadingWhiteSpace ? '' : '\n') + defBlock,
-				range: makeRange(existingDefBlockRange.startLine, 0, existingDefBlockRange.endLine, getLine(doc, existingDefBlockRange.endLine).length)
+				range: lsp.Range.create(existingDefBlockRange.startLine, 0, existingDefBlockRange.endLine, getLine(doc, existingDefBlockRange.endLine).length)
 			});
 		} else {
 			const line = this.#getLastNonWhitespaceLine(doc, definitions);
 			edits.push({
 				newText: (line === doc.lineCount - 1 ? '\n\n' : '\n') + defBlock,
-				range: makeRange(line + 1, 0, doc.lineCount, 0),
+				range: lsp.Range.create(line + 1, 0, doc.lineCount, 0),
 			});
 		}
 
@@ -108,7 +108,7 @@ export class MdOrganizeLinkDefinitionProvider {
 
 	#getLastNonWhitespaceLine(doc: ITextDocument, orderedDefinitions: readonly MdLinkDefinition[]): number {
 		const lastDef = orderedDefinitions[orderedDefinitions.length - 1];
-		const textAfter = doc.getText(makeRange(lastDef.source.range.end.line + 1, 0, Infinity, 0));
+		const textAfter = doc.getText(lsp.Range.create(lastDef.source.range.end.line + 1, 0, maxLspUInt, 0));
 		const lines = textAfter.split(/\r\n|\n/g);
 		for (let i = lines.length - 1; i >= 0; --i) {
 			if (!isEmptyOrWhitespace(lines[i])) {
@@ -127,7 +127,7 @@ export function getExistingDefinitionBlock(doc: ITextDocument, orderedDefinition
 
 	const lastDef = orderedDefinitions[orderedDefinitions.length - 1];
 
-	const textAfter = doc.getText(makeRange(lastDef.source.range.end.line + 1, 0, Infinity, 0));
+	const textAfter = doc.getText(lsp.Range.create(lastDef.source.range.end.line + 1, 0, maxLspUInt, 0));
 	if (isEmptyOrWhitespace(textAfter)) {
 		let prevDef = lastDef;
 		for (let i = orderedDefinitions.length - 1; i >= 0; --i) {

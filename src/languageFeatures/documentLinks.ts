@@ -806,6 +806,7 @@ export class MdLinkProvider extends Disposable {
 	readonly #config: LsConfiguration;
 	readonly #workspace: IWorkspace;
 	readonly #tocProvider: MdTableOfContentsProvider;
+	readonly #logger: ILogger;
 
 	constructor(
 		config: LsConfiguration,
@@ -819,21 +820,24 @@ export class MdLinkProvider extends Disposable {
 		this.#config = config;
 		this.#workspace = workspace;
 		this.#tocProvider = tocProvider;
+		this.#logger = logger;
 
 		this.#linkComputer = new MdLinkComputer(tokenizer, this.#workspace);
-		this.#linkCache = this._register(new MdDocumentInfoCache(this.#workspace, async (doc, token) => {
-			logger.log(LogLevel.Debug, 'LinkProvider.compute', { document: doc.uri, version: doc.version });
-
-			const links = await this.#linkComputer.getAllLinks(doc, token);
-			return {
-				links,
-				definitions: new LinkDefinitionSet(links),
-			};
-		}));
+		this.#linkCache = this._register(new MdDocumentInfoCache(this.#workspace, (doc, token) => this.getLinksWithoutCaching(doc, token)));
 	}
 
 	public getLinks(document: ITextDocument): Promise<MdDocumentLinksInfo> {
 		return this.#linkCache.getForDocument(document);
+	}
+
+	public async getLinksWithoutCaching(doc: ITextDocument, token: lsp.CancellationToken): Promise<MdDocumentLinksInfo> {
+		this.#logger.log(LogLevel.Debug, 'LinkProvider.compute', { document: doc.uri, version: doc.version });
+
+		const links = await this.#linkComputer.getAllLinks(doc, token);
+		return {
+			links,
+			definitions: new LinkDefinitionSet(links),
+		};
 	}
 
 	public async provideDocumentLinks(document: ITextDocument, token: lsp.CancellationToken): Promise<lsp.DocumentLink[]> {

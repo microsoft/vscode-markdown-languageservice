@@ -45,7 +45,7 @@ suite('Workspace Cache', () => {
 		const newContents = joinLines(
 			`new`
 		);
-		doc.updateContent(newContents);
+		doc.replaceContents(newContents);
 		workspace.updateDocument(doc);
 
 		{
@@ -73,7 +73,7 @@ suite('Workspace Cache', () => {
 		const newContents = joinLines(
 			`new`
 		);
-		doc.updateContent(newContents);
+		doc.replaceContents(newContents);
 		workspace.updateDocument(doc);
 
 		{

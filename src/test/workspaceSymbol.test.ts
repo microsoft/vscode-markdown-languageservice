@@ -12,11 +12,10 @@ import { MdWorkspaceSymbolProvider } from '../languageFeatures/workspaceSymbols'
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { InMemoryDocument } from '../types/inMemoryDocument';
 import { noopToken } from '../util/cancellation';
-import { DisposableStore } from '../util/dispose';
 import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
-import { joinLines, withStore, workspacePath } from './util';
+import { DisposableStore, joinLines, withStore, workspacePath } from './util';
 
 function getWorkspaceSymbols(store: DisposableStore, workspace: IWorkspace, query = ''): Promise<lsp.WorkspaceSymbol[]> {
 	const engine = createNewMarkdownEngine();

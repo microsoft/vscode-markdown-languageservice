@@ -5,7 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import * as lsp from 'vscode-languageserver-protocol';
-import { makeRange, rangeIntersects } from '../../types/range';
+import { rangeIntersects } from '../../types/range';
 import { getDocUri, ITextDocument } from '../../types/textDocument';
 import { WorkspaceEditBuilder } from '../../util/editBuilder';
 import { DiagnosticCode } from '../diagnostics';
@@ -55,7 +55,7 @@ export class MdRemoveLinkDefinitionCodeActionProvider {
 		const builder = new WorkspaceEditBuilder();
 
 		const range = definition.source.range;
-		builder.replace(getDocUri(doc), makeRange(range.start.line, 0, range.start.line + 1, 0), '');
+		builder.replace(getDocUri(doc), lsp.Range.create(range.start.line, 0, range.start.line + 1, 0), '');
 
 		return { title, kind: lsp.CodeActionKind.QuickFix, edit: builder.getEdit() };
 	}

@@ -10,14 +10,12 @@ import { MdDocumentHighlightProvider } from '../languageFeatures/documentHighlig
 import { MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { InMemoryDocument } from '../types/inMemoryDocument';
-import { makeRange } from '../types/range';
 import { noopToken } from '../util/cancellation';
-import { DisposableStore } from '../util/dispose';
 import { IWorkspace } from '../workspace';
 import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
-import { assertRangeEqual, joinLines, withStore, workspacePath } from './util';
+import { assertRangeEqual, DisposableStore, joinLines, withStore, workspacePath } from './util';
 
 
 function getDocumentHighlights(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position, workspace: IWorkspace) {
@@ -54,11 +52,11 @@ suite('Document highlights', () => {
 
 		const highlights = await getDocumentHighlights(store, doc, { line: 0, character: 1 }, workspace);
 		assertHighlightsEqual(highlights,
-			{ range: makeRange(0, 0, 0, 7) },
-			{ range: makeRange(2, 12, 2, 18) },
-			{ range: makeRange(3, 12, 3, 18) },
-			{ range: makeRange(4, 18, 4, 24) },
-			{ range: makeRange(6, 7, 6, 13) },
+			{ range: lsp.Range.create(0, 0, 0, 7) },
+			{ range: lsp.Range.create(2, 12, 2, 18) },
+			{ range: lsp.Range.create(3, 12, 3, 18) },
+			{ range: lsp.Range.create(4, 18, 4, 24) },
+			{ range: lsp.Range.create(6, 7, 6, 13) },
 		);
 	}));
 
@@ -75,11 +73,11 @@ suite('Document highlights', () => {
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
 		const expected = [
-			{ range: makeRange(0, 0, 0, 7) },
-			{ range: makeRange(2, 12, 2, 18) },
-			{ range: makeRange(3, 12, 3, 18) },
-			{ range: makeRange(4, 18, 4, 24) },
-			{ range: makeRange(6, 7, 6, 13) },
+			{ range: lsp.Range.create(0, 0, 0, 7) },
+			{ range: lsp.Range.create(2, 12, 2, 18) },
+			{ range: lsp.Range.create(3, 12, 3, 18) },
+			{ range: lsp.Range.create(4, 18, 4, 24) },
+			{ range: lsp.Range.create(6, 7, 6, 13) },
 		];
 
 		{
@@ -111,11 +109,11 @@ suite('Document highlights', () => {
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
 		const expected = [
-			{ range: makeRange(2, 12, 2, 20) },
-			{ range: makeRange(3, 12, 3, 22) },
-			{ range: makeRange(4, 12, 4, 21) },
-			{ range: makeRange(5, 12, 5, 20) }, // should not include fragment range
-			{ range: makeRange(7, 7, 7, 15) },
+			{ range: lsp.Range.create(2, 12, 2, 20) },
+			{ range: lsp.Range.create(3, 12, 3, 22) },
+			{ range: lsp.Range.create(4, 12, 4, 21) },
+			{ range: lsp.Range.create(5, 12, 5, 20) }, // should not include fragment range
+			{ range: lsp.Range.create(7, 7, 7, 15) },
 		];
 
 		{
@@ -151,9 +149,9 @@ suite('Document highlights', () => {
 
 		const highlights = await getDocumentHighlights(store, doc, { line: 1, character: 20 }, workspace);
 		assertHighlightsEqual(highlights,
-			{ range: makeRange(1, 17, 1, 23) },
-			{ range: makeRange(2, 20, 2, 26) },
-			{ range: makeRange(3, 22, 3, 28) },
+			{ range: lsp.Range.create(1, 17, 1, 23) },
+			{ range: lsp.Range.create(2, 20, 2, 26) },
+			{ range: lsp.Range.create(3, 22, 3, 28) },
 		);
 	}));
 
@@ -170,13 +168,13 @@ suite('Document highlights', () => {
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
 		const expectedRanges = [
-			{ range: makeRange(0, 4, 0, 13) },
-			{ range: makeRange(1, 4, 1, 11) },
-			{ range: makeRange(2, 6, 2, 15) },
-			{ range: makeRange(3, 6, 3, 13) },
+			{ range: lsp.Range.create(0, 4, 0, 13) },
+			{ range: lsp.Range.create(1, 4, 1, 11) },
+			{ range: lsp.Range.create(2, 6, 2, 15) },
+			{ range: lsp.Range.create(3, 6, 3, 13) },
 
-			{ range: makeRange(5, 7, 5, 14) },
-			{ range: makeRange(6, 7, 6, 16) },
+			{ range: lsp.Range.create(5, 7, 5, 14) },
+			{ range: lsp.Range.create(6, 7, 6, 16) },
 		];
 
 		{
@@ -203,12 +201,12 @@ suite('Document highlights', () => {
 
 		const highlights = await getDocumentHighlights(store, doc, { line: 1, character: 15 }, workspace);
 		assertHighlightsEqual(highlights,
-			{ range: makeRange(1, 12, 1, 17) },
-			{ range: makeRange(2, 12, 2, 20) },
-			{ range: makeRange(3, 12, 3, 22) },
-			{ range: makeRange(4, 12, 4, 17) },
-			{ range: makeRange(5, 12, 5, 20) },
-			{ range: makeRange(6, 12, 6, 22) },
+			{ range: lsp.Range.create(1, 12, 1, 17) },
+			{ range: lsp.Range.create(2, 12, 2, 20) },
+			{ range: lsp.Range.create(3, 12, 3, 22) },
+			{ range: lsp.Range.create(4, 12, 4, 17) },
+			{ range: lsp.Range.create(5, 12, 5, 20) },
+			{ range: lsp.Range.create(6, 12, 6, 22) },
 		);
 	}));
 
@@ -225,11 +223,11 @@ suite('Document highlights', () => {
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
 		const expected = [
-			{ range: makeRange(0, 7, 0, 10) },
-			{ range: makeRange(1, 1, 1, 4) },
-			{ range: makeRange(2, 1, 2, 4) },
-			{ range: makeRange(3, 6, 3, 9) },
-			{ range: makeRange(5, 1, 5, 4) },
+			{ range: lsp.Range.create(0, 7, 0, 10) },
+			{ range: lsp.Range.create(1, 1, 1, 4) },
+			{ range: lsp.Range.create(2, 1, 2, 4) },
+			{ range: lsp.Range.create(3, 6, 3, 9) },
+			{ range: lsp.Range.create(5, 1, 5, 4) },
 		];
 
 		{
@@ -256,9 +254,9 @@ suite('Document highlights', () => {
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
 		const expected = [
-			{ range: makeRange(0, 12, 0, 32) },
-			{ range: makeRange(2, 12, 2, 32) },
-			{ range: makeRange(5, 7, 5, 27) },
+			{ range: lsp.Range.create(0, 12, 0, 32) },
+			{ range: lsp.Range.create(2, 12, 2, 32) },
+			{ range: lsp.Range.create(5, 7, 5, 27) },
 		];
 
 		{
@@ -280,8 +278,8 @@ suite('Document highlights', () => {
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 
 		const expected = [
-			{ range: makeRange(0, 12, 0, 30) },
-			{ range: makeRange(1, 6, 1, 24) },
+			{ range: lsp.Range.create(0, 12, 0, 30) },
+			{ range: lsp.Range.create(1, 6, 1, 24) },
 		];
 
 		{

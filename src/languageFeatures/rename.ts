@@ -13,9 +13,8 @@ import { ISlugifier } from '../slugify';
 import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOfContents';
 import { InMemoryDocument } from '../types/inMemoryDocument';
 import { arePositionsEqual, translatePosition } from '../types/position';
-import { makeRange, modifyRange, rangeContains } from '../types/range';
+import { modifyRange, rangeContains } from '../types/range';
 import { ITextDocument, getDocUri } from '../types/textDocument';
-import { Disposable } from '../util/dispose';
 import { WorkspaceEditBuilder } from '../util/editBuilder';
 import { escapeForAngleBracketLink, needsAngleBracketLink } from '../util/mdLinks';
 import { computeRelativePath } from '../util/path';
@@ -38,7 +37,7 @@ export class RenameNotSupportedAtLocationError extends Error {
 	}
 }
 
-export class MdRenameProvider extends Disposable {
+export class MdRenameProvider {
 
 	#cachedRefs?: {
 		readonly resource: URI;
@@ -65,8 +64,6 @@ export class MdRenameProvider extends Disposable {
 		slugifier: ISlugifier,
 		logger: ILogger,
 	) {
-		super();
-
 		this.#configuration = configuration;
 		this.#workspace = workspace;
 		this.#parser = parser;
@@ -381,7 +378,7 @@ export function getLinkRenameEdit(link: MdLink, newPathText: string): lsp.TextEd
 	if (link.source.isAngleBracketLink) {
 		if (!needsAngleBracketLink(newPathText)) {
 			// Remove the angle brackets
-			const range = makeRange(
+			const range = lsp.Range.create(
 				translatePosition(linkRange.start, { characterDelta: -1 }),
 				translatePosition(linkRange.end, { characterDelta: 1 }));
 

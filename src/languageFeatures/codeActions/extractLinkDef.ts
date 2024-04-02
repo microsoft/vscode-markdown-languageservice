@@ -6,7 +6,7 @@
 import * as l10n from '@vscode/l10n';
 import * as lsp from 'vscode-languageserver-protocol';
 import { comparePosition, translatePosition } from '../../types/position';
-import { makeRange, rangeIntersects } from '../../types/range';
+import { rangeIntersects } from '../../types/range';
 import { getDocUri, getLine, ITextDocument } from '../../types/textDocument';
 import { WorkspaceEditBuilder } from '../../util/editBuilder';
 import { ExternalHref, HrefKind, InternalHref, LinkDefinitionSet, MdAutoLink, MdDocumentLinksInfo, MdInlineLink, MdLink, MdLinkDefinition, MdLinkKind, MdLinkProvider } from '../documentLinks';
@@ -148,7 +148,7 @@ export function createAddDefinitionEdit(doc: ITextDocument, existingDefinitions:
 function getLinkTargetText(doc: ITextDocument, link: MdInlineLink | MdAutoLink) {
 	const afterHrefRange = link.kind === MdLinkKind.AutoLink
 		? link.source.targetRange
-		: makeRange(
+		: lsp.Range.create(
 			translatePosition(link.source.targetRange.start, { characterDelta: 1 }),
 			translatePosition(link.source.targetRange.end, { characterDelta: -1 }));
 	return doc.getText(afterHrefRange);

@@ -10,7 +10,6 @@ import { getLsConfiguration } from '../config';
 import { InternalHref, MdLink, MdLinkComputer, MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { InMemoryDocument } from '../types/inMemoryDocument';
-import { makeRange } from '../types/range';
 import { noopToken } from '../util/cancellation';
 import { ContainingDocumentContext, IWorkspace } from '../workspace';
 import { createNewMarkdownEngine } from './engine';
@@ -63,7 +62,7 @@ suite('Link computer', () => {
 	test('Should detect basic http links', async () => {
 		const links = await getLinksForText('a [b](https://example.com) c');
 		assertLinksEqual(links, [
-			makeRange(0, 6, 0, 25)
+			lsp.Range.create(0, 6, 0, 25)
 		]);
 	});
 
@@ -71,13 +70,13 @@ suite('Link computer', () => {
 		{
 			const links = await getLinksForText('a [b](./file) c');
 			assertLinksEqual(links, [
-				makeRange(0, 6, 0, 12)
+				lsp.Range.create(0, 6, 0, 12)
 			]);
 		}
 		{
 			const links = await getLinksForText('a [b](file.png) c');
 			assertLinksEqual(links, [
-				makeRange(0, 6, 0, 14)
+				lsp.Range.create(0, 6, 0, 14)
 			]);
 		}
 	});
@@ -85,14 +84,14 @@ suite('Link computer', () => {
 	test('Should detect links with title', async () => {
 		const links = await getLinksForText('a [b](https://example.com "abc") c');
 		assertLinksEqual(links, [
-			makeRange(0, 6, 0, 25)
+			lsp.Range.create(0, 6, 0, 25)
 		]);
 	});
 
 	test('Should handle links with escaped characters in name (#35245)', async () => {
 		const links = await getLinksForText('a [b\\]](./file)');
 		assertLinksEqual(links, [
-			makeRange(0, 8, 0, 14)
+			lsp.Range.create(0, 8, 0, 14)
 		]);
 	});
 
@@ -100,20 +99,20 @@ suite('Link computer', () => {
 		{
 			const links = await getLinksForText('a [b](https://example.com/a()c) c');
 			assertLinksEqual(links, [
-				makeRange(0, 6, 0, 30)
+				lsp.Range.create(0, 6, 0, 30)
 			]);
 		}
 		{
 			const links = await getLinksForText('a [b](https://example.com/a(b)c) c');
 			assertLinksEqual(links, [
-				makeRange(0, 6, 0, 31)
+				lsp.Range.create(0, 6, 0, 31)
 			]);
 		}
 		{
 			// #49011
 			const links = await getLinksForText('[A link](http://ThisUrlhasParens/A_link(in_parens))');
 			assertLinksEqual(links, [
-				makeRange(0, 9, 0, 50)
+				lsp.Range.create(0, 9, 0, 50)
 			]);
 		}
 	});
@@ -122,19 +121,19 @@ suite('Link computer', () => {
 		{
 			const links = await getLinksForText('[some [inner] in title](link)');
 			assertLinksEqual(links, [
-				makeRange(0, 24, 0, 28),
+				lsp.Range.create(0, 24, 0, 28),
 			]);
 		}
 		{
 			const links = await getLinksForText('[some [inner] in title](<link>)');
 			assertLinksEqual(links, [
-				makeRange(0, 25, 0, 29),
+				lsp.Range.create(0, 25, 0, 29),
 			]);
 		}
 		{
 			const links = await getLinksForText('[some [inner with space] in title](link)');
 			assertLinksEqual(links, [
-				makeRange(0, 35, 0, 39),
+				lsp.Range.create(0, 35, 0, 39),
 			]);
 		}
 		{
@@ -143,7 +142,7 @@ suite('Link computer', () => {
 				`[[a]](http://example.com)`,
 			));
 			assertLinksEqual(links, [
-				makeRange(1, 6, 1, 24),
+				lsp.Range.create(1, 6, 1, 24),
 			]);
 		}
 	});
@@ -151,8 +150,8 @@ suite('Link computer', () => {
 	test('Should handle two links without space', async () => {
 		const links = await getLinksForText('a ([test](test)[test2](test2)) c');
 		assertLinksEqual(links, [
-			makeRange(0, 10, 0, 14),
-			makeRange(0, 23, 0, 28)
+			lsp.Range.create(0, 10, 0, 14),
+			lsp.Range.create(0, 23, 0, 28)
 		]);
 	});
 
@@ -160,24 +159,24 @@ suite('Link computer', () => {
 		{
 			const links = await getLinksForText('[![alt text](image.jpg)](https://example.com)');
 			assertLinksEqual(links, [
-				makeRange(0, 25, 0, 44),
-				makeRange(0, 13, 0, 22),
+				lsp.Range.create(0, 25, 0, 44),
+				lsp.Range.create(0, 13, 0, 22),
 			]);
 		}
 		{
 			const links = await getLinksForText('[![a]( whitespace.jpg )]( https://whitespace.com )');
 			assertLinksEqual(links, [
-				makeRange(0, 26, 0, 48),
-				makeRange(0, 7, 0, 21),
+				lsp.Range.create(0, 26, 0, 48),
+				lsp.Range.create(0, 7, 0, 21),
 			]);
 		}
 		{
 			const links = await getLinksForText('[![a](img1.jpg)](file1.txt) text [![a](img2.jpg)](file2.txt)');
 			assertLinksEqual(links, [
-				makeRange(0, 17, 0, 26),
-				makeRange(0, 6, 0, 14),
-				makeRange(0, 50, 0, 59),
-				makeRange(0, 39, 0, 47),
+				lsp.Range.create(0, 17, 0, 26),
+				lsp.Range.create(0, 6, 0, 14),
+				lsp.Range.create(0, 50, 0, 59),
+				lsp.Range.create(0, 39, 0, 47),
 			]);
 		}
 	});
@@ -196,14 +195,14 @@ suite('Link computer', () => {
 	test('Should find image reference links', async () => {
 		const links = await getLinksForText('![][cat]');
 		assertLinksEqual(links, [
-			makeRange(0, 4, 0, 7),
+			lsp.Range.create(0, 4, 0, 7),
 		]);
 	});
 
 	test('Should find inline image reference links', async () => {
 		const links = await getLinksForText('ab ![][cat] d');
 		assertLinksEqual(links, [
-			makeRange(0, 7, 0, 10),
+			lsp.Range.create(0, 7, 0, 10),
 		]);
 	});
 
@@ -219,8 +218,8 @@ suite('Link computer', () => {
 		));
 
 		assertLinksEqual(links, [
-			{ range: makeRange(0, 6, 0, 9), sourceText: 'b c' },
-			{ range: makeRange(1, 6, 1, 8), sourceText: 'cd' },
+			{ range: lsp.Range.create(0, 6, 0, 9), sourceText: 'b c' },
+			{ range: lsp.Range.create(1, 6, 1, 8), sourceText: 'cd' },
 		]);
 	});
 
@@ -230,7 +229,7 @@ suite('Link computer', () => {
 		));
 
 		assertLinksEqual(links, [
-			{ range: makeRange(0, 9, 0, 28), sourceText: 'https://example.com' },
+			{ range: lsp.Range.create(0, 9, 0, 28), sourceText: 'https://example.com' },
 		]);
 	});
 
@@ -240,7 +239,7 @@ suite('Link computer', () => {
 		));
 
 		assertLinksEqual(links, [
-			{ range: makeRange(0, 10, 0, 29), sourceText: 'https://example.com' },
+			{ range: lsp.Range.create(0, 10, 0, 29), sourceText: 'https://example.com' },
 		]);
 	});
 
@@ -250,8 +249,8 @@ suite('Link computer', () => {
 			'[ref]: https://example.com',
 		));
 		assertLinksEqual(links, [
-			{ range: makeRange(0, 1, 0, 4), sourceText: 'ref' },
-			{ range: makeRange(1, 7, 1, 26), sourceText: 'https://example.com' },
+			{ range: lsp.Range.create(0, 1, 0, 4), sourceText: 'ref' },
+			{ range: lsp.Range.create(1, 7, 1, 26), sourceText: 'https://example.com' },
 		]);
 	});
 
@@ -260,7 +259,7 @@ suite('Link computer', () => {
 			'[text][my ref]',
 		));
 		assertLinksEqual(links, [
-			makeRange(0, 7, 0, 13),
+			lsp.Range.create(0, 7, 0, 13),
 		]);
 	});
 
@@ -269,7 +268,7 @@ suite('Link computer', () => {
 			'[ref][]',
 		));
 		assertLinksEqual(links, [
-			makeRange(0, 1, 0, 4),
+			lsp.Range.create(0, 1, 0, 4),
 		]);
 	});
 
@@ -278,7 +277,7 @@ suite('Link computer', () => {
 			'[my ref][]',
 		));
 		assertLinksEqual(links, [
-			makeRange(0, 1, 0, 7),
+			lsp.Range.create(0, 1, 0, 7),
 		]);
 	});
 
@@ -287,7 +286,7 @@ suite('Link computer', () => {
 			'[ref with space]',
 		));
 		assertLinksEqual(links, [
-			makeRange(0, 1, 0, 15),
+			lsp.Range.create(0, 1, 0, 15),
 		]);
 	});
 
@@ -298,7 +297,7 @@ suite('Link computer', () => {
 			`[good]: http://example.com`,
 		));
 		assertLinksEqual(links, [
-			makeRange(2, 8, 2, 26) // Should only find the definition
+			lsp.Range.create(2, 8, 2, 26) // Should only find the definition
 		]);
 	});
 
@@ -320,8 +319,8 @@ suite('Link computer', () => {
 			`\\[text]: <http://example.com>`,
 		));
 		assertLinksEqual(links, [
-			makeRange(0, 9, 0, 27),
-			makeRange(2, 10, 2, 28),
+			lsp.Range.create(0, 9, 0, 27),
+			lsp.Range.create(2, 10, 2, 28),
 		]);
 	});
 
@@ -388,8 +387,8 @@ suite('Link computer', () => {
 			'[b](https://3.com) ` [b](https://4.com)'));
 
 		assertLinksEqual(links, [
-			makeRange(0, 4, 0, 17),
-			makeRange(1, 25, 1, 38),
+			lsp.Range.create(0, 4, 0, 17),
+			lsp.Range.create(1, 25, 1, 38),
 		]);
 	});
 
@@ -408,14 +407,14 @@ suite('Link computer', () => {
 			'',
 			'``'));
 		assertLinksEqual(links, [
-			makeRange(2, 4, 2, 23)
+			lsp.Range.create(2, 4, 2, 23)
 		]);
 	});
 
 	test('Should find autolinks', async () => {
 		const links = await getLinksForText('pre <http://example.com> post');
 		assertLinksEqual(links, [
-			makeRange(0, 5, 0, 23)
+			lsp.Range.create(0, 5, 0, 23)
 		]);
 	});
 
@@ -474,7 +473,7 @@ suite('Link computer', () => {
 			`[x]: http://example.com`
 		));
 		assertLinksEqual(links, [
-			makeRange(7, 5, 7, 23)
+			lsp.Range.create(7, 5, 7, 23)
 		]);
 	});
 
@@ -488,10 +487,10 @@ suite('Link computer', () => {
 		));
 
 		assertLinksEqual(links, [
-			makeRange(0, 7, 0, 8),
-			makeRange(1, 7, 1, 8),
-			makeRange(2, 6, 2, 7),
-			makeRange(4, 5, 4, 23),
+			lsp.Range.create(0, 7, 0, 8),
+			lsp.Range.create(1, 7, 1, 8),
+			lsp.Range.create(2, 6, 2, 7),
+			lsp.Range.create(4, 5, 4, 23),
 		]);
 	});
 
@@ -499,35 +498,35 @@ suite('Link computer', () => {
 		const links = await getLinksForText(joinLines(
 			`[link](<path>)`
 		));
-		assertLinksEqual(links, [makeRange(0, 8, 0, 12)]);
+		assertLinksEqual(links, [lsp.Range.create(0, 8, 0, 12)]);
 	});
 
 	test('Should find link within angle brackets even with link title.', async () => {
 		const links = await getLinksForText(joinLines(
 			`[link](<path> "test title")`
 		));
-		assertLinksEqual(links, [makeRange(0, 8, 0, 12)]);
+		assertLinksEqual(links, [lsp.Range.create(0, 8, 0, 12)]);
 	});
 
 	test('Should find link within angle brackets even with surrounding spaces.', async () => {
 		const links = await getLinksForText(joinLines(
 			`[link]( <path> )`
 		));
-		assertLinksEqual(links, [makeRange(0, 9, 0, 13)]);
+		assertLinksEqual(links, [lsp.Range.create(0, 9, 0, 13)]);
 	});
 
 	test('Should find link within angle brackets for image hyperlinks.', async () => {
 		const links = await getLinksForText(joinLines(
 			`![link](<path>)`
 		));
-		assertLinksEqual(links, [makeRange(0, 9, 0, 13)]);
+		assertLinksEqual(links, [lsp.Range.create(0, 9, 0, 13)]);
 	});
 
 	test('Should find link with spaces in angle brackets for image hyperlinks with titles.', async () => {
 		const links = await getLinksForText(joinLines(
 			`![link](< path > "test")`
 		));
-		assertLinksEqual(links, [makeRange(0, 9, 0, 15)]);
+		assertLinksEqual(links, [lsp.Range.create(0, 9, 0, 15)]);
 	});
 
 
@@ -545,7 +544,7 @@ suite('Link computer', () => {
 			`[link](<pa th>)`
 		));
 
-		assertLinksEqual(links, [makeRange(0, 8, 0, 13)]);
+		assertLinksEqual(links, [lsp.Range.create(0, 8, 0, 13)]);
 	});
 
 	test('Should find links with titles', async () => {
@@ -558,12 +557,12 @@ suite('Link computer', () => {
 			`[link](no-such.md (text))`,
 		));
 		assertLinksEqual(links, [
-			makeRange(0, 8, 0, 18),
-			makeRange(1, 8, 1, 18),
-			makeRange(2, 8, 2, 18),
-			makeRange(3, 7, 3, 17),
-			makeRange(4, 7, 4, 17),
-			makeRange(5, 7, 5, 17),
+			lsp.Range.create(0, 8, 0, 18),
+			lsp.Range.create(1, 8, 1, 18),
+			lsp.Range.create(2, 8, 2, 18),
+			lsp.Range.create(3, 7, 3, 17),
+			lsp.Range.create(4, 7, 4, 17),
+			lsp.Range.create(5, 7, 5, 17),
 		]);
 	});
 
@@ -623,10 +622,10 @@ suite('Link computer', () => {
 		));
 
 		assertLinksEqual(links, [
-			makeRange(0, 3, 0, 26),
-			makeRange(1, 3, 1, 26),
-			makeRange(2, 3, 2, 26),
-			makeRange(3, 28, 3, 31),
+			lsp.Range.create(0, 3, 0, 26),
+			lsp.Range.create(1, 3, 1, 26),
+			lsp.Range.create(2, 3, 2, 26),
+			lsp.Range.create(3, 28, 3, 31),
 		]);
 	});
 
@@ -638,8 +637,8 @@ suite('Link computer', () => {
 		));
 
 		assertLinksEqual(links, [
-			makeRange(0, 11, 0, 17),
-			makeRange(2, 10, 2, 28),
+			lsp.Range.create(0, 11, 0, 17),
+			lsp.Range.create(2, 10, 2, 28),
 		]);
 	});
 
@@ -651,9 +650,9 @@ suite('Link computer', () => {
 		));
 
 		assertLinksEqual(links, [
-			makeRange(0, 8, 0, 11),
-			makeRange(0, 14, 0, 17),
-			makeRange(2, 7, 2, 25),
+			lsp.Range.create(0, 8, 0, 11),
+			lsp.Range.create(0, 14, 0, 17),
+			lsp.Range.create(2, 7, 2, 25),
 		]);
 	});
 
@@ -665,9 +664,9 @@ suite('Link computer', () => {
 		));
 
 		assertLinksEqual(links, [
-			makeRange(0, 14, 0, 17),
-			makeRange(0, 8, 0, 11),
-			makeRange(2, 7, 2, 25),
+			lsp.Range.create(0, 14, 0, 17),
+			lsp.Range.create(0, 8, 0, 11),
+			lsp.Range.create(2, 7, 2, 25),
 		]);
 	});
 
@@ -679,9 +678,9 @@ suite('Link computer', () => {
 		));
 
 		assertLinksEqual(links, [
-			makeRange(0, 8, 0, 11),
-			makeRange(0, 14, 0, 17),
-			makeRange(2, 7, 2, 25),
+			lsp.Range.create(0, 8, 0, 11),
+			lsp.Range.create(0, 14, 0, 17),
+			lsp.Range.create(2, 7, 2, 25),
 		]);
 	});
 
@@ -693,8 +692,8 @@ suite('Link computer', () => {
 		));
 
 		assertLinksEqual(links, [
-			makeRange(0, 2, 0, 6),
-			makeRange(2, 8, 2, 26),
+			lsp.Range.create(0, 2, 0, 6),
+			lsp.Range.create(2, 8, 2, 26),
 		]);
 	});
 
@@ -708,10 +707,10 @@ suite('Link computer', () => {
 		));
 
 		assertLinksEqual(links, [
-			makeRange(0, 12, 0, 20),
-			makeRange(1, 1, 1, 9),
-			makeRange(2, 1, 2, 9),
-			makeRange(4, 12, 4, 30),
+			lsp.Range.create(0, 12, 0, 20),
+			lsp.Range.create(1, 1, 1, 9),
+			lsp.Range.create(2, 1, 2, 9),
+			lsp.Range.create(4, 12, 4, 30),
 		]);
 	});
 
@@ -725,9 +724,9 @@ suite('Link computer', () => {
 		));
 
 		assertLinksEqual(links, [
-			makeRange(0, 10, 0, 17),
-			makeRange(2, 10, 2, 17),
-			makeRange(4, 10, 4, 17),
+			lsp.Range.create(0, 10, 0, 17),
+			lsp.Range.create(2, 10, 2, 17),
+			lsp.Range.create(4, 10, 4, 17),
 		]);
 	});
 
@@ -737,7 +736,7 @@ suite('Link computer', () => {
 		));
 
 		assertLinksEqual(links, [
-			makeRange(0, 15, 0, 22),
+			lsp.Range.create(0, 15, 0, 22),
 		]);
 	});
 
@@ -761,8 +760,8 @@ suite('Link computer', () => {
 		));
 
 		assertLinksEqual(links, [
-			makeRange(0, 9, 0, 20),
-			makeRange(2, 8, 2, 19),
+			lsp.Range.create(0, 9, 0, 20),
+			lsp.Range.create(2, 8, 2, 19),
 		]);
 	});
 
@@ -816,10 +815,10 @@ suite('Link provider', () => {
 			'[ref]: http://example.com'
 		));
 		assertLinksEqual(links, [
-			makeRange(0, 1, 0, 4),
-			makeRange(1, 1, 1, 4),
-			makeRange(2, 6, 2, 9),
-			makeRange(4, 7, 4, 25),
+			lsp.Range.create(0, 1, 0, 4),
+			lsp.Range.create(1, 1, 1, 4),
+			lsp.Range.create(2, 6, 2, 9),
+			lsp.Range.create(4, 7, 4, 25),
 		]);
 	});
 
@@ -837,10 +836,10 @@ suite('Link provider', () => {
 			'[REF]: http://example.com'
 		));
 		assertLinksEqual(links, [
-			makeRange(0, 1, 0, 4),
-			makeRange(1, 1, 1, 4),
-			makeRange(2, 6, 2, 9),
-			makeRange(4, 7, 4, 25),
+			lsp.Range.create(0, 1, 0, 4),
+			lsp.Range.create(1, 1, 1, 4),
+			lsp.Range.create(2, 6, 2, 9),
+			lsp.Range.create(4, 7, 4, 25),
 		]);
 	});
 
@@ -853,9 +852,9 @@ suite('Link provider', () => {
 		));
 
 		assertLinksEqual(links, [
-			makeRange(0, 1, 0, 4),
-			makeRange(2, 7, 2, 27),
-			makeRange(3, 7, 3, 27),
+			lsp.Range.create(0, 1, 0, 4),
+			lsp.Range.create(2, 7, 2, 27),
+			lsp.Range.create(3, 7, 3, 27),
 		]);
 
 		assert.strictEqual(links[0].target, testFile.with({ fragment: 'L3,8' }).toString(true));

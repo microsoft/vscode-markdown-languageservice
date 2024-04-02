@@ -7,7 +7,6 @@ import * as lsp from 'vscode-languageserver-protocol';
 import { URI, Utils } from 'vscode-uri';
 import { LsConfiguration, PreferredMdPathExtensionStyle, isExcludedPath } from '../config';
 import { ITextDocument, getDocUri } from '../types/textDocument';
-import { Disposable } from '../util/dispose';
 import { WorkspaceEditBuilder } from '../util/editBuilder';
 import { looksLikeMarkdownUri } from '../util/file';
 import { isParentDir } from '../util/path';
@@ -28,7 +27,7 @@ export interface FileRenameResponse {
 	edit: lsp.WorkspaceEdit;
 }
 
-export class MdFileRenameProvider extends Disposable {
+export class MdFileRenameProvider {
 
 	readonly #config: LsConfiguration;
 	readonly #workspace: IWorkspace;
@@ -41,8 +40,6 @@ export class MdFileRenameProvider extends Disposable {
 		linkCache: MdWorkspaceInfoCache<readonly MdLink[]>,
 		referencesProvider: MdReferencesProvider,
 	) {
-		super();
-
 		this.#config = config;
 		this.#workspace = workspace;
 		this.#linkCache = linkCache;

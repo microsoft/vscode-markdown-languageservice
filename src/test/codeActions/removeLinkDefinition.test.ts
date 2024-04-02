@@ -10,13 +10,11 @@ import { DiagnosticComputer } from '../../languageFeatures/diagnostics';
 import { MdLinkProvider } from '../../languageFeatures/documentLinks';
 import { MdTableOfContentsProvider } from '../../tableOfContents';
 import { InMemoryDocument } from '../../types/inMemoryDocument';
-import { makeRange } from '../../types/range';
 import { noopToken } from '../../util/cancellation';
-import { DisposableStore } from '../../util/dispose';
 import { createNewMarkdownEngine } from '../engine';
 import { InMemoryWorkspace } from '../inMemoryWorkspace';
 import { nulLogger } from '../nulLogging';
-import { applyActionEdit, defaultDiagnosticsOptions, joinLines, withStore, workspacePath } from '../util';
+import { applyActionEdit, defaultDiagnosticsOptions, DisposableStore, joinLines, withStore, workspacePath } from '../util';
 
 async function getActions(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position): Promise<lsp.CodeAction[]> {
 	const workspace = store.add(new InMemoryWorkspace([doc]));
@@ -29,7 +27,7 @@ async function getActions(store: DisposableStore, doc: InMemoryDocument, pos: ls
 
 	const provider = new MdRemoveLinkDefinitionCodeActionProvider();
 	return Array.from(
-		provider.getActions(doc, makeRange(pos, pos), lsp.CodeActionContext.create((await computer.compute(doc, defaultDiagnosticsOptions, noopToken)).diagnostics, undefined, undefined))
+		provider.getActions(doc, lsp.Range.create(pos, pos), lsp.CodeActionContext.create((await computer.compute(doc, defaultDiagnosticsOptions, noopToken)).diagnostics, undefined, undefined))
 	);
 }
 

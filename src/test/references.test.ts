@@ -13,12 +13,11 @@ import { MdTableOfContentsProvider } from '../tableOfContents';
 import { InMemoryDocument } from '../types/inMemoryDocument';
 import { comparePosition } from '../types/position';
 import { noopToken } from '../util/cancellation';
-import { DisposableStore } from '../util/dispose';
 import { IWorkspace } from '../workspace';
 import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
-import { joinLines, withStore, workspacePath, workspaceRoot } from './util';
+import { DisposableStore, joinLines, withStore, workspacePath, workspaceRoot } from './util';
 
 
 async function getReferences(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position, workspace: IWorkspace) {

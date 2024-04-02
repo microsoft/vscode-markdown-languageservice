@@ -13,14 +13,12 @@ import { MdRenameProvider } from '../languageFeatures/rename';
 import { githubSlugifier } from '../slugify';
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { InMemoryDocument } from '../types/inMemoryDocument';
-import { makeRange } from '../types/range';
 import { noopToken } from '../util/cancellation';
-import { DisposableStore } from '../util/dispose';
 import { IWorkspace } from '../workspace';
 import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
-import { assertRangeEqual, joinLines, withStore, workspacePath } from './util';
+import { assertRangeEqual, DisposableStore, joinLines, withStore, workspacePath } from './util';
 
 
 /**
@@ -32,7 +30,7 @@ function prepareRename(store: DisposableStore, doc: InMemoryDocument, pos: lsp.P
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const linkCache = store.add(createWorkspaceLinkCache(engine, workspace));
 	const referenceComputer = store.add(new MdReferencesProvider(config, engine, workspace, tocProvider, linkCache, nulLogger));
-	const renameProvider = store.add(new MdRenameProvider(config, workspace, engine, referenceComputer, tocProvider, githubSlugifier, nulLogger));
+	const renameProvider = new MdRenameProvider(config, workspace, engine, referenceComputer, tocProvider, githubSlugifier, nulLogger);
 	return renameProvider.prepareRename(doc, pos, noopToken);
 }
 
@@ -45,7 +43,7 @@ function getRenameEdits(store: DisposableStore, doc: InMemoryDocument, pos: lsp.
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const linkCache = store.add(createWorkspaceLinkCache(engine, workspace));
 	const referencesProvider = store.add(new MdReferencesProvider(config, engine, workspace, tocProvider, linkCache, nulLogger));
-	const renameProvider = store.add(new MdRenameProvider(config, workspace, engine, referencesProvider, tocProvider, githubSlugifier, nulLogger));
+	const renameProvider = new MdRenameProvider(config, workspace, engine, referencesProvider, tocProvider, githubSlugifier, nulLogger);
 	return renameProvider.provideRenameEdits(doc, pos, newName, noopToken);
 }
 
@@ -107,12 +105,12 @@ suite('Rename', () => {
 			const workspace = store.add(new InMemoryWorkspace([doc]));
 
 			const info = await prepareRename(store, doc, { line: 0, character: 0 }, workspace);
-			assertRangeEqual(info!.range, makeRange(0, 2, 0, 5));
+			assertRangeEqual(info!.range, lsp.Range.create(0, 2, 0, 5));
 
 			const edit = await getRenameEdits(store, doc, { line: 0, character: 0 }, 'New Header', workspace);
 			assertEditsEqual(edit!, {
 				uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 2, 0, 5), 'New Header')
+					lsp.TextEdit.replace(lsp.Range.create(0, 2, 0, 5), 'New Header')
 				]
 			});
 		}));
@@ -126,12 +124,12 @@ suite('Rename', () => {
 			const workspace = store.add(new InMemoryWorkspace([doc]));
 
 			const info = await prepareRename(store, doc, { line: 0, character: 0 }, workspace);
-			assertRangeEqual(info!.range, makeRange(0, 4, 0, 7));
+			assertRangeEqual(info!.range, lsp.Range.create(0, 4, 0, 7));
 
 			const edit = await getRenameEdits(store, doc, { line: 0, character: 0 }, 'New Header', workspace);
 			assertEditsEqual(edit!, {
 				uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 4, 0, 7), 'New Header')
+					lsp.TextEdit.replace(lsp.Range.create(0, 4, 0, 7), 'New Header')
 				]
 			});
 		}));
@@ -147,8 +145,8 @@ suite('Rename', () => {
 			const edit = await getRenameEdits(store, doc, { line: 0, character: 0 }, 'New Header', workspace);
 			assertEditsEqual(edit!, {
 				uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 4, 0, 9), 'New Header'),
-					lsp.TextEdit.replace(makeRange(1, 8, 1, 13), 'new-header'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 4, 0, 9), 'New Header'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 8, 1, 13), 'new-header'),
 				]
 			});
 		}));
@@ -164,8 +162,8 @@ suite('Rename', () => {
 			const edit = await getRenameEdits(store, doc, { line: 1, character: 10 }, 'New Header', workspace);
 			assertEditsEqual(edit!, {
 				uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 4, 0, 9), 'New Header'),
-					lsp.TextEdit.replace(makeRange(1, 8, 1, 13), 'new-header'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 4, 0, 9), 'New Header'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 8, 1, 13), 'new-header'),
 				]
 			});
 		}));
@@ -182,9 +180,9 @@ suite('Rename', () => {
 			const edit = await getRenameEdits(store, doc, { line: 2, character: 10 }, 'New Header', workspace);
 			assertEditsEqual(edit!, {
 				uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 4, 0, 9), 'New Header'),
-					lsp.TextEdit.replace(makeRange(1, 8, 1, 13), 'new-header'),
-					lsp.TextEdit.replace(makeRange(2, 8, 2, 13), 'new-header'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 4, 0, 9), 'New Header'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 8, 1, 13), 'new-header'),
+					lsp.TextEdit.replace(lsp.Range.create(2, 8, 2, 13), 'new-header'),
 				]
 			});
 		}));
@@ -207,13 +205,13 @@ suite('Rename', () => {
 			]));
 			assertEditsEqual(edit!, {
 				uri: uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 4, 0, 9), 'New Header'),
-					lsp.TextEdit.replace(makeRange(1, 8, 1, 13), 'new-header'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 4, 0, 9), 'New Header'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 8, 1, 13), 'new-header'),
 				]
 			}, {
 				uri: otherUri, edits: [
-					lsp.TextEdit.replace(makeRange(1, 16, 1, 21), 'new-header'),
-					lsp.TextEdit.replace(makeRange(2, 13, 2, 18), 'new-header'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 16, 1, 21), 'new-header'),
+					lsp.TextEdit.replace(lsp.Range.create(2, 13, 2, 18), 'new-header'),
 				]
 			});
 		}));
@@ -236,13 +234,13 @@ suite('Rename', () => {
 			]));
 			assertEditsEqual(edit!, {
 				uri: uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 4, 0, 9), 'New Header'),
-					lsp.TextEdit.replace(makeRange(1, 8, 1, 13), 'new-header'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 4, 0, 9), 'New Header'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 8, 1, 13), 'new-header'),
 				]
 			}, {
 				uri: otherUri, edits: [
-					lsp.TextEdit.replace(makeRange(1, 16, 1, 21), 'new-header'),
-					lsp.TextEdit.replace(makeRange(2, 13, 2, 18), 'new-header'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 16, 1, 21), 'new-header'),
+					lsp.TextEdit.replace(lsp.Range.create(2, 13, 2, 18), 'new-header'),
 				]
 			});
 		}));
@@ -264,13 +262,13 @@ suite('Rename', () => {
 			const expectedEdits = [
 				{
 					uri: uri, edits: [
-						lsp.TextEdit.replace(makeRange(0, 4, 0, 9), 'New Header'),
-						lsp.TextEdit.replace(makeRange(1, 8, 1, 13), 'new-header'),
+						lsp.TextEdit.replace(lsp.Range.create(0, 4, 0, 9), 'New Header'),
+						lsp.TextEdit.replace(lsp.Range.create(1, 8, 1, 13), 'new-header'),
 					]
 				}, {
 					uri: otherUri, edits: [
-						lsp.TextEdit.replace(makeRange(1, 16, 1, 21), 'new-header'),
-						lsp.TextEdit.replace(makeRange(2, 13, 2, 18), 'new-header'),
+						lsp.TextEdit.replace(lsp.Range.create(1, 16, 1, 21), 'new-header'),
+						lsp.TextEdit.replace(lsp.Range.create(2, 13, 2, 18), 'new-header'),
 					]
 				}
 			];
@@ -304,8 +302,8 @@ suite('Rename', () => {
 			const edit = await getRenameEdits(store, doc, { line: 0, character: 0 }, 'New Header', workspace);
 			assertEditsEqual(edit!, {
 				uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 4, 0, 9), 'New Header'),
-					lsp.TextEdit.replace(makeRange(1, 10, 1, 15), 'new-header'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 4, 0, 9), 'New Header'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 10, 1, 15), 'new-header'),
 				]
 			});
 		}));
@@ -327,11 +325,11 @@ suite('Rename', () => {
 				assertEditsEqual(edit!, {
 					uri, edits: [
 						// Update link to duplicated header after new header 
-						lsp.TextEdit.replace(makeRange(5, 6, 5, 16), 'header-a-2'),
+						lsp.TextEdit.replace(lsp.Range.create(5, 6, 5, 16), 'header-a-2'),
 
 						// And the header itself
-						lsp.TextEdit.replace(makeRange(1, 2, 1, 10), 'header a'),
-						lsp.TextEdit.replace(makeRange(4, 6, 4, 14), 'header-a-1'),
+						lsp.TextEdit.replace(lsp.Range.create(1, 2, 1, 10), 'header a'),
+						lsp.TextEdit.replace(lsp.Range.create(4, 6, 4, 14), 'header-a-1'),
 
 					]
 				});
@@ -352,11 +350,11 @@ suite('Rename', () => {
 			assertEditsEqual(edit!, {
 				uri, edits: [
 					// Update previously duplicated header
-					lsp.TextEdit.replace(makeRange(3, 6, 3, 14), 'header'),
+					lsp.TextEdit.replace(lsp.Range.create(3, 6, 3, 14), 'header'),
 
 					// And main header
-					lsp.TextEdit.replace(makeRange(0, 2, 0, 8), 'New Header'),
-					lsp.TextEdit.replace(makeRange(2, 6, 2, 12), 'new-header'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 2, 0, 8), 'New Header'),
+					lsp.TextEdit.replace(lsp.Range.create(2, 6, 2, 12), 'new-header'),
 				]
 			});
 		}));
@@ -376,9 +374,9 @@ suite('Rename', () => {
 			const edit = await getRenameEdits(store, doc, { line: 0, character: 8 }, 'new ref', workspace);
 			assertEditsEqual(edit!, {
 				uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 7, 0, 10), 'new ref'),
-					lsp.TextEdit.replace(makeRange(1, 8, 1, 11), 'new ref'),
-					lsp.TextEdit.replace(makeRange(3, 1, 3, 4), 'new ref'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 7, 0, 10), 'new ref'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 8, 1, 11), 'new ref'),
+					lsp.TextEdit.replace(lsp.Range.create(3, 1, 3, 4), 'new ref'),
 				]
 			});
 		}));
@@ -396,9 +394,9 @@ suite('Rename', () => {
 			const edit = await getRenameEdits(store, doc, { line: 3, character: 3 }, 'new ref', workspace);
 			assertEditsEqual(edit!, {
 				uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 7, 0, 10), 'new ref'),
-					lsp.TextEdit.replace(makeRange(1, 8, 1, 11), 'new ref'),
-					lsp.TextEdit.replace(makeRange(3, 1, 3, 4), 'new ref'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 7, 0, 10), 'new ref'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 8, 1, 11), 'new ref'),
+					lsp.TextEdit.replace(lsp.Range.create(3, 1, 3, 4), 'new ref'),
 				]
 			});
 		}));
@@ -415,14 +413,14 @@ suite('Rename', () => {
 
 			const preparedInfo = await prepareRename(store, doc, { line: 3, character: 10 }, workspace);
 			assert.strictEqual(preparedInfo!.placeholder, 'a B c');
-			assertRangeEqual(preparedInfo!.range, makeRange(3, 8, 3, 13));
+			assertRangeEqual(preparedInfo!.range, lsp.Range.create(3, 8, 3, 13));
 
 			const edit = await getRenameEdits(store, doc, { line: 3, character: 10 }, 'x Y z', workspace);
 			assertEditsEqual(edit!, {
 				uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 2, 0, 7), 'x Y z'),
-					lsp.TextEdit.replace(makeRange(2, 10, 2, 15), 'x-y-z'),
-					lsp.TextEdit.replace(makeRange(3, 8, 3, 13), 'x-y-z'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 2, 0, 7), 'x Y z'),
+					lsp.TextEdit.replace(lsp.Range.create(2, 10, 2, 15), 'x-y-z'),
+					lsp.TextEdit.replace(lsp.Range.create(3, 8, 3, 13), 'x-y-z'),
 				]
 			});
 		}));
@@ -448,7 +446,7 @@ suite('Rename', () => {
 
 			const info = await prepareRename(store, doc, { line: 0, character: 10 }, workspace);
 			assert.strictEqual(info!.placeholder, './doc.md');
-			assertRangeEqual(info!.range, makeRange(0, 7, 0, 15));
+			assertRangeEqual(info!.range, lsp.Range.create(0, 7, 0, 15));
 		}));
 
 		test('Path rename\'s range should excludes fragment', withStore(async (store) => {
@@ -461,7 +459,7 @@ suite('Rename', () => {
 
 			const info = await prepareRename(store, doc, { line: 0, character: 10 }, workspace);
 			assert.strictEqual(info!.placeholder, './doc.md');
-			assertRangeEqual(info!.range, makeRange(0, 7, 0, 15));
+			assertRangeEqual(info!.range, lsp.Range.create(0, 7, 0, 15));
 		}));
 
 		test('Path rename should update file and all refs', withStore(async (store) => {
@@ -478,8 +476,8 @@ suite('Rename', () => {
 				newUri: workspacePath('sub', 'newDoc.md'),
 			}, {
 				uri: uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 7, 0, 15), './sub/newDoc.md'),
-					lsp.TextEdit.replace(makeRange(1, 7, 1, 15), './sub/newDoc.md'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 7, 0, 15), './sub/newDoc.md'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 7, 1, 15), './sub/newDoc.md'),
 				]
 			});
 		}));
@@ -498,8 +496,8 @@ suite('Rename', () => {
 				newUri: workspacePath('newSub', 'newDoc.md'),
 			}, {
 				uri: uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 7, 0, 18), '/newSub/newDoc.md'),
-					lsp.TextEdit.replace(makeRange(1, 7, 1, 18), '/newSub/newDoc.md'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 7, 0, 18), '/newSub/newDoc.md'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 7, 1, 18), '/newSub/newDoc.md'),
 				]
 			});
 		}));
@@ -529,8 +527,8 @@ suite('Rename', () => {
 				newUri: workspacePath('NEW sub', 'new DOC.md'),
 			}, {
 				uri: uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 7, 0, 18), '</NEW sub/new DOC.md>'),
-					lsp.TextEdit.replace(makeRange(1, 7, 1, 18), '</NEW sub/new DOC.md>'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 7, 0, 18), '</NEW sub/new DOC.md>'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 7, 1, 18), '</NEW sub/new DOC.md>'),
 				]
 			});
 		}));
@@ -558,13 +556,13 @@ suite('Rename', () => {
 				// Should not have file edits since the files don't exist here
 				{
 					uri: uri1, edits: [
-						lsp.TextEdit.replace(makeRange(0, 7, 0, 29), '/img/test/new.png'),
-						lsp.TextEdit.replace(makeRange(2, 7, 2, 29), '/img/test/new.png'),
+						lsp.TextEdit.replace(lsp.Range.create(0, 7, 0, 29), '/img/test/new.png'),
+						lsp.TextEdit.replace(lsp.Range.create(2, 7, 2, 29), '/img/test/new.png'),
 					]
 				},
 				{
 					uri: uri2, edits: [
-						lsp.TextEdit.replace(makeRange(0, 7, 0, 29), '/img/test/new.png'),
+						lsp.TextEdit.replace(lsp.Range.create(0, 7, 0, 29), '/img/test/new.png'),
 					]
 				});
 		}));
@@ -583,8 +581,8 @@ suite('Rename', () => {
 				newUri: workspacePath('new File.md'), // Rename on disk should use file extension
 			}, {
 				uri: uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 7, 0, 18), '</new File#header>'), // Links should continue to use extension-less paths
-					lsp.TextEdit.replace(makeRange(1, 7, 1, 17), '</new File#other>'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 7, 0, 18), '</new File#header>'), // Links should continue to use extension-less paths
+					lsp.TextEdit.replace(lsp.Range.create(1, 7, 1, 17), '</new File#other>'),
 				]
 			});
 		}));
@@ -625,23 +623,23 @@ suite('Rename', () => {
 				newUri: workspacePath('sub', 'new', 'new-doc.md'),
 			}, {
 				uri: uri1, edits: [
-					lsp.TextEdit.replace(makeRange(0, 7, 0, 15), './new/new-doc.md'),
-					lsp.TextEdit.replace(makeRange(1, 7, 1, 15), './new/new-doc.md'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 7, 0, 15), './new/new-doc.md'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 7, 1, 15), './new/new-doc.md'),
 				]
 			}, {
 				uri: uri2, edits: [
-					lsp.TextEdit.replace(makeRange(0, 7, 0, 19), './sub/new/new-doc.md'),
-					lsp.TextEdit.replace(makeRange(1, 7, 1, 19), './sub/new/new-doc.md'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 7, 0, 19), './sub/new/new-doc.md'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 7, 1, 19), './sub/new/new-doc.md'),
 				]
 			}, {
 				uri: uri3, edits: [
-					lsp.TextEdit.replace(makeRange(0, 7, 0, 20), '../sub/new/new-doc.md'),
-					lsp.TextEdit.replace(makeRange(1, 7, 1, 20), '../sub/new/new-doc.md'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 7, 0, 20), '../sub/new/new-doc.md'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 7, 1, 20), '../sub/new/new-doc.md'),
 				]
 			}, {
 				uri: uri4, edits: [
-					lsp.TextEdit.replace(makeRange(0, 7, 0, 18), '/sub/new/new-doc.md'),
-					lsp.TextEdit.replace(makeRange(1, 7, 1, 18), '/sub/new/new-doc.md'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 7, 0, 18), '/sub/new/new-doc.md'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 7, 1, 18), '/sub/new/new-doc.md'),
 				]
 			});
 		}));
@@ -669,9 +667,9 @@ suite('Rename', () => {
 				originalUri: workspacePath('sub', 'sub2', 'doc3.md'),
 				newUri: workspacePath('sub', 'sub2', 'cat.md'),
 			}, {
-				uri: uri1, edits: [lsp.TextEdit.replace(makeRange(0, 8, 0, 20), 'sub2/cat.md')]
+				uri: uri1, edits: [lsp.TextEdit.replace(lsp.Range.create(0, 8, 0, 20), 'sub2/cat.md')]
 			}, {
-				uri: uri2, edits: [lsp.TextEdit.replace(makeRange(0, 8, 0, 24), 'sub/sub2/cat.md')]
+				uri: uri2, edits: [lsp.TextEdit.replace(lsp.Range.create(0, 8, 0, 24), 'sub/sub2/cat.md')]
 			});
 		}));
 
@@ -685,7 +683,7 @@ suite('Rename', () => {
 			const workspace = store.add(new InMemoryWorkspace([doc]));
 			const info = await prepareRename(store, doc, { line: 1, character: 10 }, workspace);
 			assert.strictEqual(info!.placeholder, 'a B c');
-			assertRangeEqual(info!.range, makeRange(1, 8, 1, 13));
+			assertRangeEqual(info!.range, lsp.Range.create(1, 8, 1, 13));
 		}));
 
 		test('Rename on http uri should work', withStore(async (store) => {
@@ -707,13 +705,13 @@ suite('Rename', () => {
 			const edit = await getRenameEdits(store, doc, { line: 1, character: 10 }, 'https://example.com/sub', workspace);
 			assertEditsEqual(edit!, {
 				uri: uri1, edits: [
-					lsp.TextEdit.replace(makeRange(0, 4, 0, 22), 'https://example.com/sub'),
-					lsp.TextEdit.replace(makeRange(1, 5, 1, 23), 'https://example.com/sub'),
-					lsp.TextEdit.replace(makeRange(2, 1, 2, 19), 'https://example.com/sub'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 4, 0, 22), 'https://example.com/sub'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 5, 1, 23), 'https://example.com/sub'),
+					lsp.TextEdit.replace(lsp.Range.create(2, 1, 2, 19), 'https://example.com/sub'),
 				]
 			}, {
 				uri: uri2, edits: [
-					lsp.TextEdit.replace(makeRange(0, 4, 0, 22), 'https://example.com/sub'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 4, 0, 22), 'https://example.com/sub'),
 				]
 			});
 		}));
@@ -730,13 +728,13 @@ suite('Rename', () => {
 
 			const preparedInfo = await prepareRename(store, doc, { line: 2, character: 10 }, workspace);
 			assert.strictEqual(preparedInfo!.placeholder, '/file');
-			assertRangeEqual(preparedInfo!.range, makeRange(2, 7, 2, 12));
+			assertRangeEqual(preparedInfo!.range, lsp.Range.create(2, 7, 2, 12));
 
 			const edit = await getRenameEdits(store, doc, { line: 2, character: 10 }, '/newFile', workspace);
 			assertEditsEqual(edit!, {
 				uri, edits: [
-					lsp.TextEdit.replace(makeRange(1, 9, 1, 14), '/newFile'),
-					lsp.TextEdit.replace(makeRange(2, 7, 2, 12), '/newFile'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 9, 1, 14), '/newFile'),
+					lsp.TextEdit.replace(lsp.Range.create(2, 7, 2, 12), '/newFile'),
 				]
 			});
 		}));
@@ -756,13 +754,13 @@ suite('Rename', () => {
 
 			const preparedInfo = await prepareRename(store, doc1, { line: 2, character: 10 }, workspace);
 			assert.strictEqual(preparedInfo!.placeholder, '/doc2');
-			assertRangeEqual(preparedInfo!.range, makeRange(2, 7, 2, 12));
+			assertRangeEqual(preparedInfo!.range, lsp.Range.create(2, 7, 2, 12));
 
 			const edit = await getRenameEdits(store, doc1, { line: 2, character: 10 }, '/new-doc', workspace);
 			assertEditsEqual(edit!, {
 				uri: uri1, edits: [
-					lsp.TextEdit.replace(makeRange(1, 9, 1, 14), '/new-doc'),
-					lsp.TextEdit.replace(makeRange(2, 7, 2, 12), '/new-doc'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 9, 1, 14), '/new-doc'),
+					lsp.TextEdit.replace(lsp.Range.create(2, 7, 2, 12), '/new-doc'),
 				]
 			}, {
 				originalUri: uri2,
@@ -782,13 +780,13 @@ suite('Rename', () => {
 
 			const preparedInfo = await prepareRename(store, doc, { line: 2, character: 16 }, workspace);
 			assert.strictEqual(preparedInfo!.placeholder, 'header');
-			assertRangeEqual(preparedInfo!.range, makeRange(2, 13, 2, 19));
+			assertRangeEqual(preparedInfo!.range, lsp.Range.create(2, 13, 2, 19));
 
 			const edit = await getRenameEdits(store, doc, { line: 2, character: 16 }, 'New Header', workspace);
 			assertEditsEqual(edit!, {
 				uri, edits: [
-					lsp.TextEdit.replace(makeRange(1, 15, 1, 21), 'new-header'),
-					lsp.TextEdit.replace(makeRange(2, 13, 2, 19), 'new-header'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 15, 1, 21), 'new-header'),
+					lsp.TextEdit.replace(lsp.Range.create(2, 13, 2, 19), 'new-header'),
 				]
 			});
 		}));
@@ -815,13 +813,13 @@ suite('Rename', () => {
 				// Should not have file edits since the files don't exist here
 				{
 					uri: uri1, edits: [
-						lsp.TextEdit.replace(makeRange(0, 7, 0, 29), '/img/test/new.png'),
-						lsp.TextEdit.replace(makeRange(2, 10, 2, 32), '/img/test/new.png'),
+						lsp.TextEdit.replace(lsp.Range.create(0, 7, 0, 29), '/img/test/new.png'),
+						lsp.TextEdit.replace(lsp.Range.create(2, 10, 2, 32), '/img/test/new.png'),
 					]
 				},
 				{
 					uri: uri2, edits: [
-						lsp.TextEdit.replace(makeRange(0, 10, 0, 32), '/img/test/new.png'),
+						lsp.TextEdit.replace(lsp.Range.create(0, 10, 0, 32), '/img/test/new.png'),
 					]
 				}
 			];
@@ -851,8 +849,8 @@ suite('Rename', () => {
 			const edit = await getRenameEdits(store, doc, { line: 0, character: 10 }, 'sp ace.gif', workspace);
 			assertEditsEqual(edit!, {
 				uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 9, 0, 16), 'sp ace.gif'),
-					lsp.TextEdit.replace(makeRange(2, 8, 2, 15), 'sp ace.gif'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 9, 0, 16), 'sp ace.gif'),
+					lsp.TextEdit.replace(lsp.Range.create(2, 8, 2, 15), 'sp ace.gif'),
 				]
 			});
 		}));
@@ -872,9 +870,9 @@ suite('Rename', () => {
 			const mismatchedit = await getRenameEdits(store, doc, { line: 0, character: 10 }, 'open(.gif', workspace);
 			assertEditsEqual(mismatchedit!, {
 				uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 8, 0, 15), '<open(.gif>'),
-					lsp.TextEdit.replace(makeRange(1, 9, 1, 16), 'open(.gif'),
-					lsp.TextEdit.replace(makeRange(3, 7, 3, 14), '<open(.gif>'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 8, 0, 15), '<open(.gif>'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 9, 1, 16), 'open(.gif'),
+					lsp.TextEdit.replace(lsp.Range.create(3, 7, 3, 14), '<open(.gif>'),
 				]
 			});
 
@@ -882,9 +880,9 @@ suite('Rename', () => {
 			const matchedEdit = await getRenameEdits(store, doc, { line: 0, character: 10 }, 'o(p)(e(n)).gif', workspace);
 			assertEditsEqual(matchedEdit!, {
 				uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 8, 0, 15), 'o(p)(e(n)).gif'),
-					lsp.TextEdit.replace(makeRange(1, 8, 1, 17), 'o(p)(e(n)).gif'), // removes <...> from link
-					lsp.TextEdit.replace(makeRange(3, 7, 3, 14), 'o(p)(e(n)).gif'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 8, 0, 15), 'o(p)(e(n)).gif'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 8, 1, 17), 'o(p)(e(n)).gif'), // removes <...> from link
+					lsp.TextEdit.replace(lsp.Range.create(3, 7, 3, 14), 'o(p)(e(n)).gif'),
 				]
 			});
 		}));
@@ -903,9 +901,9 @@ suite('Rename', () => {
 			const edit = await getRenameEdits(store, doc, { line: 0, character: 10 }, 'n<ew>.gif', workspace);
 			assertEditsEqual(edit!, {
 				uri, edits: [
-					lsp.TextEdit.replace(makeRange(0, 8, 0, 15), 'n<ew>.gif'),
-					lsp.TextEdit.replace(makeRange(1, 8, 1, 17), 'n<ew>.gif'),
-					lsp.TextEdit.replace(makeRange(3, 7, 3, 16), 'n<ew>.gif'),
+					lsp.TextEdit.replace(lsp.Range.create(0, 8, 0, 15), 'n<ew>.gif'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 8, 1, 17), 'n<ew>.gif'),
+					lsp.TextEdit.replace(lsp.Range.create(3, 7, 3, 16), 'n<ew>.gif'),
 				]
 			});
 		}));

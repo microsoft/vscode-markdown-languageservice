@@ -10,11 +10,10 @@ import { MdOrganizeLinkDefinitionProvider } from '../languageFeatures/organizeLi
 import { MdTableOfContentsProvider } from '../tableOfContents';
 import { InMemoryDocument } from '../types/inMemoryDocument';
 import { noopToken } from '../util/cancellation';
-import { DisposableStore } from '../util/dispose';
 import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
-import { joinLines, withStore, workspacePath } from './util';
+import { DisposableStore, joinLines, withStore, workspacePath } from './util';
 
 async function getOrganizeEdits(store: DisposableStore, doc: InMemoryDocument, removeUnused = false): Promise<lsp.TextEdit[]> {
 	const workspace = store.add(new InMemoryWorkspace([doc]));

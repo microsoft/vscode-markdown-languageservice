@@ -9,13 +9,11 @@ import { MdExtractLinkDefinitionCodeActionProvider } from '../../languageFeature
 import { MdLinkProvider } from '../../languageFeatures/documentLinks';
 import { MdTableOfContentsProvider } from '../../tableOfContents';
 import { InMemoryDocument } from '../../types/inMemoryDocument';
-import { makeRange } from '../../types/range';
 import { noopToken } from '../../util/cancellation';
-import { DisposableStore } from '../../util/dispose';
 import { createNewMarkdownEngine } from '../engine';
 import { InMemoryWorkspace } from '../inMemoryWorkspace';
 import { nulLogger } from '../nulLogging';
-import { applyActionEdit, joinLines, withStore, workspacePath } from '../util';
+import { applyActionEdit, DisposableStore, joinLines, withStore, workspacePath } from '../util';
 
 async function getActions(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position): Promise<lsp.CodeAction[]> {
 	const workspace = store.add(new InMemoryWorkspace([doc]));
@@ -25,7 +23,7 @@ async function getActions(store: DisposableStore, doc: InMemoryDocument, pos: ls
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
 	const provider = new MdExtractLinkDefinitionCodeActionProvider(linkProvider);
-	return provider.getActions(doc, makeRange(pos, pos), lsp.CodeActionContext.create([], undefined, undefined), noopToken);
+	return provider.getActions(doc, lsp.Range.create(pos, pos), lsp.CodeActionContext.create([], undefined, undefined), noopToken);
 }
 
 function assertActiveActionCount(actions: readonly lsp.CodeAction[], expectedCount: number) {

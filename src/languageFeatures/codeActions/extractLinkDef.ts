@@ -92,16 +92,10 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 			}
 		}
 
-		// And append new definition to link definition block
-		const definitionText = this.#getLinkTargetText(doc, targetLink).trim();
+		const definitionText = getLinkTargetText(doc, targetLink).trim();
 		const definitions = linkInfo.links.filter(link => link.kind === MdLinkKind.Definition) as MdLinkDefinition[];
-		const defBlock = getExistingDefinitionBlock(doc, definitions);
-		if (!defBlock) {
-			builder.insert(resource, { line: doc.lineCount, character: 0 }, `\n\n[${placeholder}]: ${definitionText}`);
-		} else {
-			const line = getLine(doc, defBlock.endLine);
-			builder.insert(resource, { line: defBlock.endLine, character: line.length }, `\n[${placeholder}]: ${definitionText}`);
-		}
+		const defEdit = createAddDefinitionEdit(doc, definitions, [{ definitionText, placeholder }]);
+		builder.insert(resource, defEdit.range.start, defEdit.newText);
 
 		const renamePosition = translatePosition(targetLink.source.targetRange.start, { characterDelta: 1 });
 		return {
@@ -114,15 +108,6 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 				arguments: [getDocUri(doc), renamePosition],
 			}
 		};
-	}
-
-	#getLinkTargetText(doc: ITextDocument, link: MdInlineLink | MdAutoLink) {
-		const afterHrefRange = link.kind === MdLinkKind.AutoLink
-			? link.source.targetRange
-			: makeRange(
-				translatePosition(link.source.targetRange.start, { characterDelta: 1 }),
-				translatePosition(link.source.targetRange.end, { characterDelta: -1 }));
-		return doc.getText(afterHrefRange);
 	}
 
 	#getPlaceholder(definitions: LinkDefinitionSet): string {
@@ -146,4 +131,25 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 
 		return false;
 	}
+}
+
+export function createAddDefinitionEdit(doc: ITextDocument, existingDefinitions: readonly MdLinkDefinition[], newDefs: ReadonlyArray<{ definitionText: string, placeholder: string }>): lsp.TextEdit {
+	const defBlock = getExistingDefinitionBlock(doc, existingDefinitions);
+	const newDefText = newDefs.map(({ definitionText, placeholder }) => `[${placeholder}]: ${definitionText}`).join('\n');
+
+	if (!defBlock) {
+		return lsp.TextEdit.insert({ line: doc.lineCount, character: 0 }, '\n\n' + newDefText);
+	} else {
+		const line = getLine(doc, defBlock.endLine);
+		return lsp.TextEdit.insert({ line: defBlock.endLine, character: line.length }, '\n' + newDefText);
+	}
+}
+
+function getLinkTargetText(doc: ITextDocument, link: MdInlineLink | MdAutoLink) {
+	const afterHrefRange = link.kind === MdLinkKind.AutoLink
+		? link.source.targetRange
+		: makeRange(
+			translatePosition(link.source.targetRange.start, { characterDelta: 1 }),
+			translatePosition(link.source.targetRange.end, { characterDelta: -1 }));
+	return doc.getText(afterHrefRange);
 }

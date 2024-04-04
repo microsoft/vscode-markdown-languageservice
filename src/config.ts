@@ -37,7 +37,7 @@ export interface LsConfiguration {
 	readonly markdownFileExtensions: readonly string[];
 
 	/**
-	 * List of file extension for files that are linked to from markdown .
+	 * List of file extension for files that are linked to from markdown.
 	 *
 	 * These should not include the leading `.`.
 	 *

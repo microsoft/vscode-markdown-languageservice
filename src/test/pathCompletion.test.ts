@@ -79,6 +79,18 @@ suite('Path completions', () => {
 		]);
 	}));
 
+	test('Should return anchor for header with emoji', withStore(async (store) => {
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+			`[](#${CURSOR}`,
+			``,
+			`# 😀 a 😀 b 😀`,
+		));
+
+		assertCompletionsEqual(completions, [
+			{ label: '#-a--b-' },
+		]);
+	}));
+
 	test('Should not return suggestions for http links', withStore(async (store) => {
 		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 			`[](http:${CURSOR}`,
@@ -194,7 +206,7 @@ suite('Path completions', () => {
 
 		assertCompletionsEqual(completions, [
 			{ label: '#a-b-c' },
-			{ label: '#x-y-z' },
+			{ label: '#x-y----z' },
 			{ label: 'new.md' },
 		]);
 	}));

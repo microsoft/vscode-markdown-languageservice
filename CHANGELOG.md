@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0-alpha.4 — April 4, 2024
+- Change update links on paste to generate minimal edit.
+- Update github slugifier to more closely match github. 
+
 ## 0.5.0-alpha.3 — April 1, 2024
 - Add experimental support for update links in text copied across Markdown files.
 

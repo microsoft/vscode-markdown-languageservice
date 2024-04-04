@@ -215,7 +215,7 @@ export class TableOfContents {
 	}
 
 	public lookup(fragment: string): TocEntry | undefined {
-		const slug = this.#slugifier.fromHeading(fragment);
+		const slug = this.#slugifier.fromFragment(fragment);
 		return this.entries.find(entry => entry.slug.equals(slug));
 	}
 }

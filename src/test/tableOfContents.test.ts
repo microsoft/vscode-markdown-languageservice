@@ -77,24 +77,6 @@ suite('Table of contents', () => {
 		assert.strictEqual((provider.lookup('FOO'))!.line, 0);
 	});
 
-	test('Lookups should ignore leading and trailing white-space, and collapse internal whitespace', async () => {
-		const doc = new InMemoryDocument(testFileName, joinLines(
-			`#      f o  o    `,
-			``,
-		));
-		const provider = await createToc(doc);
-
-		assert.strictEqual((provider.lookup('f o  o'))!.line, 0);
-		assert.strictEqual((provider.lookup('  f o  o'))!.line, 0);
-		assert.strictEqual((provider.lookup('  f o  o  '))!.line, 0);
-		assert.strictEqual((provider.lookup('f o o'))!.line, 0);
-		assert.strictEqual((provider.lookup('f o       o'))!.line, 0);
-
-		assert.strictEqual(provider.lookup('f'), undefined);
-		assert.strictEqual(provider.lookup('foo'), undefined);
-		assert.strictEqual(provider.lookup('fo o'), undefined);
-	});
-
 	test('should handle special characters #44779', async () => {
 		const doc = new InMemoryDocument(testFileName, joinLines(
 			`# Indentação`,

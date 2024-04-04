@@ -15,6 +15,8 @@ import { translatePosition } from '../types/position';
 import { ITextDocument, getDocUri, getLine } from '../types/textDocument';
 import { looksLikeMarkdownFilePath } from '../util/file';
 import { escapeForAngleBracketLink, hasBalancedParens } from '../util/mdLinks';
+import * as mdBuilder from '../util/mdBuilder';
+import { MediaType, getMediaPreviewType } from '../util/media';
 import { computeRelativePath } from '../util/path';
 import { Schemes } from '../util/schemes';
 import { r } from '../util/string';
@@ -482,7 +484,7 @@ export class MdPathCompletionProvider {
 				label,
 				kind: isDir ? lsp.CompletionItemKind.Folder : lsp.CompletionItemKind.File,
 				detail: l10n.t(`Link to '{0}'`, label),
-				documentation: isDir ? uri.path + '/' : uri.path,
+				documentation: this.#getPathDocumentation(uri, type),
 				textEdit: {
 					newText,
 					insert: insertRange,
@@ -491,6 +493,27 @@ export class MdPathCompletionProvider {
 				command: isDir ? { command: 'editor.action.triggerSuggest', title: '' } : undefined,
 			};
 		}
+	}
+
+	#getPathDocumentation(uri: URI, stat: FileStat): lsp.MarkupContent {
+		let documentation = stat.isDirectory
+			? mdBuilder.inlineCode(uri.path + '/') // TODO: support links to folders too
+			: mdBuilder.codeLink(uri.path, uri.toString());
+
+		if (!stat.isDirectory) {
+			switch (getMediaPreviewType(uri)) {
+				case MediaType.Image: {
+					const maxImageWidth = 200;
+					documentation += `\n\n${mdBuilder.image(uri.toString() + `|width=${maxImageWidth}`, '')}`;
+					break;
+				}
+			}
+		}
+
+		return {
+			kind: lsp.MarkupKind.Markdown,
+			value: documentation,
+		};
 	}
 
 	#getPathInsertText(context: PathCompletionContext, name: string): string {

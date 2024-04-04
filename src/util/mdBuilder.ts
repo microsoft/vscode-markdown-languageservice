@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { URI } from 'vscode-uri';
 import { escapeForAngleBracketLink, needsAngleBracketLink } from './mdLinks';
 
 export function inlineCode(text: string): string {
@@ -12,17 +13,33 @@ export function inlineCode(text: string): string {
     return `${backticks}${text}${backticks}`;
 }
 
-export function link(text: string, path: string): string {
-    text = escapeMarkdownSyntaxTokens(text.replace(/\n/, ''));
-    return `[${text}](${bracketPathIfNeeded(path)})`;
+export function link(text: string, uri: URI): string {
+    const path = uri.toString();
+    return `[${escapeMarkdownSyntaxTokens(text.replace(/\n/, ''))}](${bracketPathIfNeeded(path)})`;
 }
 
-export function codeLink(text: string, path: string): string {
+export function codeLink(text: string, uri: URI): string {
+    const path = uri.toString();
     return `[${inlineCode(text)}](${bracketPathIfNeeded(path)})`;
 }
 
-export function image(path: string, alt: string): string {
-    return `![${alt}](${bracketPathIfNeeded(path)})`;
+export function image(uri: URI, alt: string, width?: number): string {
+    const path = uri.toString();
+    return `![${alt}](${bracketPathIfNeeded(path + (width ? `|width=${width}` : ''))})`;
+}
+
+export function imageLink(uri: URI, alt: string, width?: number): string {
+    const path = uri.toString();
+    return `[${image(uri, alt, width)}](${bracketPathIfNeeded(path)})`;
+}
+
+export function video(uri: URI, width?: number): string {
+    const path = uri.toString();
+    return `<video width="${width ?? ''}" src="${escapeHtmlAttribute(path)}" autoplay loop controls muted></video>`;
+}
+
+function escapeHtmlAttribute(value: string): string {
+    return value.replace(/"/g, '&quot;');
 }
 
 function bracketPathIfNeeded(path: string) {

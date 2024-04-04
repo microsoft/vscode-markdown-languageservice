@@ -9,6 +9,13 @@ import { githubSlugifier } from '../slugify';
 
 export function createNewMarkdownEngine(): IMdParser {
 	const md = MarkdownIt({ html: true, });
+
+	// Allow file links
+	const validateLink = md.validateLink.bind(md);
+	md.validateLink = (link: string) => {
+		return validateLink(link) || link.startsWith('file://');
+	};
+
 	return {
 		slugifier: githubSlugifier,
 		async tokenize(document) {

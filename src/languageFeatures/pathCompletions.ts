@@ -498,13 +498,13 @@ export class MdPathCompletionProvider {
 	#getPathDocumentation(uri: URI, stat: FileStat): lsp.MarkupContent {
 		let documentation = stat.isDirectory
 			? mdBuilder.inlineCode(uri.path + '/') // TODO: support links to folders too
-			: mdBuilder.codeLink(uri.path, uri.toString());
+			: mdBuilder.codeLink(uri.path, uri);
 
 		if (!stat.isDirectory) {
 			switch (getMediaPreviewType(uri)) {
 				case MediaType.Image: {
 					const maxImageWidth = 200;
-					documentation += `\n\n${mdBuilder.image(uri.toString() + `|width=${maxImageWidth}`, '')}`;
+					documentation += `\n\n${mdBuilder.imageLink(uri, 'Linked image', maxImageWidth)}`;
 					break;
 				}
 			}

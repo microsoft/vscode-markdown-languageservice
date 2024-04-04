@@ -15,6 +15,7 @@ import { createWorkspaceLinkCache, MdLinkProvider, ResolvedDocumentLinkTarget } 
 import { MdDocumentSymbolProvider } from './languageFeatures/documentSymbols';
 import { FileRename, MdFileRenameProvider } from './languageFeatures/fileRename';
 import { MdFoldingProvider } from './languageFeatures/folding';
+import { MdHoverProvider } from './languageFeatures/hover';
 import { MdOrganizeLinkDefinitionProvider } from './languageFeatures/organizeLinkDefs';
 import { MdPathCompletionProvider, PathCompletionOptions } from './languageFeatures/pathCompletions';
 import { MdReferencesProvider } from './languageFeatures/references';
@@ -198,6 +199,11 @@ export interface IMdLanguageService {
 	getUpdatePastedLinksEdit(document: ITextDocument, paste: readonly lsp.TextEdit[], rawCopyMetadata: string, token: lsp.CancellationToken): Promise<lsp.TextEdit[] | undefined>;
 
 	/**
+	 * Get the hover information for a position in the document.
+	 */
+	getHover(document: ITextDocument, pos: lsp.Position, token: lsp.CancellationToken): Promise<lsp.Hover | undefined>;
+
+	/**
 	 * Compute diagnostics for a given file.
 	 *
 	 * Note that this function is stateless and re-validates all links every time you make the request. Use {@link IMdLanguageService.createPullDiagnosticsManager}
@@ -265,6 +271,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const organizeLinkDefinitions = new MdOrganizeLinkDefinitionProvider(linkProvider);
 	const documentHighlightProvider = new MdDocumentHighlightProvider(config, tocProvider, linkProvider);
 	const rewritePastedLinksProvider = new MdUpdatePastedLinksProvider(linkProvider);
+	const hoverProvider = new MdHoverProvider(linkProvider);
 
 	const extractCodeActionProvider = new MdExtractLinkDefinitionCodeActionProvider(linkProvider);
 	const removeLinkDefinitionActionProvider = new MdRemoveLinkDefinitionCodeActionProvider();
@@ -305,6 +312,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 		},
 		prepareUpdatePastedLinks: rewritePastedLinksProvider.prepareDocumentPaste.bind(rewritePastedLinksProvider),
 		getUpdatePastedLinksEdit: rewritePastedLinksProvider.provideDocumentPasteEdits.bind(rewritePastedLinksProvider),
+		getHover: hoverProvider.provideHover.bind(hoverProvider),
 		computeDiagnostics: async (doc: ITextDocument, options: DiagnosticOptions, token: lsp.CancellationToken): Promise<lsp.Diagnostic[]> => {
 			return (await diagnosticsComputer.compute(doc, options, token))?.diagnostics;
 		},

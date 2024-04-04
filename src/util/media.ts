@@ -7,13 +7,14 @@ import { URI, Utils } from 'vscode-uri';
 
 export enum MediaType {
     Image,
+    Video
 }
 
 /**
  * List of common file extensions that can be previewed.
  */
 const previewableMediaFileExtension = new Map<string, MediaType>([
-    // Images
+    // Image
     ['.bmp', MediaType.Image],
     ['.gif', MediaType.Image],
     ['.jpg', MediaType.Image],
@@ -23,7 +24,10 @@ const previewableMediaFileExtension = new Map<string, MediaType>([
     ['.webp', MediaType.Image],
     ['.ico', MediaType.Image],
     ['.tiff', MediaType.Image],
-    ['.tif', MediaType.Image]
+    ['.tif', MediaType.Image],
+
+    // Video
+    ['.mp4', MediaType.Video],
 ]);
 
 export function getMediaPreviewType(uri: URI): MediaType | undefined {

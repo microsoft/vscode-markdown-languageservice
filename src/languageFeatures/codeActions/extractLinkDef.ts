@@ -5,11 +5,12 @@
 
 import * as l10n from '@vscode/l10n';
 import * as lsp from 'vscode-languageserver-protocol';
+import { ExternalHref, HrefKind, InternalHref, LinkDefinitionSet, MdAutoLink, MdInlineLink, MdLink, MdLinkDefinition, MdLinkKind } from '../../types/documentLink';
 import { comparePosition, translatePosition } from '../../types/position';
 import { rangeIntersects } from '../../types/range';
 import { getDocUri, getLine, ITextDocument } from '../../types/textDocument';
 import { WorkspaceEditBuilder } from '../../util/editBuilder';
-import { ExternalHref, HrefKind, InternalHref, LinkDefinitionSet, MdAutoLink, MdDocumentLinksInfo, MdInlineLink, MdLink, MdLinkDefinition, MdLinkKind, MdLinkProvider } from '../documentLinks';
+import { MdDocumentLinksInfo, MdLinkProvider } from '../documentLinks';
 import { getExistingDefinitionBlock } from '../organizeLinkDefs';
 import { codeActionKindContains } from './util';
 

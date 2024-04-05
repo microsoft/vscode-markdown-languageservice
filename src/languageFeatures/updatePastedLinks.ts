@@ -1,16 +1,19 @@
 /*---------------------------------------------------------------------------------------------
-*  Copyright (c) Microsoft Corporation. All rights reserved.
-*  Licensed under the MIT License. See License.txt in the project root for license information.
-*--------------------------------------------------------------------------------------------*/
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
 import * as lsp from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
+import { LsConfiguration } from '../config';
+import { HrefKind, LinkDefinitionSet, MdLinkDefinition } from '../types/documentLink';
 import { InMemoryDocument } from '../types/inMemoryDocument';
 import { isBefore, isBeforeOrEqual } from '../types/position';
 import { rangeContains } from '../types/range';
 import { getDocUri, ITextDocument } from '../types/textDocument';
+import { removeNewUriExtIfNeeded } from '../util/mdLinks';
 import { computeRelativePath } from '../util/path';
 import { createAddDefinitionEdit } from './codeActions/extractLinkDef';
-import { HrefKind, LinkDefinitionSet, MdLinkDefinition, MdLinkProvider } from './documentLinks';
+import { MdLinkProvider } from './documentLinks';
 
 class PasteLinksCopyMetadata {
 
@@ -34,11 +37,14 @@ class PasteLinksCopyMetadata {
 
 export class MdUpdatePastedLinksProvider {
 
+    readonly #config: LsConfiguration;
     readonly #linkProvider: MdLinkProvider;
 
     constructor(
+        config: LsConfiguration,
         linkProvider: MdLinkProvider,
     ) {
+        this.#config = config;
         this.#linkProvider = linkProvider;
     }
 
@@ -123,8 +129,12 @@ export class MdUpdatePastedLinksProvider {
                 newDefinitionsToAdd.push(originalRef);
 
             } else if (link.href.kind === HrefKind.Internal) {
-                const newPathText = computeRelativePath(getDocUri(targetDocument), link.href.path);
-                if (!newPathText) {
+                const targetDocUri = getDocUri(targetDocument);
+                const newPathText = targetDocUri.toString() === link.href.path.toString()
+                    ? ''
+                    : computeRelativePath(targetDocUri, removeNewUriExtIfNeeded(this.#config, link.href, link.href.path));
+
+                if (typeof newPathText === 'undefined') {
                     continue;
                 }
 

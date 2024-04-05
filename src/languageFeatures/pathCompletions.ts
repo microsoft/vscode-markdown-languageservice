@@ -13,16 +13,16 @@ import { IMdParser } from '../parser';
 import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOfContents';
 import { translatePosition } from '../types/position';
 import { ITextDocument, getDocUri, getLine } from '../types/textDocument';
-import { looksLikeMarkdownFilePath } from '../util/file';
-import { escapeForAngleBracketLink, hasBalancedParens } from '../util/mdLinks';
+import { htmlTagPathAttrs } from '../util/html';
 import * as mdBuilder from '../util/mdBuilder';
+import { escapeForAngleBracketLink, hasBalancedParens } from '../util/mdLinks';
 import { MediaType, getMediaPreviewType } from '../util/media';
-import { computeRelativePath } from '../util/path';
+import { computeRelativePath, looksLikeMarkdownFilePath } from '../util/path';
 import { Schemes } from '../util/schemes';
 import { r } from '../util/string';
 import { FileStat, IWorkspace, getWorkspaceFolder, openLinkToMarkdownFile } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
-import { MdLinkProvider, htmlTagPathAttrs } from './documentLinks';
+import { MdLinkProvider } from './documentLinks';
 
 enum CompletionContextKind {
 	/** `[...](|)` */

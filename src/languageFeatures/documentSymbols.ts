@@ -6,9 +6,10 @@
 import * as lsp from 'vscode-languageserver-protocol';
 import { ILogger, LogLevel } from '../logging';
 import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOfContents';
+import { MdLinkDefinition, MdLinkKind } from '../types/documentLink';
 import { isBefore } from '../types/position';
 import { ITextDocument } from '../types/textDocument';
-import { MdLinkDefinition, MdLinkKind, MdLinkProvider } from './documentLinks';
+import { MdLinkProvider } from './documentLinks';
 
 interface MarkdownSymbol {
 	readonly level: number;

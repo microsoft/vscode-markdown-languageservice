@@ -5,14 +5,14 @@
 import * as path from 'path';
 import * as lsp from 'vscode-languageserver-protocol';
 import { URI, Utils } from 'vscode-uri';
-import { LsConfiguration, PreferredMdPathExtensionStyle, isExcludedPath } from '../config';
+import { LsConfiguration, isExcludedPath } from '../config';
+import { HrefKind, MdLink } from '../types/documentLink';
 import { ITextDocument, getDocUri } from '../types/textDocument';
 import { WorkspaceEditBuilder } from '../util/editBuilder';
-import { looksLikeMarkdownUri } from '../util/file';
-import { isParentDir } from '../util/path';
+import { removeNewUriExtIfNeeded, resolveInternalDocumentLink } from '../util/mdLinks';
+import { isParentDir, looksLikeMarkdownUri } from '../util/path';
 import { IWorkspace } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
-import { HrefKind, InternalHref, MdLink, resolveInternalDocumentLink } from './documentLinks';
 import { MdReferenceKind, MdReferencesProvider } from './references';
 import { getLinkRenameEdit, getLinkRenameText } from './rename';
 
@@ -239,15 +239,7 @@ export class MdFileRenameProvider {
 			return false;
 		}
 
-		let newFilePath = newUri;
-
-		if (this.#shouldRemoveFileExtensionForRename(link.href, newUri)) {
-			const editExt = Utils.extname(newUri);
-			newFilePath = newUri.with({
-				path: newUri.path.slice(0, newUri.path.length - editExt.length)
-			});
-		}
-
+		const newFilePath = removeNewUriExtIfNeeded(this.#config, link.href, newUri);
 		const newLinkText = getLinkRenameText(this.#workspace, link.source, newFilePath, link.source.pathText.startsWith('.'));
 		if (typeof newLinkText === 'string') {
 			const { range, newText } = getLinkRenameEdit(link, newLinkText);
@@ -255,18 +247,5 @@ export class MdFileRenameProvider {
 			return true;
 		}
 		return false;
-	}
-
-	#shouldRemoveFileExtensionForRename(originalHref: InternalHref, newUri: URI): boolean {
-		if (!looksLikeMarkdownUri(this.#config, newUri)) {
-			return false;
-		}
-
-		if (this.#config.preferredMdPathExtensionStyle === PreferredMdPathExtensionStyle.removeExtension) {
-			return true;
-		}
-
-		// If the original markdown link did not use a file extension, remove ours too
-		return !Utils.extname(originalHref.path);
 	}
 }

@@ -501,10 +501,14 @@ export class MdPathCompletionProvider {
 			: mdBuilder.codeLink(uri.path, uri);
 
 		if (!stat.isDirectory) {
+			const maxMediaWidth = 300;
 			switch (getMediaPreviewType(uri)) {
 				case MediaType.Image: {
-					const maxImageWidth = 200;
-					documentation += `\n\n${mdBuilder.imageLink(uri, 'Linked image', maxImageWidth)}`;
+					documentation += `\n\n${mdBuilder.imageLink(uri, 'Linked image', maxMediaWidth)}`;
+					break;
+				}
+				case MediaType.Video: {
+					documentation += `\n\n${mdBuilder.video(uri, maxMediaWidth)}`;
 					break;
 				}
 			}

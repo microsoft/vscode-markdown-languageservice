@@ -4,11 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as lsp from 'vscode-languageserver-protocol';
+import { HrefKind, MdLink } from '../types/documentLink';
 import { rangeContains } from '../types/range';
 import { ITextDocument } from '../types/textDocument';
 import * as mdBuilder from '../util/mdBuilder';
 import { getMediaPreviewType, MediaType } from '../util/media';
-import { HrefKind, MdLink, MdLinkProvider } from './documentLinks';
+import { MdLinkProvider } from './documentLinks';
 
 export class MdHoverProvider {
 

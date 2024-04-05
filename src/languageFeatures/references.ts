@@ -8,14 +8,14 @@ import { LsConfiguration } from '../config';
 import { ILogger, LogLevel } from '../logging';
 import { IMdParser } from '../parser';
 import { MdTableOfContentsProvider, TocEntry } from '../tableOfContents';
+import { HrefKind, MdLink, MdLinkKind } from '../types/documentLink';
 import { translatePosition } from '../types/position';
 import { areRangesEqual, modifyRange, rangeContains } from '../types/range';
 import { getDocUri, ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
-import { looksLikeMarkdownUri } from '../util/file';
+import { looksLikeMarkdownUri, looksLikePathToResource } from '../util/path';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
-import { HrefKind, looksLikeLinkToResource, MdLink, MdLinkKind } from './documentLinks';
 
 export enum MdReferenceKind {
 	Link = 1,
@@ -150,7 +150,7 @@ export class MdReferencesProvider extends Disposable {
 
 		for (const link of links) {
 			if (link.href.kind === HrefKind.Internal
-				&& looksLikeLinkToResource(this.#configuration, link.href, getDocUri(document))
+				&& looksLikePathToResource(this.#configuration, link.href.path, getDocUri(document))
 				&& this.#parser.slugifier.fromFragment(link.href.fragment).equals(header.slug)
 			) {
 				references.push({
@@ -241,7 +241,7 @@ export class MdReferencesProvider extends Disposable {
 			}
 
 			for (const link of allLinksInWorkspace) {
-				if (link.href.kind !== HrefKind.Internal || !looksLikeLinkToResource(this.#configuration, link.href, resolvedResource)) {
+				if (link.href.kind !== HrefKind.Internal || !looksLikePathToResource(this.#configuration, link.href.path, resolvedResource)) {
 					continue;
 				}
 
@@ -273,7 +273,7 @@ export class MdReferencesProvider extends Disposable {
 
 	*#findLinksToFile(resource: URI, links: readonly MdLink[], sourceLink: MdLink | undefined): Iterable<MdReference> {
 		for (const link of links) {
-			if (link.href.kind !== HrefKind.Internal || !looksLikeLinkToResource(this.#configuration, link.href, resource)) {
+			if (link.href.kind !== HrefKind.Internal || !looksLikePathToResource(this.#configuration, link.href.path, resource)) {
 				continue;
 			}
 

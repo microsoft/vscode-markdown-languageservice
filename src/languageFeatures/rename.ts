@@ -11,16 +11,16 @@ import { ILogger, LogLevel } from '../logging';
 import { IMdParser } from '../parser';
 import { ISlugifier } from '../slugify';
 import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOfContents';
+import { HrefKind, InternalHref, MdLink, MdLinkKind, MdLinkSource } from '../types/documentLink';
 import { InMemoryDocument } from '../types/inMemoryDocument';
 import { arePositionsEqual, translatePosition } from '../types/position';
 import { modifyRange, rangeContains } from '../types/range';
 import { ITextDocument, getDocUri } from '../types/textDocument';
 import { WorkspaceEditBuilder } from '../util/editBuilder';
-import { escapeForAngleBracketLink, needsAngleBracketLink } from '../util/mdLinks';
+import { escapeForAngleBracketLink, needsAngleBracketLink, resolveInternalDocumentLink } from '../util/mdLinks';
 import { computeRelativePath } from '../util/path';
 import { tryDecodeUri } from '../util/uri';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
-import { HrefKind, InternalHref, MdLink, MdLinkKind, MdLinkSource, resolveInternalDocumentLink } from './documentLinks';
 import { MdHeaderReference, MdLinkReference, MdReference, MdReferenceKind, MdReferencesProvider } from './references';
 
 export interface MdReferencesResponse {

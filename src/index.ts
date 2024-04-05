@@ -270,7 +270,7 @@ export function createLanguageService(init: LanguageServiceInitialization): IMdL
 	const workspaceSymbolProvider = new MdWorkspaceSymbolProvider(init.workspace, docSymbolProvider);
 	const organizeLinkDefinitions = new MdOrganizeLinkDefinitionProvider(linkProvider);
 	const documentHighlightProvider = new MdDocumentHighlightProvider(config, tocProvider, linkProvider);
-	const rewritePastedLinksProvider = new MdUpdatePastedLinksProvider(linkProvider);
+	const rewritePastedLinksProvider = new MdUpdatePastedLinksProvider(config, linkProvider);
 	const hoverProvider = new MdHoverProvider(linkProvider);
 
 	const extractCodeActionProvider = new MdExtractLinkDefinitionCodeActionProvider(linkProvider);

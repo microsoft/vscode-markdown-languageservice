@@ -5,27 +5,27 @@
 
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-protocol';
-import { getLsConfiguration, LsConfiguration } from '../config';
+import { getLsConfiguration, LsConfiguration, PreferredMdPathExtensionStyle } from '../config';
+import { MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdUpdatePastedLinksProvider } from '../languageFeatures/updatePastedLinks';
+import { MdTableOfContentsProvider } from '../tableOfContents';
 import { InMemoryDocument } from '../types/inMemoryDocument';
 import { noopToken } from '../util/cancellation';
 import { IWorkspace } from '../workspace';
 import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
-import { DisposableStore, joinLines, withStore, workspacePath } from './util';
-import { MdLinkProvider } from '../languageFeatures/documentLinks';
-import { MdTableOfContentsProvider } from '../tableOfContents';
 import { nulLogger } from './nulLogging';
+import { DisposableStore, joinLines, withStore, workspacePath } from './util';
 
 
-async function applyUpdateLinksEdits(store: DisposableStore, docs: { copyFrom: InMemoryDocument, pasteTo: InMemoryDocument }, edits: readonly lsp.TextEdit[], workspace: IWorkspace, _configOverrides: Partial<LsConfiguration> = {}): Promise<string | undefined> {
+async function applyUpdateLinksEdits(store: DisposableStore, docs: { copyFrom: InMemoryDocument, pasteTo: InMemoryDocument }, edits: readonly lsp.TextEdit[], workspace: IWorkspace, configOverrides: Partial<LsConfiguration> = {}): Promise<string | undefined> {
 	const engine = createNewMarkdownEngine();
-	const config = getLsConfiguration({});
+	const config = getLsConfiguration(configOverrides);
 
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
-	
-	const rewriteProvider = new MdUpdatePastedLinksProvider(linkProvider);
+
+	const rewriteProvider = new MdUpdatePastedLinksProvider(config, linkProvider);
 	const metadata = await rewriteProvider.prepareDocumentPaste(docs.copyFrom, [], noopToken);
 	const rewriteEdits = await rewriteProvider.provideDocumentPasteEdits(docs.pasteTo, edits, metadata, noopToken);
 	return rewriteEdits && docs.pasteTo.previewEdits(rewriteEdits);
@@ -285,6 +285,45 @@ suite('Update pasted links', () => {
 
 		assert.strictEqual(resultDocText, joinLines(
 			'a[text](sub/other.md#header)def',
+		));
+	}));
+
+	test('Should remove file name when copying fragment link back to own file', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			'# header',
+			'abcdef',
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const resultDocText = await applyUpdateLinksEdits(store,
+			{ copyFrom: new InMemoryDocument(workspacePath('other.md'), ''), pasteTo: doc },
+			[
+				lsp.TextEdit.replace(lsp.Range.create(1, 1, 1, 3), '[text](./doc.md#header)'),
+			], workspace);
+
+		assert.strictEqual(resultDocText, joinLines(
+			`# header`,
+			'a[text](#header)def',
+		));
+	}));
+
+	test('Should respect file ending config', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			'abcdef',
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const resultDocText = await applyUpdateLinksEdits(store,
+			{ copyFrom: new InMemoryDocument(workspacePath('sub/other.md'), ''), pasteTo: doc },
+			[
+				lsp.TextEdit.replace(lsp.Range.create(0, 0, 0, 10), '[ref]: ./file.md'),
+			], workspace,
+			{
+				preferredMdPathExtensionStyle: PreferredMdPathExtensionStyle.removeExtension
+			});
+
+		assert.strictEqual(resultDocText, joinLines(
+			'[ref]: sub/file',
 		));
 	}));
 

@@ -7,11 +7,13 @@ import * as lsp from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
 import { LsConfiguration } from '../config';
 import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOfContents';
+import { HrefKind, InternalHref, MdLink, MdLinkKind } from '../types/documentLink';
 import { translatePosition } from '../types/position';
 import { modifyRange, rangeContains } from '../types/range';
 import { ITextDocument } from '../types/textDocument';
+import { looksLikePathToResource } from '../util/path';
 import { tryAppendMarkdownFileExtension } from '../workspace';
-import { HrefKind, InternalHref, looksLikeLinkToResource, MdLink, MdLinkKind, MdLinkProvider } from './documentLinks';
+import { MdLinkProvider } from './documentLinks';
 import { getFilePathRange } from './rename';
 
 export class MdDocumentHighlightProvider {
@@ -111,7 +113,7 @@ export class MdDocumentHighlightProvider {
 		}
 
 		for (const link of links) {
-			if (link.href.kind === HrefKind.Internal && looksLikeLinkToResource(this.#configuration, link.href, targetDoc)) {
+			if (link.href.kind === HrefKind.Internal && looksLikePathToResource(this.#configuration, link.href.path, targetDoc)) {
 				if (link.source.fragmentRange && link.href.fragment.toLowerCase() === fragment) {
 					yield {
 						range: modifyRange(link.source.fragmentRange, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 })),
@@ -125,7 +127,7 @@ export class MdDocumentHighlightProvider {
 	*#getHighlightsForLinkPath(path: URI, links: readonly MdLink[]): Iterable<lsp.DocumentHighlight> {
 		const targetDoc = tryAppendMarkdownFileExtension(this.#configuration, path) ?? path;
 		for (const link of links) {
-			if (link.href.kind === HrefKind.Internal && looksLikeLinkToResource(this.#configuration, link.href, targetDoc)) {
+			if (link.href.kind === HrefKind.Internal && looksLikePathToResource(this.#configuration, link.href.path, targetDoc)) {
 				yield {
 					range: getFilePathRange(link),
 					kind: lsp.DocumentHighlightKind.Read,

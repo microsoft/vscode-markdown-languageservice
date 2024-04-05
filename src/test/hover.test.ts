@@ -5,6 +5,7 @@
 
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-protocol';
+import { URI } from 'vscode-uri';
 import { getLsConfiguration } from '../config';
 import { MdLinkProvider } from '../languageFeatures/documentLinks';
 import { MdHoverProvider } from '../languageFeatures/hover';
@@ -17,7 +18,6 @@ import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
 import { assertRangeEqual, DisposableStore, joinLines, withStore, workspacePath } from './util';
 import Token = require('markdown-it/lib/token');
-import { URI } from 'vscode-uri';
 
 
 function getHover(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position, workspace: IWorkspace) {

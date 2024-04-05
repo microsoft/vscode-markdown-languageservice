@@ -5,11 +5,11 @@
 import * as lsp from 'vscode-languageserver-protocol';
 import { LsConfiguration } from '../config';
 import { MdTableOfContentsProvider } from '../tableOfContents';
+import { HrefKind, LinkDefinitionSet, MdLink, MdLinkKind } from '../types/documentLink';
 import { rangeContains } from '../types/range';
 import { ITextDocument } from '../types/textDocument';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
-import { HrefKind, LinkDefinitionSet, MdLink, MdLinkKind } from './documentLinks';
 
 export class MdDefinitionProvider {
 

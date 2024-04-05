@@ -6,178 +6,25 @@
 import * as l10n from '@vscode/l10n';
 import { HTMLElement, parse } from 'node-html-parser';
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI, Utils } from 'vscode-uri';
+import { URI } from 'vscode-uri';
 import { LsConfiguration } from '../config';
 import { ILogger, LogLevel } from '../logging';
 import { IMdParser, Token } from '../parser';
 import { MdTableOfContentsProvider } from '../tableOfContents';
+import { ExternalHref, HrefKind, InternalHref, LinkDefinitionSet, MdLink, MdLinkDefinition, MdLinkKind } from '../types/documentLink';
 import { translatePosition } from '../types/position';
 import { rangeContains } from '../types/range';
 import { ITextDocument, getDocUri, getLine } from '../types/textDocument';
 import { coalesce } from '../util/arrays';
 import { Disposable } from '../util/dispose';
+import { htmlTagPathAttrs } from '../util/html';
+import { resolveInternalDocumentLink } from '../util/mdLinks';
+import { parseLocationInfoFromFragment } from '../util/path';
 import { r } from '../util/string';
 import { tryDecodeUri } from '../util/uri';
-import { IWorkspace, getWorkspaceFolder, tryAppendMarkdownFileExtension } from '../workspace';
+import { IWorkspace, tryAppendMarkdownFileExtension } from '../workspace';
 import { MdDocumentInfoCache, MdWorkspaceInfoCache } from '../workspaceCache';
 
-
-export enum HrefKind {
-	External,
-	Internal,
-	Reference,
-}
-
-export interface ExternalHref {
-	readonly kind: HrefKind.External;
-	readonly uri: URI;
-}
-
-export interface InternalHref {
-	readonly kind: HrefKind.Internal;
-	readonly path: URI;
-	readonly fragment: string;
-}
-
-export interface ReferenceHref {
-	readonly kind: HrefKind.Reference;
-	readonly ref: string;
-}
-
-export type LinkHref = ExternalHref | InternalHref | ReferenceHref;
-
-export function resolveInternalDocumentLink(
-	sourceDocUri: URI,
-	linkText: string,
-	workspace: IWorkspace,
-): { resource: URI; linkFragment: string } | undefined {
-	// Assume it must be an relative or absolute file path
-	// Use a fake scheme to avoid parse warnings
-	const tempUri = URI.parse(`vscode-resource:${linkText}`);
-
-	const docUri = workspace.getContainingDocument?.(sourceDocUri)?.uri ?? sourceDocUri;
-
-	let resourceUri: URI | undefined;
-	if (!tempUri.path) {
-		// Looks like a fragment only link
-		if (typeof tempUri.fragment !== 'string') {
-			return undefined;
-		}
-
-		resourceUri = sourceDocUri;
-	} else if (tempUri.path[0] === '/') {
-		const root = getWorkspaceFolder(workspace, docUri);
-		if (root) {
-			resourceUri = Utils.joinPath(root, tempUri.path);
-		}
-	} else {
-		if (docUri.scheme === 'untitled') {
-			const root = getWorkspaceFolder(workspace, docUri);
-			if (root) {
-				resourceUri = Utils.joinPath(root, tempUri.path);
-			}
-		} else {
-			const base = Utils.dirname(docUri);
-			resourceUri = Utils.joinPath(base, tempUri.path);
-		}
-	}
-
-	if (!resourceUri) {
-		return undefined;
-	}
-
-	return {
-		resource: resourceUri,
-		linkFragment: tempUri.fragment,
-	};
-}
-
-export interface MdLinkSource {
-	/**
-	 * The full range of the link.
-	 */
-	readonly range: lsp.Range;
-
-	/**
-	 * The file where the link is defined.
-	 */
-	readonly resource: URI;
-
-	/**
-	 * The range of the entire link target.
-	 *
-	 * This includes the opening `(`/`[` and closing `)`/`]`.
-	 *
-	 * For `[boris](/cat.md#siberian "title")` this would be the range of `(/cat.md#siberian "title")`
-	 */
-	readonly targetRange: lsp.Range;
-
-	/**
-	 * The original text of the link destination in code.
-	 *
-	 * For `[boris](/cat.md#siberian "title")` this would be `/cat.md#siberian`
-	 *
-	 */
-	readonly hrefText: string;
-
-	/**
-	 * The original text of just the link's path in code.
-	 *
-	 * For `[boris](/cat.md#siberian "title")` this would be `/cat.md`
-	 */
-	readonly pathText: string;
-
-	/**
-	 * The range of the path in this link.
-	 *
-	 * Does not include whitespace or the link title.
-	 *
-	 * For `[boris](/cat.md#siberian "title")` this would be the range of `/cat.md#siberian`
-	 */
-	readonly hrefRange: lsp.Range;
-
-	/**
-	 * The range of the fragment within the path.
-	 *
-	 * For `[boris](/cat.md#siberian "title")` this would be the range of `#siberian`
-	 */
-	readonly fragmentRange: lsp.Range | undefined;
-
-	readonly isAngleBracketLink: boolean
-}
-
-export enum MdLinkKind {
-	/** Standard Markdown link syntax: `[text][ref]` or `[text](http://example.com)` */
-	Link = 1,
-	/** Link definition: `[def]: http://example.com` */
-	Definition = 2,
-	/** Auto link: `<http://example.com>` */
-	AutoLink = 3,
-}
-
-export interface MdInlineLink<HrefType = LinkHref> {
-	readonly kind: MdLinkKind.Link;
-	readonly source: MdLinkSource;
-	readonly href: HrefType;
-}
-
-export interface MdLinkDefinition {
-	readonly kind: MdLinkKind.Definition;
-	readonly source: MdLinkSource;
-	readonly ref: {
-		readonly range: lsp.Range;
-		readonly text: string;
-	};
-	readonly href: ExternalHref | InternalHref;
-}
-
-export interface MdAutoLink {
-	readonly kind: MdLinkKind.AutoLink;
-	readonly source: MdLinkSource;
-	readonly href: ExternalHref
-}
-
-export type MdLink = MdInlineLink | MdLinkDefinition | MdAutoLink;
 
 function createHref(
 	sourceDocUri: URI,
@@ -417,16 +264,6 @@ class NoLinkRanges {
 		return new NoLinkRanges(this.multiline, this.inline.concat(inlineRanges));
 	}
 }
-
-/**
- * Map of html tags to attributes that contain links.
- */
-export const htmlTagPathAttrs = new Map([
-	['IMG', ['src']],
-	['VIDEO', ['src', 'placeholder']],
-	['SOURCE', ['src']],
-	['A', ['href']],
-]);
 
 /**
  * The place a document link links to.
@@ -745,56 +582,6 @@ export interface MdDocumentLinksInfo {
 	readonly definitions: LinkDefinitionSet;
 }
 
-export class ReferenceLinkMap<T> {
-	readonly #map = new Map</* normalized ref */ string, T>();
-
-	public set(ref: string, link: T) {
-		this.#map.set(this.#normalizeRefName(ref), link);
-	}
-
-	public lookup(ref: string): T | undefined {
-		return this.#map.get(this.#normalizeRefName(ref));
-	}
-
-	public has(ref: string): boolean {
-		return this.#map.has(this.#normalizeRefName(ref));
-	}
-
-	public [Symbol.iterator](): Iterator<T> {
-		return this.#map.values();
-	}
-
-	/**
-	 * Normalizes a link reference. Link references are case-insensitive, so this lowercases the reference too so you can
-	 * correctly compare two normalized references.
-	 */
-	#normalizeRefName(ref: string): string {
-		return ref.normalize().trim().toLowerCase();
-	}
-}
-
-export class LinkDefinitionSet implements Iterable<MdLinkDefinition> {
-	readonly #map = new ReferenceLinkMap<MdLinkDefinition>();
-
-	constructor(links: Iterable<MdLink>) {
-		for (const link of links) {
-			if (link.kind === MdLinkKind.Definition) {
-				if (!this.#map.has(link.ref.text)) {
-					this.#map.set(link.ref.text, link);
-				}
-			}
-		}
-	}
-
-	public [Symbol.iterator](): Iterator<MdLinkDefinition> {
-		return this.#map[Symbol.iterator]();
-	}
-
-	public lookup(ref: string): MdLinkDefinition | undefined {
-		return this.#map.lookup(ref);
-	}
-}
-
 /**
  * Stateful object which provides links for markdown files the workspace.
  */
@@ -1017,24 +804,6 @@ export class MdLinkProvider extends Disposable {
 	}
 }
 
-/**
- * Extract position info from link fragments that look like `#L5,3`
- */
-export function parseLocationInfoFromFragment(fragment: string): lsp.Position | undefined {
-	const match = fragment.match(/^L(\d+)(?:,(\d+))?$/i);
-	if (!match) {
-		return undefined;
-	}
-
-	const line = +match[1] - 1;
-	if (isNaN(line)) {
-		return undefined;
-	}
-
-	const column = +match[2] - 1;
-	return { line, character: isNaN(column) ? 0 : column };
-}
-
 export function createWorkspaceLinkCache(
 	parser: IMdParser,
 	workspace: IWorkspace,
@@ -1043,11 +812,3 @@ export function createWorkspaceLinkCache(
 	return new MdWorkspaceInfoCache(workspace, (doc, token) => linkComputer.getAllLinks(doc, token));
 }
 
-export function looksLikeLinkToResource(configuration: LsConfiguration, href: InternalHref, targetResource: URI): boolean {
-	if (href.path.fsPath === targetResource.fsPath) {
-		return true;
-	}
-
-	return configuration.markdownFileExtensions.some(ext =>
-		href.path.with({ path: href.path.path + '.' + ext }).fsPath === targetResource.fsPath);
-}

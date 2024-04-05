@@ -10,15 +10,16 @@ import { URI } from 'vscode-uri';
 import { LsConfiguration } from '../config';
 import { ILogger, LogLevel } from '../logging';
 import { MdTableOfContentsProvider } from '../tableOfContents';
+import { HrefKind, InternalHref, LinkDefinitionSet, MdLink, MdLinkDefinition, MdLinkKind, MdLinkSource, ReferenceLinkMap } from '../types/documentLink';
 import { translatePosition } from '../types/position';
 import { modifyRange } from '../types/range';
 import { getDocUri, ITextDocument } from '../types/textDocument';
 import { Disposable, IDisposable } from '../util/dispose';
-import { looksLikeMarkdownUri } from '../util/file';
 import { Limiter } from '../util/limiter';
+import { looksLikeMarkdownUri, parseLocationInfoFromFragment } from '../util/path';
 import { ResourceMap } from '../util/resourceMap';
 import { FileStat, IWorkspace, IWorkspaceWithWatching, statLinkToMarkdownFile } from '../workspace';
-import { HrefKind, InternalHref, LinkDefinitionSet, MdLink, MdLinkDefinition, MdLinkKind, MdLinkProvider, MdLinkSource, parseLocationInfoFromFragment, ReferenceLinkMap } from './documentLinks';
+import { MdLinkProvider } from './documentLinks';
 
 /**
  * The severity at which diagnostics are reported

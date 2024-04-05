@@ -44,6 +44,8 @@ Currently supported language features:
 	- Path links
 	- Reference links
 
+- Hover previews for images and videos
+
 - Find all references
 
 	Supports finding references to:
@@ -87,6 +89,9 @@ Currently supported language features:
 - Update links on file rename
 
 	Generate an edit that updates all links when a file/directory in the workspace is renamed or moved.
+
+- (experimental) Update links when coping and pasting text between files.
+
 
 ## Usage
 

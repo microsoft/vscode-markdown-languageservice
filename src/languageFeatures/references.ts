@@ -13,7 +13,7 @@ import { translatePosition } from '../types/position';
 import { areRangesEqual, modifyRange, rangeContains } from '../types/range';
 import { getDocUri, ITextDocument } from '../types/textDocument';
 import { Disposable } from '../util/dispose';
-import { looksLikeMarkdownUri, looksLikePathToResource } from '../util/path';
+import { isSameResource, looksLikeMarkdownUri, looksLikePathToResource } from '../util/path';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
 
@@ -205,7 +205,7 @@ export class MdReferencesProvider extends Disposable {
 			const references: MdReference[] = [];
 
 			for (const link of allLinksInWorkspace) {
-				if (link.href.kind === HrefKind.External && link.href.uri.toString() === sourceLink.href.uri.toString()) {
+				if (link.href.kind === HrefKind.External && isSameResource(link.href.uri,  sourceLink.href.uri)) {
 					const isTriggerLocation = sourceLink.source.resource.fsPath === link.source.resource.fsPath && areRangesEqual(sourceLink.source.hrefRange, link.source.hrefRange);
 					references.push({
 						kind: MdReferenceKind.Link,

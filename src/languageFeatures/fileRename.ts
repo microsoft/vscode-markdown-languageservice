@@ -10,7 +10,7 @@ import { HrefKind, MdLink } from '../types/documentLink';
 import { ITextDocument, getDocUri } from '../types/textDocument';
 import { WorkspaceEditBuilder } from '../util/editBuilder';
 import { removeNewUriExtIfNeeded, resolveInternalDocumentLink } from '../util/mdLinks';
-import { isParentDir, looksLikeMarkdownUri } from '../util/path';
+import { isParentDir, isSameResource, looksLikeMarkdownUri } from '../util/path';
 import { IWorkspace } from '../workspace';
 import { MdWorkspaceInfoCache } from '../workspaceCache';
 import { MdReferenceKind, MdReferencesProvider } from './references';
@@ -201,7 +201,7 @@ export class MdFileRenameProvider {
 
 		// See if the old link was effected by one of the renames
 		for (const edit of allEdits) {
-			if (edit.oldUri.toString() === oldLink.resource.toString() || isParentDir(edit.oldUri, oldLink.resource)) {
+			if (isSameResource(edit.oldUri, oldLink.resource) || isParentDir(edit.oldUri, oldLink.resource)) {
 				oldLink = { resource: Utils.joinPath(edit.newUri, path.posix.relative(edit.oldUri.path, oldLink.resource.path)), linkFragment: oldLink.linkFragment };
 				break;
 			}

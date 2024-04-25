@@ -271,6 +271,22 @@ suite('Update pasted links', () => {
 		));
 	}));
 
+	test('Should noop pasting fragment back to same file', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			'# header',
+			''
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const resultDocText = await applyUpdateLinksEdits(store,
+			{ copyFrom: doc, pasteTo: doc },
+			[
+				lsp.TextEdit.replace(lsp.Range.create(1, 0, 1, 3), '[a](#header)'),
+			], workspace);
+
+		assert.strictEqual(resultDocText, undefined);
+	}));
+
 	test('Should rewrite fragment link', withStore(async (store) => {
 		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
 			'abcdef',

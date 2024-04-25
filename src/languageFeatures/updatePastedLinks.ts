@@ -11,7 +11,7 @@ import { isBefore, isBeforeOrEqual } from '../types/position';
 import { rangeContains } from '../types/range';
 import { getDocUri, ITextDocument } from '../types/textDocument';
 import { removeNewUriExtIfNeeded } from '../util/mdLinks';
-import { computeRelativePath } from '../util/path';
+import { computeRelativePath, isSameResource } from '../util/path';
 import { createAddDefinitionEdit } from './codeActions/extractLinkDef';
 import { MdLinkProvider } from './documentLinks';
 
@@ -70,7 +70,7 @@ export class MdUpdatePastedLinksProvider {
         }
 
         // If pasting into same doc copied from, there's no need to rewrite anything
-        if (getDocUri(targetDocument).toString() === metadata.toString()) {
+        if (isSameResource(getDocUri(targetDocument), metadata.source)) {
             return;
         }
 
@@ -130,7 +130,7 @@ export class MdUpdatePastedLinksProvider {
 
             } else if (link.href.kind === HrefKind.Internal) {
                 const targetDocUri = getDocUri(targetDocument);
-                const newPathText = targetDocUri.toString() === link.href.path.toString()
+                const newPathText = isSameResource(targetDocUri, link.href.path)
                     ? ''
                     : computeRelativePath(targetDocUri, removeNewUriExtIfNeeded(this.#config, link.href, link.href.path));
 

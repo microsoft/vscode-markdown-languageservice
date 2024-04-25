@@ -10,8 +10,8 @@ import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOf
 import { HrefKind, InternalHref, MdLink, MdLinkKind } from '../types/documentLink';
 import { translatePosition } from '../types/position';
 import { modifyRange, rangeContains } from '../types/range';
-import { ITextDocument } from '../types/textDocument';
-import { looksLikePathToResource } from '../util/path';
+import { getDocUri, ITextDocument } from '../types/textDocument';
+import { isSameResource, looksLikePathToResource } from '../util/path';
 import { tryAppendMarkdownFileExtension } from '../workspace';
 import { MdLinkProvider } from './documentLinks';
 import { getFilePathRange } from './rename';
@@ -54,12 +54,12 @@ export class MdDocumentHighlightProvider {
 	*#getHighlightsForHeader(document: ITextDocument, header: TocEntry, links: readonly MdLink[], toc: TableOfContents): Iterable<lsp.DocumentHighlight> {
 		yield { range: header.headerLocation.range, kind: lsp.DocumentHighlightKind.Write };
 
-		const docUri = document.uri.toString();
+		const docUri = getDocUri(document);
 		for (const link of links) {
 			if (link.href.kind === HrefKind.Internal
 				&& toc.lookup(link.href.fragment) === header
 				&& link.source.fragmentRange
-				&& link.href.path.toString() === docUri
+				&& isSameResource(link.href.path, docUri)
 			) {
 				yield {
 					range: modifyRange(link.source.fragmentRange, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 })),
@@ -105,7 +105,7 @@ export class MdDocumentHighlightProvider {
 
 		const fragment = href.fragment.toLowerCase();
 
-		if (targetDoc.toString() === document.uri) {
+		if (isSameResource(targetDoc, getDocUri(document))) {
 			const header = toc.lookup(fragment);
 			if (header) {
 				yield { range: header.headerLocation.range, kind: lsp.DocumentHighlightKind.Write };
@@ -138,7 +138,7 @@ export class MdDocumentHighlightProvider {
 
 	*#getHighlightsForExternalLink(uri: URI, links: readonly MdLink[]): Iterable<lsp.DocumentHighlight> {
 		for (const link of links) {
-			if (link.href.kind === HrefKind.External && link.href.uri.toString() === uri.toString()) {
+			if (link.href.kind === HrefKind.External && isSameResource(link.href.uri, uri)) {
 				yield {
 					range: getFilePathRange(link),
 					kind: lsp.DocumentHighlightKind.Read,

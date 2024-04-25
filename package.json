@@ -11,7 +11,7 @@
   "types": "./types/vscode-markdown-languageservice.d.ts",
   "files": [
     "out/**/*.js",
-    "!out/test/*.js",
+    "!out/test/**/*.js",
     "types/vscode-markdown-languageservice.d.ts"
   ],
   "dependencies": {

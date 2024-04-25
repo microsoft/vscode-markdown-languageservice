@@ -12,7 +12,7 @@ import { IMdParser } from '../parser';
 import { ISlugifier } from '../slugify';
 import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOfContents';
 import { HrefKind, InternalHref, MdLink, MdLinkKind, MdLinkSource } from '../types/documentLink';
-import { InMemoryDocument } from '../types/inMemoryDocument';
+import { InMemoryDocument, tempDocVersion } from '../types/inMemoryDocument';
 import { arePositionsEqual, translatePosition } from '../types/position';
 import { modifyRange, rangeContains } from '../types/range';
 import { ITextDocument, getDocUri } from '../types/textDocument';
@@ -227,7 +227,7 @@ export class MdRenameProvider {
 			}
 
 			if (doc) {
-				const editedDoc = new InMemoryDocument(URI.parse(existingHeader.location.uri), doc.getText())
+				const editedDoc = new InMemoryDocument(URI.parse(existingHeader.location.uri), doc.getText(), tempDocVersion)
 					.applyEdits([lsp.TextEdit.replace(existingHeader.location.range, '# ' + newHeaderText)]);
 
 				const [oldToc, newToc] = await Promise.all([

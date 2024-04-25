@@ -6,7 +6,7 @@ import * as lsp from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
 import { LsConfiguration } from '../config';
 import { HrefKind, LinkDefinitionSet, MdLinkDefinition } from '../types/documentLink';
-import { InMemoryDocument } from '../types/inMemoryDocument';
+import { InMemoryDocument, tempDocVersion } from '../types/inMemoryDocument';
 import { isBefore, isBeforeOrEqual } from '../types/position';
 import { rangeContains } from '../types/range';
 import { getDocUri, ITextDocument } from '../types/textDocument';
@@ -83,7 +83,7 @@ export class MdUpdatePastedLinksProvider {
 
         // Find the links in the pasted text by applying the paste edits to an in-memory document.
         // Use `copySource` as the doc uri to make sure links are resolved in its context
-        const editedDoc = new InMemoryDocument(metadata.source, targetDocument.getText());
+        const editedDoc = new InMemoryDocument(metadata.source, targetDocument.getText(), tempDocVersion);
         editedDoc.replaceContents(editedDoc.previewEdits(sortedPastes));
 
         const allLinks = await this.#linkProvider.getLinksWithoutCaching(editedDoc, token);
@@ -206,7 +206,7 @@ export class MdUpdatePastedLinksProvider {
         }
     }
 
-    #computedPastedRanges(sortedPastes: lsp.TextEdit[], targetDocument: ITextDocument, editedDoc: InMemoryDocument) {
+    #computedPastedRanges(sortedPastes: readonly lsp.TextEdit[], targetDocument: ITextDocument, editedDoc: InMemoryDocument): lsp.Range[] {
         const pastedRanges: lsp.Range[] = [];
 
         let offsetAdjustment = 0;

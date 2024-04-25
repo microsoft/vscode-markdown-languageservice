@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.0-alpha.6 — April 25, 2024
+- Clearly identify temporary versions of documents by setting version to `-1`. This lets clients know not to cache them.
+
 ## 0.5.0-alpha.5 — April 5, 2024
 - Add links to open file in path completions.
 - Add previews for image and video files in path completions.

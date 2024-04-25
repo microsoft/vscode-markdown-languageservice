@@ -8,6 +8,13 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { ITextDocument } from './textDocument';
 
+/**
+ * Represents a temporary version of a document.
+ * 
+ * This indicates that the document should not be cached or reuse cached results.
+ */
+export const tempDocVersion = -1;
+
 export class InMemoryDocument implements ITextDocument {
 
 	#doc: TextDocument;
@@ -43,18 +50,23 @@ export class InMemoryDocument implements ITextDocument {
 	}
 
 	replaceContents(newContent: string): this {
-		++this.version;
-		TextDocument.update(this.#doc, [{ text: newContent }], this.version);
+		this.#update([{ text: newContent }]);
 		return this;
 	}
 
 	applyEdits(textEdits: readonly lsp.TextEdit[]): this {
-		++this.version;
-		TextDocument.update(this.#doc, textEdits.map(x => ({ range: x.range, text: x.newText })), this.version);
+		this.#update(textEdits.map(x => ({ range: x.range, text: x.newText })));
 		return this;
 	}
 
 	previewEdits(textEdits: lsp.TextEdit[]): string {
 		return TextDocument.applyEdits(this.#doc, textEdits);
+	}
+
+	#update(changes: lsp.TextDocumentContentChangeEvent[]) {
+		// Temp docs always share the same version
+		const newVersion = this.version < 0 ? this.version : this.version + 1;
+		this.version = newVersion;
+		TextDocument.update(this.#doc, changes, newVersion);
 	}
 }

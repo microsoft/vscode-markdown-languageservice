@@ -6,7 +6,7 @@ import * as lsp from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
 import { LsConfiguration } from '../config';
 import { HrefKind, LinkDefinitionSet, MdLinkDefinition } from '../types/documentLink';
-import { InMemoryDocument, tempDocVersion as tempDocVersion } from '../types/inMemoryDocument';
+import { InMemoryDocument, tempDocVersion } from '../types/inMemoryDocument';
 import { isBefore, isBeforeOrEqual } from '../types/position';
 import { rangeContains } from '../types/range';
 import { getDocUri, ITextDocument } from '../types/textDocument';

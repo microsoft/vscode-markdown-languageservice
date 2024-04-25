@@ -13,6 +13,7 @@ import { WorkspaceEditBuilder } from '../../util/editBuilder';
 import { MdDocumentLinksInfo, MdLinkProvider } from '../documentLinks';
 import { getExistingDefinitionBlock } from '../organizeLinkDefs';
 import { codeActionKindContains } from './util';
+import { isSameResource } from '../../util/path';
 
 export class MdExtractLinkDefinitionCodeActionProvider {
 
@@ -123,11 +124,11 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 
 	#matchesHref(href: InternalHref | ExternalHref, link: MdLink): boolean {
 		if (link.href.kind === HrefKind.External && href.kind === HrefKind.External) {
-			return link.href.uri.toString() === href.uri.toString();
+			return isSameResource(link.href.uri, href.uri);
 		}
 
 		if (link.href.kind === HrefKind.Internal && href.kind === HrefKind.Internal) {
-			return link.href.path.toString() === href.path.toString() && link.href.fragment === href.fragment;
+			return isSameResource(link.href.path, href.path) && link.href.fragment === href.fragment;
 		}
 
 		return false;

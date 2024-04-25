@@ -9,6 +9,10 @@ import { URI, Utils } from 'vscode-uri';
 import { LsConfiguration } from '../config';
 import { Schemes } from './schemes';
 
+export function isSameResource(a: URI, b: URI): boolean {
+	return a.toString() === b.toString();
+}
+
 export function isParentDir(parent: URI, maybeChild: URI): boolean {
 	if (parent.scheme === maybeChild.scheme && parent.authority === maybeChild.authority) {
 		const relative = path.relative(parent.path, maybeChild.path);

@@ -16,7 +16,7 @@ import { modifyRange } from '../types/range';
 import { getDocUri, ITextDocument } from '../types/textDocument';
 import { Disposable, IDisposable } from '../util/dispose';
 import { Limiter } from '../util/limiter';
-import { looksLikeMarkdownUri, parseLocationInfoFromFragment } from '../util/path';
+import { isSameResource, looksLikeMarkdownUri, parseLocationInfoFromFragment } from '../util/path';
 import { ResourceMap } from '../util/resourceMap';
 import { FileStat, IWorkspace, IWorkspaceWithWatching, statLinkToMarkdownFile } from '../workspace';
 import { MdLinkProvider } from './documentLinks';
@@ -203,7 +203,7 @@ export class DiagnosticComputer {
 		])).flat();
 
 		this.#logger.log(LogLevel.Trace, 'DiagnosticComputer.compute finished', { document: doc.uri, version: doc.version, diagnostics });
-		
+
 		return {
 			links: links,
 			statCache,
@@ -227,7 +227,7 @@ export class DiagnosticComputer {
 
 			if (link.href.kind === HrefKind.Internal
 				&& link.source.hrefText.startsWith('#')
-				&& link.href.path.toString() === doc.uri.toString()
+				&& isSameResource(link.href.path, getDocUri(doc))
 				&& link.href.fragment
 				&& !toc.lookup(link.href.fragment)
 			) {
@@ -618,7 +618,7 @@ export class DiagnosticsManager extends Disposable implements IPullDiagnosticsMa
 
 		this._register(this.#linkWatcher.onDidChangeLinkedToFile(e => {
 			logger.log(LogLevel.Trace, 'DiagnosticsManager.onDidChangeLinkedToFile', { resource: e.changedResource });
-			
+
 			this.#onLinkedToFileChanged.fire({
 				changedResource: e.changedResource,
 				linkingResources: Array.from(e.linkingFiles),

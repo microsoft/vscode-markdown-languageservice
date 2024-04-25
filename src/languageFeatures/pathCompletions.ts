@@ -17,7 +17,7 @@ import { htmlTagPathAttrs } from '../util/html';
 import * as mdBuilder from '../util/mdBuilder';
 import { escapeForAngleBracketLink, hasBalancedParens } from '../util/mdLinks';
 import { MediaType, getMediaPreviewType } from '../util/media';
-import { computeRelativePath, looksLikeMarkdownFilePath } from '../util/path';
+import { computeRelativePath, isSameResource, looksLikeMarkdownFilePath } from '../util/path';
 import { Schemes } from '../util/schemes';
 import { r } from '../util/string';
 import { FileStat, IWorkspace, getWorkspaceFolder, openLinkToMarkdownFile } from '../workspace';
@@ -416,7 +416,7 @@ export class MdPathCompletionProvider {
 
 		const replacementRange = lsp.Range.create(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
 		for (const [toDoc, toc] of tocs) {
-			const isHeaderInCurrentDocument = toDoc.toString() === getDocUri(document).toString();
+			const isHeaderInCurrentDocument = isSameResource(toDoc, getDocUri(document));
 
 			const rawPath = isHeaderInCurrentDocument ? '' : computeRelativePath(getDocUri(document), toDoc);
 			if (typeof rawPath === 'undefined') {

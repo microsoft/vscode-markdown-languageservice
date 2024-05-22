@@ -88,27 +88,28 @@ export class MdDocumentSymbolProvider {
 		};
 	}
 
-	#buildTocSymbolTree(parent: MarkdownSymbol, entries: readonly TocEntry[], additionalSymbols: lsp.DocumentSymbol[]): void {
-		if (entries.length) {
-			while (additionalSymbols.length && isBefore(additionalSymbols[0].range.end, entries[0].sectionLocation.range.start)) {
+	#buildTocSymbolTree(root: MarkdownSymbol, entries: readonly TocEntry[], additionalSymbols: lsp.DocumentSymbol[]): void {
+		let parent: MarkdownSymbol | undefined = root;
+		for (const entry of entries) {
+			while (additionalSymbols.length && isBefore(additionalSymbols[0].range.end, entry.sectionLocation.range.start)) {
 				parent.children.push(additionalSymbols.shift()!);
 			}
+	
+			while (parent && entry.level <= parent.level) {
+				parent = parent.parent;
+			}
+			
+			if (!parent) {
+				// Should not happen
+				return;
+			}
+
+			const symbol = this.#tocToDocumentSymbol(entry);
+			symbol.children = [];
+			parent.children.push(symbol);
+			
+			parent = { level: entry.level, children: symbol.children, parent, range: entry.sectionLocation.range };
 		}
-
-		if (!entries.length) {
-			return;
-		}
-
-		const entry = entries[0];
-		const symbol = this.#tocToDocumentSymbol(entry);
-		symbol.children = [];
-
-		while (entry.level <= parent.level) {
-			parent = parent.parent!;
-		}
-		parent.children.push(symbol);
-
-		this.#buildTocSymbolTree({ level: entry.level, children: symbol.children, parent, range: entry.sectionLocation.range }, entries.slice(1), additionalSymbols);
 	}
 
 	#tocToDocumentSymbol(entry: TocEntry): lsp.DocumentSymbol {

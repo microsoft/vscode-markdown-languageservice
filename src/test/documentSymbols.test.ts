@@ -37,7 +37,7 @@ interface ExpectedDocSymbol {
 }
 
 function assertDocumentSymbolsEqual(actual: readonly lsp.DocumentSymbol[], expected: ReadonlyArray<ExpectedDocSymbol>, path = '') {
-	assert.strictEqual(actual.length, expected.length, 'Link counts to be equal');
+	assert.strictEqual(actual.length, expected.length, 'Symbol counts to be equal');
 
 	for (let i = 0; i < actual.length; ++i) {
 		const exp = expected[i];

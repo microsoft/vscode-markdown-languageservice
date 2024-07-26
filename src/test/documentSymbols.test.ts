@@ -222,4 +222,24 @@ suite('Document symbols', () => {
 			{ name: '[def 4]', range: lsp.Range.create(6, 0, 6, 27), selectionRange: lsp.Range.create(6, 1, 6, 6), },
 		]);
 	}));
+
+	test('Should strip markup in header text', withStore(async (store) => {
+		const symbols = await getSymbolsForFile(store, joinLines(
+			'## a `b` **c**',
+			'## [a `b` **c**](http://example.com)',
+		));
+		assertDocumentSymbolsEqual(symbols, [
+			{ name: '## a b c' },
+			{ name: '## a b c' },
+		]);
+	}));
+
+	test('Should strip html in header text', withStore(async (store) => {
+		const symbols = await getSymbolsForFile(store, joinLines(
+			'## <b>a</b> `b` **c**',
+		));
+		assertDocumentSymbolsEqual(symbols, [
+			{ name: '## a b c' },
+		]);
+	}));
 });

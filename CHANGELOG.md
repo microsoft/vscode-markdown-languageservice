@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.0-alpha.7 — July 25, 2024
+- Strip markup from header document symbols. This makes them more readable.
+
 ## 0.5.0-alpha.6 — April 25, 2024
 - Clearly identify temporary versions of documents by setting version to `-1`. This lets clients know not to cache them.
 

@@ -135,4 +135,15 @@ suite('Workspace symbols', () => {
 		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'fishcat'), []); // wrong order
 		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'ccat'), []); 
 	}));
+
+	test('Should strip markup in headers', withStore(async (store) => {
+		const workspace = store.add(new InMemoryWorkspace([
+			new InMemoryDocument(workspacePath('test.md'), joinLines(
+				'# a `b` **c**',
+				'# [a `x` **y**](http://example.com)',
+			))
+		]));
+
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'a'), ['# a b c', '# a x y']);
+	}));
 });

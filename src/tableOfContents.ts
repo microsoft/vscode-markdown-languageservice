@@ -15,7 +15,12 @@ import { MdDocumentInfoCache } from './workspaceCache';
 
 export interface TocEntry {
 	readonly slug: ISlug;
+
+	/**
+	 * The display text of the entry.
+	 */
 	readonly text: string;
+
 	readonly level: number;
 	readonly line: number;
 
@@ -142,7 +147,7 @@ export class TableOfContents {
 
 			toc.push({
 				slug,
-				text: line.replace(/^\s*#+\s*(.*?)(\s+#+)?$/, (_, word) => word.trim()),
+				text: bodyText.trim(),
 				level: TableOfContents.#getHeaderLevel(open.markup),
 				line: lineNumber,
 				sectionLocation: headerLocation, // Populated in next steps

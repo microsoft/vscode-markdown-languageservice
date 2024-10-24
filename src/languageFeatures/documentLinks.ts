@@ -171,8 +171,8 @@ const referenceLinkPattern = new RegExp(
 
 	/**/r`|` +
 
-	// [shorthand]
-	/****/r`\[\s*(?<shorthand>(?:\\.|[^\[\]\\])+?)\s*\]` +
+	// [shorthand] but not [!shorthand]
+	/****/r`\[(?!\!)\s*(?<shorthand>(?:\\.|[^\[\]\\])+?)\s*\]` +
 	r`)` +
 	r`(?![\(])`,  // Must not be followed by a paren to avoid matching normal links
 	'gm');
@@ -811,4 +811,3 @@ export function createWorkspaceLinkCache(
 	const linkComputer = new MdLinkComputer(parser, workspace);
 	return new MdWorkspaceInfoCache(workspace, (doc, token) => linkComputer.getAllLinks(doc, token));
 }
-

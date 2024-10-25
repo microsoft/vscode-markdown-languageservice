@@ -782,6 +782,16 @@ suite('Link computer', () => {
 
 		assertLinksEqual(links, []);
 	});
+
+	test('Should not crash on definition that spans multiple lines (#192)', async () => {
+		const links = await getLinksForText(joinLines(
+			`Options`,
+			`[positional parameters]:`,
+			`-R: recursively list subdirectories.`,
+		));
+
+		assertLinksEqual(links, []);
+	});
 });
 
 

@@ -255,6 +255,14 @@ suite('Link computer', () => {
 		]);
 	});
 
+	test('Should not find reference link shorthand when prefixed with ! (#164)', async () => {
+		const links = await getLinksForText(joinLines(
+			'[!note]',
+			'[!anything]',
+		));
+		assertLinksEqual(links, []);
+	});
+
 	test('Should find reference link with space in reference name', async () => {
 		const links = await getLinksForText(joinLines(
 			'[text][my ref]',

@@ -33,7 +33,12 @@ function createHref(
 ): ExternalHref | InternalHref | undefined {
 	if (/^[a-z\-][a-z\-]+:/i.test(link)) {
 		// Looks like a uri
-		return { kind: HrefKind.External, uri: URI.parse(tryDecodeUri(link)) };
+		try {
+			return { kind: HrefKind.External, uri: URI.parse(tryDecodeUri(link)) };
+		} catch (e) {
+			console.warn(r`Failed to parse link ${link} in ${sourceDocUri.toString(true)}`);
+			return undefined;
+		}
 	}
 
 	const resolved = resolveInternalDocumentLink(sourceDocUri, link, workspace);
@@ -185,7 +190,7 @@ const autoLinkPattern = /(?<!\\)\<(\w+:[^\>\s]+)\>/g;
 /**
  * Matches `[text]: link`
  */
-const definitionPattern = /^([\t ]*(?<!\\)\[(?!\^)((?:\\\]|[^\]])+)\]:\s*)([^<]\S*|<(?:\\[<>]|[^<>])+>)/gm;
+const definitionPattern = /^([\t ]*(?<!\\)\[(?!\^)((?:\\\]|[^\]])+)\]:[\t ]*)([^<]\S*|<(?:\\[<>]|[^<>])+>)/gm;
 
 class InlineRanges {
 

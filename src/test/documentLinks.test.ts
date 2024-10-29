@@ -495,35 +495,35 @@ suite('Link computer', () => {
 		]);
 	});
 
-	test('Should find link only within angle brackets.', async () => {
+	test('Should find link only within angle brackets', async () => {
 		const links = await getLinksForText(joinLines(
 			`[link](<path>)`
 		));
 		assertLinksEqual(links, [lsp.Range.create(0, 8, 0, 12)]);
 	});
 
-	test('Should find link within angle brackets even with link title.', async () => {
+	test('Should find link within angle brackets even with link title', async () => {
 		const links = await getLinksForText(joinLines(
 			`[link](<path> "test title")`
 		));
 		assertLinksEqual(links, [lsp.Range.create(0, 8, 0, 12)]);
 	});
 
-	test('Should find link within angle brackets even with surrounding spaces.', async () => {
+	test('Should find link within angle brackets even with surrounding spaces', async () => {
 		const links = await getLinksForText(joinLines(
 			`[link]( <path> )`
 		));
 		assertLinksEqual(links, [lsp.Range.create(0, 9, 0, 13)]);
 	});
 
-	test('Should find link within angle brackets for image hyperlinks.', async () => {
+	test('Should find link within angle brackets for image hyperlinks', async () => {
 		const links = await getLinksForText(joinLines(
 			`![link](<path>)`
 		));
 		assertLinksEqual(links, [lsp.Range.create(0, 9, 0, 13)]);
 	});
 
-	test('Should find link with spaces in angle brackets for image hyperlinks with titles.', async () => {
+	test('Should find link with spaces in angle brackets for image hyperlinks with titles', async () => {
 		const links = await getLinksForText(joinLines(
 			`![link](< path > "test")`
 		));
@@ -531,7 +531,7 @@ suite('Link computer', () => {
 	});
 
 
-	test('Should not find link due to incorrect angle bracket notation or usage.', async () => {
+	test('Should not find link due to incorrect angle bracket notation or usage', async () => {
 		const links = await getLinksForText(joinLines(
 			`[link](<path )`,
 			`[link](<> path>)`,
@@ -540,12 +540,20 @@ suite('Link computer', () => {
 		assertLinksEqual(links, []);
 	});
 
-	test('Should find link within angle brackets even with space inside link.', async () => {
+	test('Should find link within angle brackets even with space inside link', async () => {
 		const links = await getLinksForText(joinLines(
 			`[link](<pa th>)`
 		));
 
 		assertLinksEqual(links, [lsp.Range.create(0, 8, 0, 13)]);
+	});
+
+	test('Should find link within angle brackets with spaces in fragment', async () => {
+		const links = await getLinksForText(joinLines(
+			`[link](<pa th#fr agment>)`
+		));
+
+		assertLinksEqual(links, [lsp.Range.create(0, 8, 0, 23)]);
 	});
 
 	test('Should find links with titles', async () => {

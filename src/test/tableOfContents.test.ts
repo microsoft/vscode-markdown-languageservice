@@ -25,8 +25,8 @@ suite('Table of contents', () => {
 		const doc = new InMemoryDocument(testFileName, '');
 		const provider = await createToc(doc);
 
-		assert.strictEqual(provider.lookup(''), undefined);
-		assert.strictEqual(provider.lookup('foo'), undefined);
+		assert.strictEqual(provider.lookupByFragment(''), undefined);
+		assert.strictEqual(provider.lookupByFragment('foo'), undefined);
 	});
 
 	test('Lookup should not return anything for document with no headers', async () => {
@@ -36,10 +36,10 @@ suite('Table of contents', () => {
 		));
 		const provider = await createToc(doc);
 
-		assert.strictEqual(provider.lookup(''), undefined);
-		assert.strictEqual(provider.lookup('foo'), undefined);
-		assert.strictEqual(provider.lookup('a'), undefined);
-		assert.strictEqual(provider.lookup('b'), undefined);
+		assert.strictEqual(provider.lookupByFragment(''), undefined);
+		assert.strictEqual(provider.lookupByFragment('foo'), undefined);
+		assert.strictEqual(provider.lookupByFragment('a'), undefined);
+		assert.strictEqual(provider.lookupByFragment('b'), undefined);
 	});
 
 	test('Lookup should return basic #header', async () => {
@@ -51,15 +51,15 @@ suite('Table of contents', () => {
 		const provider = await createToc(doc);
 
 		{
-			const entry = provider.lookup('a');
+			const entry = provider.lookupByFragment('a');
 			assert.ok(entry);
 			assert.strictEqual(entry!.line, 0);
 		}
 		{
-			assert.strictEqual(provider.lookup('x'), undefined);
+			assert.strictEqual(provider.lookupByFragment('x'), undefined);
 		}
 		{
-			const entry = provider.lookup('c');
+			const entry = provider.lookupByFragment('c');
 			assert.ok(entry);
 			assert.strictEqual(entry!.line, 2);
 		}
@@ -72,9 +72,9 @@ suite('Table of contents', () => {
 		));
 		const provider = await createToc(doc);
 
-		assert.strictEqual((provider.lookup('fOo'))!.line, 0);
-		assert.strictEqual((provider.lookup('foo'))!.line, 0);
-		assert.strictEqual((provider.lookup('FOO'))!.line, 0);
+		assert.strictEqual((provider.lookupByFragment('fOo'))!.line, 0);
+		assert.strictEqual((provider.lookupByFragment('foo'))!.line, 0);
+		assert.strictEqual((provider.lookupByFragment('FOO'))!.line, 0);
 	});
 
 	test('should handle special characters #44779', async () => {
@@ -84,7 +84,7 @@ suite('Table of contents', () => {
 		));
 		const provider = await createToc(doc);
 
-		assert.strictEqual((provider.lookup('indentação'))!.line, 0);
+		assert.strictEqual((provider.lookupByFragment('indentação'))!.line, 0);
 	});
 
 	test('should handle special characters 2, #48482', async () => {
@@ -94,7 +94,7 @@ suite('Table of contents', () => {
 		));
 		const provider = await createToc(doc);
 
-		assert.strictEqual((provider.lookup('инструкция---делай-раз-делай-два'))!.line, 0);
+		assert.strictEqual((provider.lookupByFragment('инструкция---делай-раз-делай-два'))!.line, 0);
 	});
 
 	test('should handle special characters 3, #37079', async () => {
@@ -109,12 +109,12 @@ suite('Table of contents', () => {
 
 		const provider = await createToc(doc);
 
-		assert.strictEqual((provider.lookup('header-2'))!.line, 0);
-		assert.strictEqual((provider.lookup('header-3'))!.line, 1);
-		assert.strictEqual((provider.lookup('Заголовок-2'))!.line, 2);
-		assert.strictEqual((provider.lookup('Заголовок-3'))!.line, 3);
-		assert.strictEqual((provider.lookup('Заголовок-header-3'))!.line, 4);
-		assert.strictEqual((provider.lookup('Заголовок'))!.line, 5);
+		assert.strictEqual((provider.lookupByFragment('header-2'))!.line, 0);
+		assert.strictEqual((provider.lookupByFragment('header-3'))!.line, 1);
+		assert.strictEqual((provider.lookupByFragment('Заголовок-2'))!.line, 2);
+		assert.strictEqual((provider.lookupByFragment('Заголовок-3'))!.line, 3);
+		assert.strictEqual((provider.lookupByFragment('Заголовок-header-3'))!.line, 4);
+		assert.strictEqual((provider.lookupByFragment('Заголовок'))!.line, 5);
 	});
 
 	test('Lookup should support suffixes for repeated headers', async () => {
@@ -126,17 +126,17 @@ suite('Table of contents', () => {
 		const provider = await createToc(doc);
 
 		{
-			const entry = provider.lookup('a');
+			const entry = provider.lookupByFragment('a');
 			assert.ok(entry);
 			assert.strictEqual(entry!.line, 0);
 		}
 		{
-			const entry = provider.lookup('a-1');
+			const entry = provider.lookupByFragment('a-1');
 			assert.ok(entry);
 			assert.strictEqual(entry!.line, 1);
 		}
 		{
-			const entry = provider.lookup('a-2');
+			const entry = provider.lookupByFragment('a-2');
 			assert.ok(entry);
 			assert.strictEqual(entry!.line, 2);
 		}

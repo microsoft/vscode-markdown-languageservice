@@ -732,7 +732,7 @@ export class MdLinkProvider extends Disposable {
 
 		if (doc) {
 			const toc = await this.#tocProvider.getForContainingDoc(doc, token);
-			const entry = toc.lookup(linkFragment);
+			const entry = toc.lookupByFragment(linkFragment);
 			if (entry) {
 				return { kind: 'file', uri: URI.parse(entry.headerLocation.uri), position: entry.headerLocation.range.start, fragment: linkFragment };
 			}

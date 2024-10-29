@@ -524,6 +524,24 @@ suite('Diagnostic Computer', () => {
 		const diagnostics = await getComputedDiagnostics(store, doc, workspace, {});
 		assertDiagnosticsEqual(diagnostics, []);
 	}));
+
+	test('Should support angle bracket links with spaces in fragment', withStore(async (store) => {
+		const doc1 = new InMemoryDocument(workspacePath('doc space1.md'), joinLines(
+			`[i](<doc space2.md>)`,
+			`[i](<doc space2.md#fr agment>)`,
+			`[i](<#fr agment>)`,
+			``,
+			'# FR agment',
+
+		));
+		const doc2 = new InMemoryDocument(workspacePath('doc space2.md'), joinLines(
+			'# FR agment',
+		));
+		const workspace = new InMemoryWorkspace([doc1, doc2]);
+
+		const diagnostics = await getComputedDiagnostics(store, doc1, workspace, {});
+		assertDiagnosticsEqual(diagnostics, []);
+	}));
 });
 
 

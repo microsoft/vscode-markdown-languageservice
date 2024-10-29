@@ -228,7 +228,7 @@ export class MdReferencesProvider extends Disposable {
 
 		if (resolvedResource && this.#isMarkdownPath(resolvedResource) && sourceLink.href.fragment && sourceLink.source.fragmentRange && rangeContains(sourceLink.source.fragmentRange, triggerPosition)) {
 			const toc = await this.#tocProvider.get(resolvedResource);
-			const entry = toc?.lookup(sourceLink.href.fragment);
+			const entry = toc?.lookupByFragment(sourceLink.href.fragment);
 			if (entry) {
 				references.push({
 					kind: MdReferenceKind.Header,

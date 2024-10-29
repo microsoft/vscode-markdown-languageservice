@@ -57,7 +57,7 @@ export class MdDocumentHighlightProvider {
 		const docUri = getDocUri(document);
 		for (const link of links) {
 			if (link.href.kind === HrefKind.Internal
-				&& toc.lookup(link.href.fragment) === header
+				&& toc.lookupByFragment(link.href.fragment) === header
 				&& link.source.fragmentRange
 				&& isSameResource(link.href.path, docUri)
 			) {
@@ -106,7 +106,7 @@ export class MdDocumentHighlightProvider {
 		const fragment = href.fragment.toLowerCase();
 
 		if (isSameResource(targetDoc, getDocUri(document))) {
-			const header = toc.lookup(fragment);
+			const header = toc.lookupByFragment(fragment);
 			if (header) {
 				yield { range: header.headerLocation.range, kind: lsp.DocumentHighlightKind.Write };
 			}

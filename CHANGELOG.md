@@ -2,7 +2,7 @@
 
 ## 0.5.0-alpha.8 — Unreleased
 - Fix incorrect detection of a multiline link definition #192
-- Support spaces in angle brackets inside linksL `[text](<#heading with spaces>)`
+- Support spaces in angle brackets inside links: `[text](<#heading with spaces>)`
 
 ## 0.5.0-alpha.7 — July 25, 2024
 - Strip markup from header document symbols. This makes them more readable.

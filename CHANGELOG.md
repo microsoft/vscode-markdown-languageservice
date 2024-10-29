@@ -1,8 +1,9 @@
 # Changelog
 
-## 0.5.0-alpha.8 — Unreleased
+## 0.5.0-alpha.8 — October 29, 2024
 - Fix incorrect detection of a multiline link definition #192
 - Support spaces in angle brackets inside links: `[text](<#heading with spaces>)`
+- Suppress diagnostics for `[!NOTE]` alert syntax.
 
 ## 0.5.0-alpha.7 — July 25, 2024
 - Strip markup from header document symbols. This makes them more readable.

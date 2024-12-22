@@ -15,7 +15,7 @@
     "types/vscode-markdown-languageservice.d.ts"
   ],
   "dependencies": {
-    "@vscode/l10n": "^0.0.10",
+    "@vscode/l10n": "^0.0.18",
     "node-html-parser": "^6.1.5",
     "picomatch": "^2.3.1",
     "vscode-languageserver-protocol": "^3.17.1",

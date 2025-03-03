@@ -685,7 +685,7 @@ suite('File Rename', () => {
 				lsp.TextEdit.replace(lsp.Range.create(6, 6, 6, 10), '</par(en>'),
 				lsp.TextEdit.replace(lsp.Range.create(7, 6, 7, 11), '</par(en>'),
 			]
-		}); 
+		});
 	}));
 
 	test('Should handle renames for angle bracket link with fragment when angle brackets are removed (#150)', withStore(async (store) => {
@@ -736,6 +736,39 @@ suite('File Rename', () => {
 				lsp.TextEdit.replace(lsp.Range.create(1, 8, 1, 18), 'foo space.md#abc'),
 				lsp.TextEdit.replace(lsp.Range.create(3, 8, 3, 18), '<foo space.md#abc>'),
 				lsp.TextEdit.replace(lsp.Range.create(4, 9, 4, 19), 'foo space.md#abc'),
+			]
+		});
+	}));
+
+	test('Should handle renames for multi-line links (#202)', withStore(async (store) => {
+		const uri = workspacePath('doc.md');
+		const doc = new InMemoryDocument(uri, joinLines(
+			`[te`,
+			`xt](foo.md)`,
+			`[te`,
+			`xt](foo.md#abc 'text')`,
+			`[te`,
+			`xt](<foo.md#abc>)`,
+			``,
+			`[`,
+			`text`,
+			`](`,
+			`foo.md`,
+			`)`,
+		));
+
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const oldUri = workspacePath('foo.md');
+		const newUri = workspacePath('new foo.md');
+
+		const response = await getFileRenameEdits(store, [{ oldUri, newUri }], workspace);
+		assertEditsEqual(response!.edit, {
+			uri, edits: [
+				lsp.TextEdit.replace(lsp.Range.create(1, 4, 1, 10), '<new foo.md>'),
+				lsp.TextEdit.replace(lsp.Range.create(3, 4, 3, 14), '<new foo.md#abc>'),
+				lsp.TextEdit.replace(lsp.Range.create(5, 5, 5, 15), 'new foo.md#abc'),
+				lsp.TextEdit.replace(lsp.Range.create(10, 0, 10, 6), '<new foo.md>'),
 			]
 		});
 	}));

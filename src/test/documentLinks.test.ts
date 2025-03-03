@@ -808,6 +808,30 @@ suite('Link computer', () => {
 
 		assertLinksEqual(links, []);
 	});
+
+	test('Should find multi-line links', async () => {
+		const links = await getLinksForText(joinLines(
+			`[te`,
+			`xt](foo.md)`,
+			`[te`,
+			`xt](foo.md#abc 'text')`,
+			`[te`,
+			`xt](<foo.md#abc>)`,
+			``,
+			`[`,
+			`text`,
+			`](`,
+			`foo.md`,
+			`)`,
+		));
+
+		assertLinksEqual(links, [
+			lsp.Range.create(1, 4, 1, 10),
+			lsp.Range.create(3, 4, 3, 14),
+			lsp.Range.create(5, 5, 5, 15),
+			lsp.Range.create(10, 0, 10, 6),
+		]);
+	});
 });
 
 

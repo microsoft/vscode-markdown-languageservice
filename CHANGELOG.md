@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.0-alpha.9 — Unreleased
+- Improved detection of multi-line links.
+
 ## 0.5.0-alpha.8 — October 29, 2024
 - Fix incorrect detection of a multiline link definition #192
 - Support spaces in angle brackets inside links: `[text](<#heading with spaces>)`

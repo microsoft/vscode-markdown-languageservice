@@ -76,14 +76,16 @@ function createMdLink(
 	}
 
 	const pre = targetText + preHrefText;
-	const linkStart = document.positionAt(matchIndex);
-	const linkEnd = translatePosition(linkStart, { characterDelta: fullMatch.length });
+	const linkStartOffset = matchIndex;
+	const linkStart = document.positionAt(linkStartOffset);
+	const linkEnd = document.positionAt(linkStartOffset + fullMatch.length);
 
-	const targetStart = translatePosition(linkStart, { characterDelta: targetText.length });
+	const targetStart = document.positionAt(linkStartOffset + targetText.length);
 	const targetRange: lsp.Range = { start: targetStart, end: linkEnd };
 
-	const hrefStart = translatePosition(linkStart, { characterDelta: pre.length + (isAngleBracketLink ? 1 : 0) });
-	const hrefEnd = translatePosition(hrefStart, { characterDelta: link.length });
+	const hrefStartOffset = linkStartOffset + pre.length + (isAngleBracketLink ? 1 : 0);
+	const hrefStart = document.positionAt(hrefStartOffset);
+	const hrefEnd = document.positionAt(hrefStartOffset + link.length);
 	const hrefRange: lsp.Range = { start: hrefStart, end: hrefEnd };
 
 	return {

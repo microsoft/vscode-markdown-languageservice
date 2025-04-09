@@ -1,6 +1,9 @@
 # Changelog
 
-## 0.5.0-alpha.9 — March 24
+## 0.5.0-alpha.10 — Unreleased
+- Improve handling of encoded path completions.
+
+## 0.5.0-alpha.9 — March 24, 2025
 - Improved detection of multi-line links.
 
 ## 0.5.0-alpha.8 — October 29, 2024

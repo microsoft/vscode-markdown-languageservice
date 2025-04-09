@@ -321,7 +321,7 @@ export class MdPathCompletionProvider {
 	#createCompletionContext(kind: CompletionContextKind, position: lsp.Position, prefix: string, suffix: string, isAngleBracketPath: boolean): PathCompletionContext | undefined {
 		return {
 			kind,
-			linkPrefix: tryDecodeUriComponent(prefix),
+			linkPrefix: prefix,
 			linkTextStartPosition: translatePosition(position, { characterDelta: -prefix.length }),
 			linkSuffix: suffix,
 			anchorInfo: this.#getAnchorContext(prefix),
@@ -442,9 +442,8 @@ export class MdPathCompletionProvider {
 	}
 
 	async *#providePathSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
-		const valueBeforeLastSlash = context.linkPrefix.substring(0, context.linkPrefix.lastIndexOf('/') + 1); // keep the last slash
-
-		const parentDir = this.#resolveReference(document, valueBeforeLastSlash || '.');
+		const valueBeforeLastSlash = context.linkPrefix.substring(0, context.linkPrefix.lastIndexOf('/') + 1);// keep the last slash
+		const parentDir = this.#resolveReference(document, valueBeforeLastSlash ? tryDecodeUriComponent(valueBeforeLastSlash) : '.');
 		if (!parentDir) {
 			return;
 		}

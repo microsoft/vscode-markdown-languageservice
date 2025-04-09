@@ -16,7 +16,7 @@ import { IWorkspace } from '../workspace';
 import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
-import { CURSOR, DisposableStore, getCursorPositions, joinLines, withStore, workspacePath } from './util';
+import { assertPositionEqual, CURSOR, DisposableStore, getCursorPositions, joinLines, withStore, workspacePath } from './util';
 
 
 async function getCompletionsAtCursor(store: DisposableStore, doc: InMemoryDocument, workspace: IWorkspace, configOverrides: Partial<LsConfiguration> = {}, context: Partial<PathCompletionOptions> = {}) {
@@ -46,7 +46,7 @@ async function getCompletionsAtCursorForFileContents(store: DisposableStore, uri
 	return getCompletionsAtCursor(store, doc, ws, configOverrides, context);
 }
 
-function assertCompletionsEqual(actual: readonly lsp.CompletionItem[], expected: readonly { label: string; insertText?: string }[]) {
+function assertCompletionsEqual(actual: readonly lsp.CompletionItem[], expected: readonly { label: string; insertText?: string; insertStart?: lsp.Position }[]) {
 	assert.strictEqual(actual.length, expected.length, 'Completion counts should be equal');
 
 	for (let i = 0; i < actual.length; ++i) {
@@ -55,6 +55,10 @@ function assertCompletionsEqual(actual: readonly lsp.CompletionItem[], expected:
 
 		assert.strictEqual(act.label, exp.label, `Completion labels ${i} should be equal`);
 		assert.strictEqual((act.textEdit as lsp.InsertReplaceEdit).newText, exp.insertText ?? exp.label, `New text ${i} should be equal`);
+		if (exp.insertStart) {
+			const insertReplaceEdit = act.textEdit as lsp.InsertReplaceEdit;
+			assertPositionEqual(insertReplaceEdit.insert.start, exp.insertStart ?? insertReplaceEdit?.insert.start, `Insert start position ${i} should be equal`);
+		}
 	}
 }
 
@@ -243,7 +247,7 @@ suite('Path completions', () => {
 		), workspace);
 
 		assertCompletionsEqual(completions, [
-			{ label: 'file with space.md', insertText: 'file%20with%20space.md' },
+			{ label: 'file with space.md', insertText: 'file%20with%20space.md', insertStart: { line: 0, character: 9 } },
 		]);
 	}));
 
@@ -258,7 +262,7 @@ suite('Path completions', () => {
 		), workspace);
 
 		assertCompletionsEqual(completions, [
-			{ label: 'a.md', insertText: 'a.md' },
+			{ label: 'a.md', insertText: 'a.md', insertStart: { line: 0, character: 20 } },
 		]);
 	}));
 
@@ -273,7 +277,7 @@ suite('Path completions', () => {
 			), workspace);
 
 			assertCompletionsEqual(completions, [
-				{ label: 'file with space.md', insertText: 'file with space.md' },
+				{ label: 'file with space.md', insertText: 'file with space.md', insertStart: { line: 0, character: 10 } },
 			]);
 		}
 		{
@@ -282,7 +286,7 @@ suite('Path completions', () => {
 			), workspace);
 
 			assertCompletionsEqual(completions, [
-				{ label: 'file with space.md', insertText: 'file with space.md' },
+				{ label: 'file with space.md', insertText: 'file with space.md', insertStart: { line: 0, character: 10 } },
 			]);
 		}
 	}));
@@ -290,17 +294,30 @@ suite('Path completions', () => {
 	test('Should complete paths for path with encoded spaces', withStore(async (store) => {
 		const workspace = store.add(new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('a.md'), ''),
-			new InMemoryDocument(workspacePath('b.md'), ''),
+			new InMemoryDocument(workspacePath('file with space.md'), ''),
 			new InMemoryDocument(workspacePath('sub with space', 'file.md'), ''),
 		]));
 
-		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
-			`[](./sub%20with%20space/${CURSOR})`
-		), workspace);
+		{
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`[](./file%20${CURSOR})`
+			), workspace);
 
-		assertCompletionsEqual(completions, [
-			{ label: 'file.md', insertText: 'file.md' },
-		]);
+			assertCompletionsEqual(completions, [
+				{ label: 'a.md', insertText: 'a.md', insertStart: { line: 0, character: 5 } },
+				{ label: 'file with space.md', insertText: 'file%20with%20space.md', insertStart: { line: 0, character: 5 } },
+				{ label: 'sub with space/', insertText: 'sub%20with%20space/', insertStart: { line: 0, character: 5 } },
+			]);
+		}
+		{
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`[](./sub%20with%20space/${CURSOR})`
+			), workspace);
+
+			assertCompletionsEqual(completions, [
+				{ label: 'file.md', insertText: 'file.md', insertStart: { line: 0, character: 24 } },
+			]);
+		}
 	}));
 
 	test('Should complete definition path for path with encoded spaces', withStore(async (store) => {
@@ -315,7 +332,7 @@ suite('Path completions', () => {
 		), workspace);
 
 		assertCompletionsEqual(completions, [
-			{ label: 'file.md', insertText: 'file.md' },
+			{ label: 'file.md', insertText: 'file.md', insertStart: { line: 0, character: 28 } },
 		]);
 	}));
 
@@ -663,11 +680,11 @@ suite('Path completions', () => {
 					`# Header`
 				)),
 			]));
-	
+
 			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 				`[](##${CURSOR}`,
 			), workspace, undefined, { includeWorkspaceHeaderCompletions: IncludeWorkspaceHeaderCompletions.onDoubleHash });
-	
+
 			assertCompletionsEqual(completions, [
 				{ label: '#header', insertText: 'テ%20ス%20ト.md#header' },
 			]);
@@ -677,11 +694,11 @@ suite('Path completions', () => {
 			const workspace = store.add(new InMemoryWorkspace([
 				new InMemoryDocument(workspacePath('a%b.md'), '# Header'),
 			]));
-	
+
 			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 				`[](##${CURSOR}`,
-			), workspace, undefined, {includeWorkspaceHeaderCompletions: IncludeWorkspaceHeaderCompletions.onDoubleHash});
-	
+			), workspace, undefined, { includeWorkspaceHeaderCompletions: IncludeWorkspaceHeaderCompletions.onDoubleHash });
+
 			assertCompletionsEqual(completions, [
 				{ label: '#header', insertText: 'a%25b.md#header' },
 			]);

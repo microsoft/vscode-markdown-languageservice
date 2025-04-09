@@ -19,6 +19,11 @@ export function workspacePath(...segments: string[]): URI.URI {
 	return URI.Utils.joinPath(workspaceRoot, ...segments);
 }
 
+export function assertPositionEqual(expected: lsp.Position, actual: lsp.Position, message?: string) {
+	assert.strictEqual(expected.line, actual.line, `${message || ''}. Position line not equal`);
+	assert.strictEqual(expected.character, actual.character, `${message || ''}. Position character not equal`);
+}
+
 export function assertRangeEqual(expected: lsp.Range, actual: lsp.Range, message?: string) {
 	assert.strictEqual(expected.start.line, actual.start.line, `${message || ''}. Range start line not equal`);
 	assert.strictEqual(expected.start.character, actual.start.character, `${message || ''}. Range start character not equal`);

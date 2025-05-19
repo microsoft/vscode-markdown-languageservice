@@ -103,12 +103,12 @@ export class MdRenameProvider {
 				}
 
 				// See if we are renaming the fragment or the path
-				const { fragmentRange } = triggerRef.link.source;
-				if (fragmentRange && rangeContains(fragmentRange, position)) {
+				const { hrefFragmentRange } = triggerRef.link.source;
+				if (hrefFragmentRange && rangeContains(hrefFragmentRange, position)) {
 					const declaration = this.#findHeaderDeclaration(allRefsInfo.references);
 					return {
-						range: fragmentRange,
-						placeholder: declaration ? declaration.headerText : document.getText(fragmentRange),
+						range: hrefFragmentRange,
+						placeholder: declaration ? declaration.headerText : document.getText(hrefFragmentRange),
 					};
 				}
 
@@ -141,9 +141,9 @@ export class MdRenameProvider {
 			return this.#renameReferenceLinks(allRefsInfo, newName);
 		} else if (triggerRef.kind === MdReferenceKind.Link && triggerRef.link.href.kind === HrefKind.External) {
 			return this.#renameExternalLink(allRefsInfo, newName);
-		} else if (triggerRef.kind === MdReferenceKind.Header || (triggerRef.kind === MdReferenceKind.Link && triggerRef.link.source.fragmentRange && rangeContains(triggerRef.link.source.fragmentRange, position) && (triggerRef.link.kind === MdLinkKind.Definition || triggerRef.link.kind === MdLinkKind.Link && triggerRef.link.href.kind === HrefKind.Internal))) {
+		} else if (triggerRef.kind === MdReferenceKind.Header || (triggerRef.kind === MdReferenceKind.Link && triggerRef.link.source.hrefFragmentRange && rangeContains(triggerRef.link.source.hrefFragmentRange, position) && (triggerRef.link.kind === MdLinkKind.Definition || triggerRef.link.kind === MdLinkKind.Link && triggerRef.link.href.kind === HrefKind.Internal))) {
 			return this.#renameFragment(allRefsInfo, newName, token);
-		} else if (triggerRef.kind === MdReferenceKind.Link && !(triggerRef.link.source.fragmentRange && rangeContains(triggerRef.link.source.fragmentRange, position)) && (triggerRef.link.kind === MdLinkKind.Link || triggerRef.link.kind === MdLinkKind.Definition) && triggerRef.link.href.kind === HrefKind.Internal) {
+		} else if (triggerRef.kind === MdReferenceKind.Link && !(triggerRef.link.source.hrefFragmentRange && rangeContains(triggerRef.link.source.hrefFragmentRange, position)) && (triggerRef.link.kind === MdLinkKind.Link || triggerRef.link.kind === MdLinkKind.Definition) && triggerRef.link.href.kind === HrefKind.Internal) {
 			return this.#renameFilePath(triggerRef.link.source.resource, triggerRef.link.href, allRefsInfo, newName, token);
 		}
 
@@ -263,7 +263,7 @@ export class MdRenameProvider {
 
 					for (const ref of refs?.references ?? []) {
 						if (ref.kind === MdReferenceKind.Link) {
-							builder.replace(ref.link.source.resource, ref.link.source.fragmentRange ?? ref.location.range, changedHeader.slug.value);
+							builder.replace(ref.link.source.resource, ref.link.source.hrefFragmentRange ?? ref.location.range, changedHeader.slug.value);
 						}
 					}
 				}
@@ -277,7 +277,7 @@ export class MdRenameProvider {
 					break;
 
 				case MdReferenceKind.Link:
-					builder.replace(ref.link.source.resource, ref.link.source.fragmentRange ?? ref.location.range, !ref.link.source.fragmentRange || ref.link.href.kind === HrefKind.External ? newHeaderText : newSlug.value);
+					builder.replace(ref.link.source.resource, ref.link.source.hrefFragmentRange ?? ref.location.range, !ref.link.source.hrefFragmentRange || ref.link.href.kind === HrefKind.External ? newHeaderText : newSlug.value);
 					break;
 			}
 		}
@@ -302,7 +302,7 @@ export class MdRenameProvider {
 				if (ref.link.kind === MdLinkKind.Definition) {
 					builder.replace(ref.link.source.resource, ref.link.ref.range, newName);
 				} else {
-					builder.replace(ref.link.source.resource, ref.link.source.fragmentRange ?? ref.location.range, newName);
+					builder.replace(ref.link.source.resource, ref.link.source.hrefFragmentRange ?? ref.location.range, newName);
 				}
 			}
 		}
@@ -356,8 +356,8 @@ export function getLinkRenameText(workspace: IWorkspace, source: MdLinkSource, n
 }
 
 export function getFilePathRange(link: MdLink): lsp.Range {
-	if (link.source.fragmentRange) {
-		return modifyRange(link.source.hrefRange, undefined, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 }));
+	if (link.source.hrefFragmentRange) {
+		return modifyRange(link.source.hrefRange, undefined, translatePosition(link.source.hrefFragmentRange.start, { characterDelta: -1 }));
 	}
 	return link.source.hrefRange;
 }

@@ -139,7 +139,7 @@ export class MdUpdatePastedLinksProvider {
                 }
 
                 let newHrefText = newPathText;
-                if (link.source.fragmentRange) {
+                if (link.source.hrefFragmentRange) {
                     newHrefText += '#' + link.href.fragment;
                 }
 

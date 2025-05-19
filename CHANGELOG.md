@@ -2,6 +2,7 @@
 
 ## 0.5.0-alpha.10 — Unreleased
 - Improve handling of encoded path completions.
+- Improve reliability of smart selection for links and tweak behavior.
 
 ## 0.5.0-alpha.9 — March 24, 2025
 - Improved detection of multi-line links.

@@ -379,7 +379,7 @@ export class DiagnosticComputer {
 
 					if (!resolvedHrefPath) {
 						for (const link of links) {
-							if (!this.#isIgnoredLink(options, link.source.pathText)) {
+							if (!this.#isIgnoredLink(options, link.source.hrefPathText)) {
 								diagnostics.push({
 									code: DiagnosticCode.link_noSuchFile,
 									message: l10n.t('File does not exist at path: {0}', path.fsPath),
@@ -387,7 +387,7 @@ export class DiagnosticComputer {
 									severity: pathErrorSeverity,
 									data: {
 										fsPath: path.fsPath,
-										hrefText: link.source.pathText,
+										hrefText: link.source.hrefPathText,
 									}
 								});
 							}
@@ -407,8 +407,8 @@ export class DiagnosticComputer {
 									continue;
 								}
 
-								if (!(toc && tocLookupByLink(toc, link)) && !this.#isIgnoredLink(options, link.source.pathText) && !this.#isIgnoredLink(options, link.source.hrefText)) {
-									const range = (link.source.fragmentRange && modifyRange(link.source.fragmentRange, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 }), undefined)) ?? link.source.hrefRange;
+								if (!(toc && tocLookupByLink(toc, link)) && !this.#isIgnoredLink(options, link.source.hrefPathText) && !this.#isIgnoredLink(options, link.source.hrefText)) {
+									const range = (link.source.hrefFragmentRange && modifyRange(link.source.hrefFragmentRange, translatePosition(link.source.hrefFragmentRange.start, { characterDelta: -1 }), undefined)) ?? link.source.hrefRange;
 									diagnostics.push({
 										code: DiagnosticCode.link_noSuchHeaderInFile,
 										message: l10n.t('Header does not exist in file: {0}', link.fragment),

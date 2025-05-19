@@ -226,7 +226,7 @@ export class MdReferencesProvider extends Disposable {
 
 		const references: MdReference[] = [];
 
-		if (resolvedResource && this.#isMarkdownPath(resolvedResource) && sourceLink.href.fragment && sourceLink.source.fragmentRange && rangeContains(sourceLink.source.fragmentRange, triggerPosition)) {
+		if (resolvedResource && this.#isMarkdownPath(resolvedResource) && sourceLink.href.fragment && sourceLink.source.hrefFragmentRange && rangeContains(sourceLink.source.hrefFragmentRange, triggerPosition)) {
 			const toc = await this.#tocProvider.get(resolvedResource);
 			const entry = toc?.lookupByFragment(sourceLink.href.fragment);
 			if (entry) {
@@ -325,8 +325,8 @@ export class MdReferencesProvider extends Disposable {
 	 * Get just the range of the file path, dropping the fragment
 	 */
 	#getPathRange(link: MdLink): lsp.Range {
-		return link.source.fragmentRange
-			? modifyRange(link.source.hrefRange, undefined, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 }))
+		return link.source.hrefFragmentRange
+			? modifyRange(link.source.hrefRange, undefined, translatePosition(link.source.hrefFragmentRange.start, { characterDelta: -1 }))
 			: link.source.hrefRange;
 	}
 }

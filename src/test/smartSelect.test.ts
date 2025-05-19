@@ -13,6 +13,8 @@ import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
 import { CURSOR, getCursorPositions, joinLines } from './util';
+import { MdLinkProvider } from '../languageFeatures/documentLinks';
+import { getLsConfiguration } from '../config';
 
 
 const testFileName = URI.file('test.md');
@@ -373,7 +375,7 @@ suite('Smart select', () => {
 			`- content 2`,
 			`- content 2`));
 
-		assertNestedLineNumbersEqual(ranges![0], [9, 11], [8, 12], [8, 12], [7, 17], [1, 17], [0, 17]);
+		assertNestedLineNumbersEqual(ranges![0], [9, 11], [8, 12], [7, 17], [1, 17], [0, 17]);
 	});
 
 	test('Smart select fenced code block then list then rest of content on fenced line', async () => {
@@ -508,21 +510,21 @@ suite('Smart select', () => {
 		assertNestedRangesEqual(ranges![0], [0, 13, 0, 30], [0, 11, 0, 32], [0, 0, 0, 41]);
 	});
 
-	test('Smart select link', async () => {
+	test('Smart select link inside href', async () => {
 		const ranges = await getSelectionRangesForDocument(joinLines(
 			`stuff here [text](https${CURSOR}://google.com) and here`
 		));
 		assertNestedRangesEqual(ranges![0], [0, 18, 0, 46], [0, 17, 0, 47], [0, 11, 0, 47], [0, 0, 0, 56]);
 	});
 
-	test('Smart select brackets', async () => {
+	test('Smart select link inside text', async () => {
 		const ranges = await getSelectionRangesForDocument(joinLines(
 			`stuff here [te${CURSOR}xt](https://google.com) and here`
 		));
-		assertNestedRangesEqual(ranges![0], [0, 12, 0, 26], [0, 11, 0, 27], [0, 11, 0, 47], [0, 0, 0, 56]);
+		assertNestedRangesEqual(ranges![0], [0, 12, 0, 26], [0, 11, 0, 47], [0, 0, 0, 56]);
 	});
 
-	test('Smart select brackets under header in list', async () => {
+	test('Smart select link in text under header in list', async () => {
 		const ranges = await getSelectionRangesForDocument(joinLines(
 			`# main header 1`,
 			``,
@@ -533,10 +535,10 @@ suite('Smart select', () => {
 			`- stuff here [te${CURSOR}xt](https://google.com) and here`,
 			`- list`
 		));
-		assertNestedRangesEqual(ranges![0], [6, 14, 6, 28], [6, 13, 6, 29], [6, 13, 6, 49], [6, 0, 6, 58], [5, 0, 7, 6], [4, 0, 7, 6], [1, 0, 7, 6], [0, 0, 7, 6]);
+		assertNestedRangesEqual(ranges![0], [6, 14, 6, 28], [6, 13, 6, 49], [6, 0, 6, 58], [5, 0, 7, 6], [4, 0, 7, 6], [1, 0, 7, 6], [0, 0, 7, 6]);
 	});
 
-	test('Smart select link under header in list', async () => {
+	test('Smart select link in href under header in list', async () => {
 		const ranges = await getSelectionRangesForDocument(joinLines(
 			`# main header 1`,
 			``,
@@ -568,14 +570,14 @@ suite('Smart select', () => {
 		const ranges = await getSelectionRangesForDocument(joinLines(
 			`This[extension](https://marketplace.visualstudio.com/items?itemName=meganrogge.template-string-converter)  addresses this [requ${CURSOR}est](https://github.com/microsoft/vscode/issues/56704) to convert Javascript/Typescript quotes to backticks when has been entered within a string.`
 		));
-		assertNestedRangesEqual(ranges![0], [0, 123, 0, 140], [0, 122, 0, 141], [0, 122, 0, 191], [0, 0, 0, 283]);
+		assertNestedRangesEqual(ranges![0], [0, 123, 0, 140], [0, 122, 0, 191], [0, 0, 0, 283]);
 	});
 
 	test('Smart select bold link', async () => {
 		const ranges = await getSelectionRangesForDocument(joinLines(
 			`**[extens${CURSOR}ion](https://google.com)**`
 		));
-		assertNestedRangesEqual(ranges![0], [0, 3, 0, 22], [0, 2, 0, 23], [0, 2, 0, 43], [0, 2, 0, 43], [0, 0, 0, 45], [0, 0, 0, 45]);
+		assertNestedRangesEqual(ranges![0], [0, 3, 0, 22], [0, 2, 0, 43], [0, 0, 0, 45]);
 	});
 
 	test('Smart select inline code block', async () => {
@@ -589,28 +591,35 @@ suite('Smart select', () => {
 		const ranges = await getSelectionRangesForDocument(joinLines(
 			`[\`code ${CURSOR} link\`](http://example.com)`
 		));
-		assertNestedRangesEqual(ranges![0], [0, 2, 0, 22], [0, 1, 0, 23], [0, 1, 0, 23], [0, 0, 0, 24], [0, 0, 0, 44], [0, 0, 0, 44]);
+		assertNestedRangesEqual(ranges![0], [0, 2, 0, 22], [0, 1, 0, 23], [0, 0, 0, 44]);
+	});
+
+	test('Smart select link in checkbox list', async () => {
+		const ranges = await getSelectionRangesForDocument(joinLines(
+			`- [ ] [text${CURSOR}](https://example.com)`
+		));
+		assertNestedRangesEqual(ranges![0], [0, 7, 0, 21], [0, 6, 0, 43], [0, 0, 0, 43]);
 	});
 
 	test('Smart select italic', async () => {
 		const ranges = await getSelectionRangesForDocument(joinLines(
 			`*some nice ${CURSOR}text*`
 		));
-		assertNestedRangesEqual(ranges![0], [0, 1, 0, 25], [0, 0, 0, 26], [0, 0, 0, 26]);
+		assertNestedRangesEqual(ranges![0], [0, 1, 0, 25], [0, 0, 0, 26]);
 	});
 
 	test('Smart select italic link', async () => {
 		const ranges = await getSelectionRangesForDocument(joinLines(
 			`*[extens${CURSOR}ion](https://google.com)*`
 		));
-		assertNestedRangesEqual(ranges![0], [0, 2, 0, 21], [0, 1, 0, 22], [0, 1, 0, 42], [0, 1, 0, 42], [0, 0, 0, 43], [0, 0, 0, 43]);
+		assertNestedRangesEqual(ranges![0], [0, 2, 0, 21], [0, 1, 0, 42], [0, 0, 0, 43]);
 	});
 
 	test('Smart select italic on end', async () => {
 		const ranges = await getSelectionRangesForDocument(joinLines(
 			`*word1 word2 word3${CURSOR}*`
 		));
-		assertNestedRangesEqual(ranges![0], [0, 1, 0, 28], [0, 0, 0, 29], [0, 0, 0, 29]);
+		assertNestedRangesEqual(ranges![0], [0, 1, 0, 28], [0, 0, 0, 29]);
 	});
 
 	test('Smart select italic then bold', async () => {
@@ -668,9 +677,9 @@ suite('Smart select', () => {
 
 function assertNestedLineNumbersEqual(range: lsp.SelectionRange, ...expectedRanges: [number, number][]) {
 	const lineage = getLineage(range);
-	assert.strictEqual(lineage.length, expectedRanges.length, `expected depth: ${expectedRanges.length}, but was length: ${lineage.length} values: ${getValues(lineage)}`);
+	assert.strictEqual(lineage.length, expectedRanges.length, `expected length: ${expectedRanges.length}, but was length: ${lineage.length} values: ${getValues(lineage)}`);
 	for (let i = 0; i < lineage.length; i++) {
-		assertLineNumbersEqual(lineage[i], expectedRanges[i][0], expectedRanges[i][1], `parent at a depth of ${i}`);
+		assertLineNumbersEqual(lineage[i], expectedRanges[i][0], expectedRanges[i][1], `parent at a depth of ${i}. Expected: ${expectedRanges[i][0]} but was ${lineage[i].range.start.line}`);
 	}
 }
 
@@ -678,9 +687,9 @@ function assertNestedRangesEqual(range: lsp.SelectionRange, ...expectedRanges: [
 	const lineage = getLineage(range);
 	assert.strictEqual(lineage.length, expectedRanges.length, `expected depth: ${expectedRanges.length}, but was length: ${lineage.length}) values: ${getValues(lineage)}`);
 	for (let i = 0; i < lineage.length; i++) {
-		assertLineNumbersEqual(lineage[i], expectedRanges[i][0], expectedRanges[i][2], `parent at a depth of ${i}`);
-		assert(lineage[i].range.start.character === expectedRanges[i][1], `parent at a depth of ${i} on start char`);
-		assert(lineage[i].range.end.character === expectedRanges[i][3], `parent at a depth of ${i} on end char`);
+		assertLineNumbersEqual(lineage[i], expectedRanges[i][0], expectedRanges[i][2], `parent at a depth of ${i}. Expected: ${expectedRanges[i][0]} but was ${lineage[i].range.start.line}`);
+		assert(lineage[i].range.start.character === expectedRanges[i][1], `parent at a depth of ${i} on start char. Expected: ${expectedRanges[i][1]} but was ${lineage[i].range.start.character}`);
+		assert(lineage[i].range.end.character === expectedRanges[i][3], `parent at a depth of ${i} on end char. Expected: ${expectedRanges[i][3]} but was ${lineage[i].range.end.character}`);
 	}
 }
 
@@ -706,10 +715,15 @@ function assertLineNumbersEqual(selectionRange: lsp.SelectionRange, startLine: n
 }
 
 function getSelectionRangesForDocument(contents: string, pos?: lsp.Position[]): Promise<lsp.SelectionRange[] | undefined> {
+	const config = getLsConfiguration({});
+
 	const doc = new InMemoryDocument(testFileName, contents);
 	const workspace = new InMemoryWorkspace([doc]);
 	const engine = createNewMarkdownEngine();
-	const provider = new MdSelectionRangeProvider(engine, new MdTableOfContentsProvider(engine, workspace, nulLogger), nulLogger);
+	const tocProvider = new MdTableOfContentsProvider(engine, workspace, nulLogger);
+	const linkProvider = new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger);
+
+	const provider = new MdSelectionRangeProvider(engine, tocProvider, linkProvider, nulLogger);
 	const positions = pos ? pos : getCursorPositions(contents, doc);
 	return provider.provideSelectionRanges(doc, positions, new lsp.CancellationTokenSource().token);
 }

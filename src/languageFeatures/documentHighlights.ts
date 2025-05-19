@@ -58,11 +58,11 @@ export class MdDocumentHighlightProvider {
 		for (const link of links) {
 			if (link.href.kind === HrefKind.Internal
 				&& toc.lookupByFragment(link.href.fragment) === header
-				&& link.source.fragmentRange
+				&& link.source.hrefFragmentRange
 				&& isSameResource(link.href.path, docUri)
 			) {
 				yield {
-					range: modifyRange(link.source.fragmentRange, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 })),
+					range: modifyRange(link.source.hrefFragmentRange, translatePosition(link.source.hrefFragmentRange.start, { characterDelta: -1 })),
 					kind: lsp.DocumentHighlightKind.Read,
 				};
 			}
@@ -85,7 +85,7 @@ export class MdDocumentHighlightProvider {
 				return this.#getHighlightsForReference(link.href.ref, links);
 			}
 			case HrefKind.Internal: {
-				if (link.source.fragmentRange && rangeContains(link.source.fragmentRange, position)) {
+				if (link.source.hrefFragmentRange && rangeContains(link.source.hrefFragmentRange, position)) {
 					return this.#getHighlightsForLinkFragment(document, link.href, links, toc);
 				}
 
@@ -114,9 +114,9 @@ export class MdDocumentHighlightProvider {
 
 		for (const link of links) {
 			if (link.href.kind === HrefKind.Internal && looksLikePathToResource(this.#configuration, link.href.path, targetDoc)) {
-				if (link.source.fragmentRange && link.href.fragment.toLowerCase() === fragment) {
+				if (link.source.hrefFragmentRange && link.href.fragment.toLowerCase() === fragment) {
 					yield {
-						range: modifyRange(link.source.fragmentRange, translatePosition(link.source.fragmentRange.start, { characterDelta: -1 })),
+						range: modifyRange(link.source.hrefFragmentRange, translatePosition(link.source.hrefFragmentRange.start, { characterDelta: -1 })),
 						kind: lsp.DocumentHighlightKind.Read,
 					};
 				}

@@ -111,11 +111,11 @@ function getFragmentRange(text: string, start: lsp.Position, end: lsp.Position):
 	return { start: translatePosition(start, { characterDelta: index + 1 }), end };
 }
 
-function getLinkSourceFragmentInfo(document: ITextDocument, link: string, linkStart: lsp.Position, linkEnd: lsp.Position): { fragmentRange: lsp.Range | undefined; pathText: string } {
+function getLinkSourceFragmentInfo(document: ITextDocument, link: string, linkStart: lsp.Position, linkEnd: lsp.Position): { hrefFragmentRange: lsp.Range | undefined; hrefPathText: string } {
 	const fragmentRange = getFragmentRange(link, linkStart, linkEnd);
 	return {
-		pathText: document.getText({ start: linkStart, end: fragmentRange ? translatePosition(fragmentRange.start, { characterDelta: -1 }) : linkEnd }),
-		fragmentRange,
+		hrefPathText: document.getText({ start: linkStart, end: fragmentRange ? translatePosition(fragmentRange.start, { characterDelta: -1 }) : linkEnd }),
+		hrefFragmentRange: fragmentRange,
 	};
 }
 
@@ -448,18 +448,20 @@ export class MdLinkComputer {
 			}
 
 			const linkEnd = translatePosition(linkStart, { characterDelta: match[0].length });
-			const hrefRange = { start: hrefStart, end: hrefEnd };
 			yield {
 				kind: MdLinkKind.Link,
 				source: {
 					isAngleBracketLink: false,
 					hrefText: reference,
-					pathText: reference,
+					hrefPathText: reference,
 					resource: getDocUri(document),
 					range: { start: linkStart, end: linkEnd },
-					targetRange: hrefRange,
-					hrefRange: hrefRange,
-					fragmentRange: undefined,
+					targetRange: lsp.Range.create(
+						translatePosition(hrefStart, { characterDelta: -1 }),
+						translatePosition(hrefEnd, { characterDelta: 1 })
+					),
+					hrefRange: lsp.Range.create(hrefStart, hrefEnd),
+					hrefFragmentRange: undefined,
 				},
 				href: {
 					kind: HrefKind.Reference,

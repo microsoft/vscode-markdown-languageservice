@@ -62,7 +62,7 @@ export interface MdLinkSource {
      *
      * For `[boris](/cat.md#siberian "title")` this would be `/cat.md`
      */
-    readonly pathText: string;
+    readonly hrefPathText: string;
 
     /**
      * The range of the path in this link.
@@ -78,7 +78,7 @@ export interface MdLinkSource {
      *
      * For `[boris](/cat.md#siberian "title")` this would be the range of `#siberian`
      */
-    readonly fragmentRange: lsp.Range | undefined;
+    readonly hrefFragmentRange: lsp.Range | undefined;
 
     readonly isAngleBracketLink: boolean;
 }

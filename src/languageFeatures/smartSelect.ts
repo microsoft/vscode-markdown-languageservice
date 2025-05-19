@@ -11,20 +11,26 @@ import { areRangesEqual, modifyRange, rangeContains } from '../types/range';
 import { getLine, ITextDocument } from '../types/textDocument';
 import { coalesce } from '../util/arrays';
 import { isEmptyOrWhitespace } from '../util/string';
+import { MdLinkProvider } from './documentLinks';
+import { HrefKind } from '../types/documentLink';
 
 export class MdSelectionRangeProvider {
 
 	readonly #parser: IMdParser;
 	readonly #tocProvider: MdTableOfContentsProvider;
+	readonly #linkProvider: MdLinkProvider;
+
 	readonly #logger: ILogger;
 
 	constructor(
 		parser: IMdParser,
 		tocProvider: MdTableOfContentsProvider,
+		documentLink: MdLinkProvider,
 		logger: ILogger,
 	) {
 		this.#parser = parser;
 		this.#tocProvider = tocProvider;
+		this.#linkProvider = documentLink;
 		this.#logger = logger;
 	}
 
@@ -45,7 +51,11 @@ export class MdSelectionRangeProvider {
 			return;
 		}
 
-		const inlineRange = createInlineRange(document, position, blockRange);
+		const inlineRange = await createInlineRange(document, position, blockRange, this.#linkProvider, token);
+		if (token.isCancellationRequested) {
+			return;
+		}
+
 		return inlineRange ?? blockRange ?? headerRange;
 	}
 
@@ -145,7 +155,7 @@ function createBlockRange(block: TokenWithMap, document: ITextDocument, cursorLi
 	}
 }
 
-function createInlineRange(document: ITextDocument, cursorPosition: lsp.Position, parent?: lsp.SelectionRange): lsp.SelectionRange | undefined {
+async function createInlineRange(document: ITextDocument, cursorPosition: lsp.Position, parent: lsp.SelectionRange | undefined, linkProvider: MdLinkProvider, token: lsp.CancellationToken): Promise<lsp.SelectionRange | undefined> {
 	const lineText = getLine(document, cursorPosition.line);
 	const boldSelection = createBoldRange(lineText, cursorPosition.character, cursorPosition.line, parent);
 	const italicSelection = createOtherInlineRange(lineText, cursorPosition.character, cursorPosition.line, true, parent);
@@ -157,7 +167,12 @@ function createInlineRange(document: ITextDocument, cursorPosition: lsp.Position
 			comboSelection = createBoldRange(lineText, cursorPosition.character, cursorPosition.line, italicSelection);
 		}
 	}
-	const linkSelection = createLinkRange(lineText, cursorPosition.character, cursorPosition.line, comboSelection ?? boldSelection ?? italicSelection ?? parent);
+
+	const linkSelection = await createLinkRange(document, cursorPosition, comboSelection ?? boldSelection ?? italicSelection ?? parent, linkProvider, token);
+	if (token.isCancellationRequested) {
+		return;
+	}
+
 	const inlineCodeBlockSelection = createOtherInlineRange(lineText, cursorPosition.character, cursorPosition.line, false, linkSelection ?? parent);
 	return inlineCodeBlockSelection ?? linkSelection ?? comboSelection ?? boldSelection ?? italicSelection;
 }
@@ -218,30 +233,42 @@ function createOtherInlineRange(lineText: string, cursorChar: number, cursorLine
 	return undefined;
 }
 
-function createLinkRange(lineText: string, cursorChar: number, cursorLine: number, parent?: lsp.SelectionRange): lsp.SelectionRange | undefined {
-	const regex = /(\[[^\(\)]*\])(\([^\[\]]*\))/g;
-	const matches = [...lineText.matchAll(regex)].filter(match => lineText.indexOf(match[0]) <= cursorChar && lineText.indexOf(match[0]) + match[0].length > cursorChar);
-
-	if (matches.length) {
-		// should only be one match, so select first and index 0 contains the entire match, so match = [text](url)
-		const link = matches[0][0];
-		const linkRange = makeSelectionRange(lsp.Range.create(cursorLine, lineText.indexOf(link), cursorLine, lineText.indexOf(link) + link.length), parent);
-
-		const linkText = matches[0][1];
-		const url = matches[0][2];
-
-		// determine if cursor is within [text] or (url) in order to know which should be selected
-		const nearestType = cursorChar >= lineText.indexOf(linkText) && cursorChar < lineText.indexOf(linkText) + linkText.length ? linkText : url;
-
-		const indexOfType = lineText.indexOf(nearestType);
-		// determine if cursor is on a bracket or paren and if so, return the [content] or (content), skipping over the content range
-		const cursorOnType = cursorChar === indexOfType || cursorChar === indexOfType + nearestType.length;
-
-		const contentAndNearestType = makeSelectionRange(lsp.Range.create(cursorLine, indexOfType, cursorLine, indexOfType + nearestType.length), linkRange);
-		const content = makeSelectionRange(lsp.Range.create(cursorLine, indexOfType + 1, cursorLine, indexOfType + nearestType.length - 1), contentAndNearestType);
-		return cursorOnType ? contentAndNearestType : content;
+async function createLinkRange(document: ITextDocument, cursorPos: lsp.Position, parent: lsp.SelectionRange | undefined, linkProvider: MdLinkProvider, token: lsp.CancellationToken): Promise<lsp.SelectionRange | undefined> {
+	const links = await linkProvider.getLinks(document);
+	if (token.isCancellationRequested) {
+		return;
 	}
-	return undefined;
+
+	const link = links.links.find(link => rangeContains(link.source.range, cursorPos));
+	if (!link) {
+		return;
+	}
+
+	if (link.href.kind === HrefKind.Reference && areRangesEqual(link.source.targetRange, link.source.range)) {
+		return makeSelectionRange(link.source.targetRange, parent);
+	}
+
+	const fullLinkSelectionRange = makeSelectionRange(link.source.range, parent);
+
+	// determine if cursor is within [text] or (url) in order to know which should be selected
+	if (rangeContains(link.source.targetRange, cursorPos)) {
+		// Inside the href.
+		// Create two ranges, one for the href content and one for the content plus brackets
+		return makeSelectionRange(
+			lsp.Range.create(
+				translatePosition(link.source.targetRange.start, { characterDelta: 1 }),
+				translatePosition(link.source.targetRange.end, { characterDelta: -1 }),
+			),
+			makeSelectionRange(link.source.targetRange, fullLinkSelectionRange));
+	} else {
+		// Inside the text
+		return makeSelectionRange(
+			lsp.Range.create(
+				translatePosition(link.source.range.start, { characterDelta: 1 }),
+				translatePosition(link.source.targetRange.start, { characterDelta: -1 }),
+			),
+			fullLinkSelectionRange);
+	}
 }
 
 function isList(token: Token): boolean {
@@ -266,5 +293,9 @@ function getFirstChildHeader(document: ITextDocument, header?: TocEntry, toc?: r
 }
 
 function makeSelectionRange(range: lsp.Range, parent: lsp.SelectionRange | undefined): lsp.SelectionRange {
+	if (parent && areRangesEqual(parent.range, range)) {
+		return parent;
+	}
+
 	return { range, parent };
 }

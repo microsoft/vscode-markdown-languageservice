@@ -81,6 +81,13 @@ export interface MdLinkSource {
     readonly hrefFragmentRange: lsp.Range | undefined;
 
     readonly isAngleBracketLink: boolean;
+
+    /**
+     * The range of the link title if there is one
+     * 
+     * For `[boris](/cat.md#siberian "title")` this would be `"title"`
+     */
+    readonly titleRange: lsp.Range | undefined;
 }
 
 export enum MdLinkKind {
@@ -123,25 +130,25 @@ export type MdLink = MdInlineLink | MdLinkDefinition | MdAutoLink;
  * A map that lets you look up definitions by reference name.
  */
 export class LinkDefinitionSet implements Iterable<MdLinkDefinition> {
-	readonly #map = new ReferenceLinkMap<MdLinkDefinition>();
+    readonly #map = new ReferenceLinkMap<MdLinkDefinition>();
 
-	constructor(links: Iterable<MdLink>) {
-		for (const link of links) {
-			if (link.kind === MdLinkKind.Definition) {
-				if (!this.#map.has(link.ref.text)) {
-					this.#map.set(link.ref.text, link);
-				}
-			}
-		}
-	}
+    constructor(links: Iterable<MdLink>) {
+        for (const link of links) {
+            if (link.kind === MdLinkKind.Definition) {
+                if (!this.#map.has(link.ref.text)) {
+                    this.#map.set(link.ref.text, link);
+                }
+            }
+        }
+    }
 
-	public [Symbol.iterator](): Iterator<MdLinkDefinition> {
-		return this.#map[Symbol.iterator]();
-	}
+    public [Symbol.iterator](): Iterator<MdLinkDefinition> {
+        return this.#map[Symbol.iterator]();
+    }
 
-	public lookup(ref: string): MdLinkDefinition | undefined {
-		return this.#map.lookup(ref);
-	}
+    public lookup(ref: string): MdLinkDefinition | undefined {
+        return this.#map.lookup(ref);
+    }
 }
 
 /**
@@ -150,29 +157,29 @@ export class LinkDefinitionSet implements Iterable<MdLinkDefinition> {
  * Correctly normalizes reference names.
  */
 export class ReferenceLinkMap<T> {
-	readonly #map = new Map</* normalized ref */ string, T>();
+    readonly #map = new Map</* normalized ref */ string, T>();
 
-	public set(ref: string, link: T) {
-		this.#map.set(this.#normalizeRefName(ref), link);
-	}
+    public set(ref: string, link: T) {
+        this.#map.set(this.#normalizeRefName(ref), link);
+    }
 
-	public lookup(ref: string): T | undefined {
-		return this.#map.get(this.#normalizeRefName(ref));
-	}
+    public lookup(ref: string): T | undefined {
+        return this.#map.get(this.#normalizeRefName(ref));
+    }
 
-	public has(ref: string): boolean {
-		return this.#map.has(this.#normalizeRefName(ref));
-	}
+    public has(ref: string): boolean {
+        return this.#map.has(this.#normalizeRefName(ref));
+    }
 
-	public [Symbol.iterator](): Iterator<T> {
-		return this.#map.values();
-	}
+    public [Symbol.iterator](): Iterator<T> {
+        return this.#map.values();
+    }
 
-	/**
-	 * Normalizes a link reference. Link references are case-insensitive, so this lowercases the reference so you can
-	 * correctly compare two normalized references.
-	 */
-	#normalizeRefName(ref: string): string {
-		return ref.normalize().trim().toLowerCase();
-	}
+    /**
+     * Normalizes a link reference. Link references are case-insensitive, so this lowercases the reference so you can
+     * correctly compare two normalized references.
+     */
+    #normalizeRefName(ref: string): string {
+        return ref.normalize().trim().toLowerCase();
+    }
 }

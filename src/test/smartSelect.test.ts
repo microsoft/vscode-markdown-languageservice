@@ -601,6 +601,43 @@ suite('Smart select', () => {
 		assertNestedRangesEqual(ranges![0], [0, 7, 0, 21], [0, 6, 0, 43], [0, 0, 0, 43]);
 	});
 
+	test('Smart select of link title', async () => {
+		const ranges = await getSelectionRangesForDocument(joinLines(
+			`a [text](https://example.com "a${CURSOR}title") b`
+		));
+		assertNestedRangesEqual(ranges![0], [0, 29, 0, 47], [0, 9, 0, 47], [0, 8, 0, 48], [0, 2, 0, 48], [0, 0, 0, 50]);
+	});
+
+	test('Smart select of link with title should have extra stop with just href', async () => {
+		const ranges = await getSelectionRangesForDocument(joinLines(
+			`a [text](https${CURSOR}://example.com "atitle") b`
+		));
+		assertNestedRangesEqual(ranges![0], [0, 9, 0, 38], [0, 9, 0, 47], [0, 8, 0, 48], [0, 2, 0, 48], [0, 0, 0, 50]);
+	});
+
+	test('Smart select of angle bracket link should create stops within angle bracket', async () => {
+		{
+			const ranges = await getSelectionRangesForDocument(joinLines(
+				`a [text](<file ${CURSOR}path>) b`
+			));
+			assertNestedRangesEqual(ranges![0], [0, 10, 0, 29], [0, 9, 0, 30], [0, 8, 0, 31], [0, 2, 0, 31], [0, 0, 0, 33]);
+		}
+		{
+			// Cursor outside of angle brackets
+			const ranges = await getSelectionRangesForDocument(joinLines(
+				`a [text](<file path>) b`
+			), [{ line: 0, character: 9 }]);
+			assertNestedRangesEqual(ranges![0], [0, 9, 0, 20], [0, 8, 0, 21], [0, 2, 0, 21], [0, 0, 0, 23]);
+		}
+		{
+			// With title
+			const ranges = await getSelectionRangesForDocument(joinLines(
+				`a [text](<file ${CURSOR}path> "title") b`
+			));
+			assertNestedRangesEqual(ranges![0], [0, 10, 0, 29], [0, 9, 0, 30], [0, 9, 0, 38], [0, 8, 0, 39], [0, 2, 0, 39], [0, 0, 0, 41]);
+		}
+	});
+
 	test('Smart select italic', async () => {
 		const ranges = await getSelectionRangesForDocument(joinLines(
 			`*some nice ${CURSOR}text*`
@@ -672,12 +709,26 @@ suite('Smart select', () => {
 		);
 		assertNestedRangesEqual(ranges![0], [27, 0, 27, 201], [26, 0, 29, 70], [25, 0, 29, 70], [24, 0, 29, 70], [23, 0, 29, 70], [10, 0, 29, 70], [9, 0, 29, 70]);
 	});
+
+	test('Smart select of link definition in ref name', async () => {
+		const ranges = await getSelectionRangesForDocument(joinLines(
+			`[a${CURSOR}]: http://example.com`
+		));
+		assertNestedRangesEqual(ranges![0], [0, 1, 0, 12], [0, 0, 0, 33]);
+	});
+
+	test('Smart select of link definition in target', async () => {
+		const ranges = await getSelectionRangesForDocument(joinLines(
+			`[a]: http${CURSOR}://example.com`
+		));
+		assertNestedRangesEqual(ranges![0], [0, 5, 0, 33], [0, 0, 0, 33]);
+	});
 });
 
 
 function assertNestedLineNumbersEqual(range: lsp.SelectionRange, ...expectedRanges: [number, number][]) {
 	const lineage = getLineage(range);
-	assert.strictEqual(lineage.length, expectedRanges.length, `expected length: ${expectedRanges.length}, but was length: ${lineage.length} values: ${getValues(lineage)}`);
+	assert.strictEqual(lineage.length, expectedRanges.length, `expected length: ${expectedRanges.length}, but was length: ${lineage.length}. Values: ${getValues(lineage)}`);
 	for (let i = 0; i < lineage.length; i++) {
 		assertLineNumbersEqual(lineage[i], expectedRanges[i][0], expectedRanges[i][1], `parent at a depth of ${i}. Expected: ${expectedRanges[i][0]} but was ${lineage[i].range.start.line}`);
 	}
@@ -685,7 +736,7 @@ function assertNestedLineNumbersEqual(range: lsp.SelectionRange, ...expectedRang
 
 function assertNestedRangesEqual(range: lsp.SelectionRange, ...expectedRanges: [number, number, number, number][]) {
 	const lineage = getLineage(range);
-	assert.strictEqual(lineage.length, expectedRanges.length, `expected depth: ${expectedRanges.length}, but was length: ${lineage.length}) values: ${getValues(lineage)}`);
+	assert.strictEqual(lineage.length, expectedRanges.length, `expected depth: ${expectedRanges.length}, but was length: ${lineage.length}. Values: ${getValues(lineage)}`);
 	for (let i = 0; i < lineage.length; i++) {
 		assertLineNumbersEqual(lineage[i], expectedRanges[i][0], expectedRanges[i][2], `parent at a depth of ${i}. Expected: ${expectedRanges[i][0]} but was ${lineage[i].range.start.line}`);
 		assert(lineage[i].range.start.character === expectedRanges[i][1], `parent at a depth of ${i} on start char. Expected: ${expectedRanges[i][1]} but was ${lineage[i].range.start.character}`);
@@ -703,10 +754,12 @@ function getLineage(range: lsp.SelectionRange): lsp.SelectionRange[] {
 	return result;
 }
 
-function getValues(ranges: lsp.SelectionRange[]): string[] {
-	return ranges.map(range => {
-		return `(${range.range.start.line}, ${range.range.start.character})-(${range.range.end.line}, ${range.range.end.character})`;
-	});
+function getValues(ranges: lsp.SelectionRange[]): string {
+	return ranges
+		.map(range => {
+			return `(${range.range.start.line}, ${range.range.start.character})-(${range.range.end.line}, ${range.range.end.character})`;
+		})
+		.join(' -> ');
 }
 
 function assertLineNumbersEqual(selectionRange: lsp.SelectionRange, startLine: number, endLine: number, message: string) {

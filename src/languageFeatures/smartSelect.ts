@@ -244,6 +244,10 @@ async function createLinkRange(document: ITextDocument, cursorPos: lsp.Position,
 		return;
 	}
 
+	if (link.kind === MdLinkKind.AutoLink) {
+		return makeSelectionRange(link.source.hrefRange, makeSelectionRange(link.source.range, parent));
+	}
+
 	if (link.href.kind === HrefKind.Reference && areRangesEqual(link.source.targetRange, link.source.range)) {
 		return makeSelectionRange(link.source.targetRange, parent);
 	}

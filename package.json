@@ -1,7 +1,7 @@
 {
   "name": "vscode-markdown-languageservice",
   "description": "Markdown language service",
-  "version": "0.5.0-alpha.9",
+  "version": "0.5.0-alpha.10",
   "author": "Microsoft Corporation",
   "license": "MIT",
   "engines": {

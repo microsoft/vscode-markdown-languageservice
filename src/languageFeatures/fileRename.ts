@@ -116,7 +116,7 @@ export class MdFileRenameProvider {
 				}
 
 				// If the link was within a file in the moved dir but traversed out of it, we also need to update the path
-				if (link.source.hrefPathText.startsWith('..') && isParentDir(edit.newUri, docUri)) {
+				if (link.source.hrefText.startsWith('..') && isParentDir(edit.newUri, docUri)) {
 					// Resolve the link relative to the old file path
 					const oldDocUri = docUri.with({
 						path: Utils.joinPath(edit.oldUri, path.posix.relative(edit.newUri.path, docUri.path)).path
@@ -240,7 +240,7 @@ export class MdFileRenameProvider {
 		}
 
 		const newFilePath = removeNewUriExtIfNeeded(this.#config, link.href, newUri);
-		const newLinkText = getLinkRenameText(this.#workspace, link.source, newFilePath, link.source.hrefPathText.startsWith('.'));
+		const newLinkText = getLinkRenameText(this.#workspace, link.source, newFilePath, link.source.hrefText.startsWith('.'));
 		if (typeof newLinkText === 'string') {
 			const { range, newText } = getLinkRenameEdit(link, newLinkText);
 			builder.replace(doc, range, newText);

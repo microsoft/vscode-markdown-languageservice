@@ -60,6 +60,7 @@ function createMdLink(
 	rawLink: string,
 	matchIndex: number,
 	fullMatch: string,
+	titleMatch: string | undefined,
 	workspace: IWorkspace,
 ): MdLink | undefined {
 	const isAngleBracketLink = rawLink.startsWith('<');
@@ -88,6 +89,17 @@ function createMdLink(
 	const hrefEnd = document.positionAt(hrefStartOffset + link.length);
 	const hrefRange: lsp.Range = { start: hrefStart, end: hrefEnd };
 
+	let titleRange: lsp.Range | undefined;
+	if (titleMatch) {
+		const indexOfTitleInLink = fullMatch.indexOf(titleMatch);
+		if (indexOfTitleInLink >= 0) {
+			const titleStartOffset = linkStartOffset + indexOfTitleInLink;
+			titleRange = lsp.Range.create(
+				document.positionAt(titleStartOffset),
+				document.positionAt(titleStartOffset + titleMatch.length));
+		}
+	}
+
 	return {
 		kind: MdLinkKind.Link,
 		href: linkTarget,
@@ -99,6 +111,7 @@ function createMdLink(
 			hrefRange,
 			isAngleBracketLink,
 			...getLinkSourceFragmentInfo(document, link, hrefStart, hrefEnd),
+			titleRange,
 		}
 	};
 }
@@ -153,7 +166,7 @@ const linkPattern = new RegExp(
 	/**/r`)` +
 
 	// Title
-	/**/r`\s*(?:"[^"]*"|'[^']*'|\([^\(\)]*\))?\s*` +
+	/**/r`\s*(?<title>"[^"]*"|'[^']*'|\([^\(\)]*\))?\s*` +
 	r`\)`,
 	'g');
 
@@ -318,7 +331,7 @@ export class MdLinkComputer {
 		const text = document.getText();
 		for (const match of text.matchAll(linkPattern)) {
 			const linkTextIncludingBrackets = match[1];
-			const matchLinkData = createMdLink(document, linkTextIncludingBrackets, match[2], match[3], match.index ?? 0, match[0], this.#workspace);
+			const matchLinkData = createMdLink(document, linkTextIncludingBrackets, match[2], match[3], match.index ?? 0, match[0], match.groups?.['title'], this.#workspace);
 			if (matchLinkData && !noLinkRanges.contains(matchLinkData.source.hrefRange.start)) {
 				yield matchLinkData;
 
@@ -327,7 +340,7 @@ export class MdLinkComputer {
 					const linkText = linkTextIncludingBrackets.slice(1, -1);
 					const startOffset = (match.index ?? 0) + 1;
 					for (const innerMatch of linkText.matchAll(linkPattern)) {
-						const innerData = createMdLink(document, innerMatch[1], innerMatch[2], innerMatch[3], startOffset + (innerMatch.index ?? 0), innerMatch[0], this.#workspace);
+						const innerData = createMdLink(document, innerMatch[1], innerMatch[2], innerMatch[3], startOffset + (innerMatch.index ?? 0), innerMatch[0], innerMatch.groups?.['title'], this.#workspace);
 						if (innerData) {
 							yield innerData;
 						}
@@ -370,6 +383,7 @@ export class MdLinkComputer {
 					hrefRange: hrefRange,
 					range: { start: linkStart, end: linkEnd },
 					...getLinkSourceFragmentInfo(document, link, hrefStart, hrefEnd),
+					titleRange: undefined,
 				}
 			};
 		}
@@ -462,6 +476,7 @@ export class MdLinkComputer {
 					),
 					hrefRange: lsp.Range.create(hrefStart, hrefEnd),
 					hrefFragmentRange: undefined,
+					titleRange: undefined, // TODO: support title
 				},
 				href: {
 					kind: HrefKind.Reference,
@@ -510,6 +525,7 @@ export class MdLinkComputer {
 					targetRange: hrefRange,
 					hrefRange,
 					...getLinkSourceFragmentInfo(document, rawLinkText, hrefStart, hrefEnd),
+					titleRange: undefined, // TODO: support title
 				},
 				ref: { text: reference, range: refRange },
 				href: target,
@@ -573,6 +589,7 @@ export class MdLinkComputer {
 						hrefRange: hrefRange,
 						range: { start: linkStart, end: linkEnd },
 						...getLinkSourceFragmentInfo(document, link, linkStart, linkEnd),
+						titleRange: undefined,
 					}
 				};
 			}

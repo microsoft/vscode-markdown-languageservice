@@ -12,7 +12,7 @@ import { getLine, ITextDocument } from '../types/textDocument';
 import { coalesce } from '../util/arrays';
 import { isEmptyOrWhitespace } from '../util/string';
 import { MdLinkProvider } from './documentLinks';
-import { HrefKind } from '../types/documentLink';
+import { HrefKind, MdLinkKind } from '../types/documentLink';
 
 export class MdSelectionRangeProvider {
 
@@ -252,16 +252,59 @@ async function createLinkRange(document: ITextDocument, cursorPos: lsp.Position,
 
 	// determine if cursor is within [text] or (url) in order to know which should be selected
 	if (rangeContains(link.source.targetRange, cursorPos)) {
-		// Inside the href.
+		// Inside the href
+
+		if (link.kind === MdLinkKind.Definition) {
+			return makeSelectionRange(link.source.targetRange, fullLinkSelectionRange);
+		}
+
 		// Create two ranges, one for the href content and one for the content plus brackets
-		return makeSelectionRange(
+		const linkDestRanges = makeSelectionRange(
 			lsp.Range.create(
 				translatePosition(link.source.targetRange.start, { characterDelta: 1 }),
 				translatePosition(link.source.targetRange.end, { characterDelta: -1 }),
 			),
 			makeSelectionRange(link.source.targetRange, fullLinkSelectionRange));
+
+		if (link.source.titleRange) {
+			// If we're inside the title, create a range for the title
+			if (rangeContains(link.source.titleRange, cursorPos)) {
+				return makeSelectionRange(link.source.titleRange, linkDestRanges);
+			}
+		}
+
+		if (link.source.isAngleBracketLink) {
+			// If we're inside an angle bracket link, create a range for the contents of the bracket and the brackets
+			if (rangeContains(link.source.hrefRange, cursorPos)) {
+				return makeSelectionRange(
+					link.source.hrefRange,
+					makeSelectionRange(
+						lsp.Range.create(
+							translatePosition(link.source.hrefRange.start, { characterDelta: -1 }),
+							translatePosition(link.source.hrefRange.end, { characterDelta: 1 }),
+						),
+						linkDestRanges));
+			}
+		}
+
+		if (link.source.titleRange) {
+			// If we have a title but are not inside it, create an extra range just for the href too without the title
+			return makeSelectionRange(link.source.hrefRange, linkDestRanges);
+		}
+
+		return linkDestRanges;
 	} else {
 		// Inside the text
+
+		if (link.kind === MdLinkKind.Definition) {
+			return makeSelectionRange(
+				lsp.Range.create(
+					translatePosition(link.source.range.start, { characterDelta: 1 }),
+					translatePosition(link.source.targetRange.start, { characterDelta: -3 }), // TODO: Compute actual offset in cases where there is extra whitespace
+				),
+				fullLinkSelectionRange);
+		}
+
 		return makeSelectionRange(
 			lsp.Range.create(
 				translatePosition(link.source.range.start, { characterDelta: 1 }),

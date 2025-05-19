@@ -1,8 +1,11 @@
 # Changelog
 
-## 0.5.0-alpha.10 — Unreleased
+## 0.5.0-alpha.10 — May 19, 2025
 - Improve handling of encoded path completions.
-- Improve reliability of smart selection for links and tweak behavior.
+- Improve reliability of smart selection for links and tweak behavior:
+    - Add stop for titles in links.
+    - Add stops for angle bracket links.
+    - Removed extra stop that selected brackets when in link text.
 
 ## 0.5.0-alpha.9 — March 24, 2025
 - Improved detection of multi-line links.

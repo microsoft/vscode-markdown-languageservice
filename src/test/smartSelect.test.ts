@@ -723,6 +723,13 @@ suite('Smart select', () => {
 		));
 		assertNestedRangesEqual(ranges![0], [0, 5, 0, 33], [0, 0, 0, 33]);
 	});
+
+	test('Smart select of autolinks ', async () => {
+		const ranges = await getSelectionRangesForDocument(joinLines(
+			`a <http://${CURSOR}example.com> b`
+		));
+		assertNestedRangesEqual(ranges![0], [0, 3, 0, 31], [0, 2, 0, 32], [0, 0, 0, 34]);
+	});
 });
 
 

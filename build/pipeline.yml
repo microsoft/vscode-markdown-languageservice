@@ -40,13 +40,13 @@ extends:
         testPlatforms:
           - name: Linux
             nodeVersions:
-              - 16.x
+              - 22.x
           - name: MacOS
             nodeVersions:
-              - 16.x
+              - 22.x
           - name: Windows
             nodeVersions:
-              - 16.x
+              - 22.x
 
         testSteps:
           - script: npm install

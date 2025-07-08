@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.0-alpha.11 — Unpublished
+- Fix completions for unicode headers
+
 ## 0.5.0-alpha.10 — May 19, 2025
 - Improve handling of encoded path completions.
 - Improve reliability of smart selection for links and tweak behavior:

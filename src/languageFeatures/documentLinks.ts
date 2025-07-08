@@ -192,7 +192,7 @@ const referenceLinkPattern = new RegExp(
 	/**/r`|` +
 
 	// [shorthand] but not [!shorthand]
-	/****/r`\[(?!\!)\s*(?<shorthand>(?:\\.|[^\[\]\\])+?)\s*\]` +
+	/****/r`\[(?!\!)\s*(?<shorthand>(?:\\.|[^\[\]\n\\])+?)\s*\]` +
 	r`)` +
 	r`(?![\(])`,  // Must not be followed by a paren to avoid matching normal links
 	'gm');
@@ -205,7 +205,7 @@ const autoLinkPattern = /(?<!\\)\<(\w+:[^\>\s]+)\>/g;
 /**
  * Matches `[text]: link`
  */
-const definitionPattern = /^([\t ]*(?<!\\)\[(?!\^)((?:\\\]|[^\]])+)\]:[\t ]*)([^<]\S*|<(?:\\[<>]|[^<>])+>)/gm;
+const definitionPattern = /^([\t ]*(?<!\\)\[(?!\^)((?:\\\]|\\\[|[^\]\[\n])+)\]:[\t ]*)([^<]\S*|<(?:\\[<>]|[^<>])+>)/gm;
 
 class InlineRanges {
 

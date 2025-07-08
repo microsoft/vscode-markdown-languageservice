@@ -255,6 +255,17 @@ suite('Link computer', () => {
 		]);
 	});
 
+	test('Should not find link for unclosed bracket ', async () => {
+		const links = await getLinksForText(joinLines(
+			`[unclosed`,
+			``,
+			`[ref]: https://example.com`,
+		));
+		assertLinksEqual(links, [
+			{ range: lsp.Range.create(2, 7, 2, 26), sourceText: 'https://example.com' },
+		]);
+	});
+
 	test('Should not find reference link shorthand when prefixed with ! (#164)', async () => {
 		const links = await getLinksForText(joinLines(
 			'[!note]',

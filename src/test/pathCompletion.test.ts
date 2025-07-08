@@ -187,8 +187,8 @@ suite('Path completions', () => {
 		]);
 	}));
 
-	test('Should reference links for current file', withStore(async (store) => {
-		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('sub', 'new.md'), joinLines(
+	test('Should complete reference links for current file', withStore(async (store) => {
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('readme.md'), joinLines(
 			`[][${CURSOR}`,
 			``,
 			`[ref-1]: bla`,
@@ -198,6 +198,79 @@ suite('Path completions', () => {
 		assertCompletionsEqual(completions, [
 			{ label: 'ref-1' },
 			{ label: 'ref-2' },
+		]);
+	}));
+
+	test('Should complete reference link shorthand', withStore(async (store) => {
+		{
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('readme.md'), joinLines(
+				`[${CURSOR}][]`,
+				``,
+				`[ref-1]: bla`,
+				`[ref-2]: bla`,
+			));
+
+			assertCompletionsEqual(completions, [
+				{ label: 'ref-1' },
+				{ label: 'ref-2' },
+			]);
+		}
+		{
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('readme.md'), joinLines(
+				`[ref${CURSOR}`,
+				``,
+				`[ref-1]: bla`,
+				`[ref-2]: bla`,
+			));
+
+			assertCompletionsEqual(completions, [
+				{ label: 'ref-1' },
+				{ label: 'ref-2' },
+			]);
+		}
+	}));
+
+	test('Should complete reference links with slash character', withStore(async (store) => {
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('readme.md'), joinLines(
+			`[${CURSOR}]`,
+			``,
+			`[ref1/2]: https://example.com`,
+		));
+
+		assertCompletionsEqual(completions, [
+			{ label: 'ref1/2' },
+		]);
+	}));
+
+	test('Should complete paths in link definition with unicode', withStore(async (store) => {
+		const workspace = store.add(new InMemoryWorkspace([
+			new InMemoryDocument(workspacePath('other.md'), ''),
+		]));
+
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('readme.md'), joinLines(
+			`[😀]`,
+			``,
+			`[😀]: ${CURSOR}`,
+		), workspace);
+
+		assertCompletionsEqual(completions, [
+			{ label: 'other.md' },
+		]);
+	}));
+
+	test('Should complete paths in link definition with slash character', withStore(async (store) => {
+		const workspace = store.add(new InMemoryWorkspace([
+			new InMemoryDocument(workspacePath('other.md'), ''),
+		]));
+
+		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('readme.md'), joinLines(
+			`[ref1/2]`,
+			``,
+			`[ref1/2]: ${CURSOR}`,
+		), workspace);
+
+		assertCompletionsEqual(completions, [
+			{ label: 'other.md' },
 		]);
 	}));
 

@@ -234,12 +234,14 @@ function createOtherInlineRange(lineText: string, cursorChar: number, cursorLine
 }
 
 async function createLinkRange(document: ITextDocument, cursorPos: lsp.Position, parent: lsp.SelectionRange | undefined, linkProvider: MdLinkProvider, token: lsp.CancellationToken): Promise<lsp.SelectionRange | undefined> {
-	const links = await linkProvider.getLinks(document);
+	const allLinks = await linkProvider.getLinks(document);
 	if (token.isCancellationRequested) {
 		return;
 	}
 
-	const link = links.links.find(link => rangeContains(link.source.range, cursorPos));
+	const linksInRange = allLinks.links.filter(link => rangeContains(link.source.range, cursorPos));
+	// For nested image links, the inner most list is returned last
+	const link = linksInRange.at(-1);
 	if (!link) {
 		return;
 	}

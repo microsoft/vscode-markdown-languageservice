@@ -730,6 +730,26 @@ suite('Smart select', () => {
 		));
 		assertNestedRangesEqual(ranges![0], [0, 3, 0, 31], [0, 2, 0, 32], [0, 0, 0, 34]);
 	});
+
+	test('Smart select for image link', async () => {
+		{
+			const ranges = await getSelectionRangesForDocument(joinLines(
+				`[![alt](http://example.com)](http://example.com${CURSOR})`
+			));
+			assertNestedRangesEqual(ranges![0], [0, 29, 0, 57], [0, 28, 0, 58], [0, 0, 0, 58]);
+		}
+		{
+			const ranges = await getSelectionRangesForDocument(joinLines(
+				`[![alt](http://example.com/inner${CURSOR})](http://example.com/outer)`
+			));
+			assertNestedRangesEqual(ranges![0],
+				[0, 8, 0, 42], // http://example.com/inner
+				[0, 7, 0, 43], // (http://example.com/inner)
+				[0, 1, 0, 43], // ![alt](http://example.com/inner)
+				[0, 0, 0, 70], // Whole link
+			);
+		}
+	});
 });
 
 

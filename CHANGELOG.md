@@ -1,7 +1,9 @@
 # Changelog
 
-## 0.5.0-alpha.11 — Unpublished
-- Fix completions for unicode headers
+## 0.5.0-alpha.11 — July 8, 2025
+- Fix completions for unicode headers.
+- Improve completions for references and definitions that contain slashes or unicode
+- Fix smart selection for image links.
 
 ## 0.5.0-alpha.10 — May 19, 2025
 - Improve handling of encoded path completions.

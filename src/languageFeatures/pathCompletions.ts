@@ -251,8 +251,11 @@ export class MdPathCompletionProvider {
 	/// [...][...|
 	readonly #referenceLinkStartPattern = /\[([^\]]*?)\]\[\s*([^\s\(\)]*)$/;
 
+	/// [ref...|
+	readonly #referenceLinkShortHandPrefix = /(?<![\]\)])\[([^\s\(\)]*)$/;
+
 	/// [id]: |
-	readonly #definitionPattern = /^\s*\[[\w\-]+\]:\s*([^\s]*)$/m;
+	readonly #definitionPattern = /^\s*\[(?!\^)(?:\\\]|\\\[|[^\]\[\n])+]:\s*([^\s]*)$/m;
 
 	/// [id]: |
 	readonly #htmlAttributeStartPattern = /\<(?<tag>\w+)([^>]*)\s(?<attr>\w+)=['"](?<link>[^'"]*)$/m;
@@ -303,9 +306,21 @@ export class MdPathCompletionProvider {
 			return this.#createCompletionContext(CompletionContextKind.LinkDefinition, position, prefix, suffix?.[0] ?? '', isAngleBracketLink);
 		}
 
-		const referenceLinkPrefixMatch = linePrefixText.match(this.#referenceLinkStartPattern);
-		if (referenceLinkPrefixMatch) {
-			const prefix = referenceLinkPrefixMatch[2];
+		const fullReferenceLinkPrefixMatch = linePrefixText.match(this.#referenceLinkStartPattern);
+		if (fullReferenceLinkPrefixMatch) {
+			const prefix = fullReferenceLinkPrefixMatch[2];
+			const suffix = lineSuffixText.match(/^[^\]\s]*/);
+			return {
+				kind: CompletionContextKind.ReferenceLink,
+				linkPrefix: prefix,
+				linkTextStartPosition: translatePosition(position, { characterDelta: -prefix.length }),
+				linkSuffix: suffix ? suffix[0] : '',
+			};
+		}
+
+		const shorthandReferenceLinkPrefixMatch = linePrefixText.match(this.#referenceLinkShortHandPrefix);
+		if (shorthandReferenceLinkPrefixMatch) {
+			const prefix = shorthandReferenceLinkPrefixMatch[1];
 			const suffix = lineSuffixText.match(/^[^\]\s]*/);
 			return {
 				kind: CompletionContextKind.ReferenceLink,

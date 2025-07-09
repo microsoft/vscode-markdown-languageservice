@@ -337,7 +337,7 @@ export class MdPathCompletionProvider {
 	}
 
 	#getAnchorContext(prefix: string): AnchorContext | undefined {
-		const anchorMatch = prefix.match(/^(.*)#([\w\d\-]*)$/);
+		const anchorMatch = prefix.match(/^([^#]*)#([^#]*)$/);
 		if (!anchorMatch) {
 			return undefined;
 		}

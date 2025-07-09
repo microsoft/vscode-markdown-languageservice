@@ -95,6 +95,21 @@ suite('Path completions', () => {
 		]);
 	}));
 
+	test('Should support completions for multibyte character header', withStore(async (store) => {
+		{
+			const workspace = store.add(new InMemoryWorkspace([]));
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`# 생뚱 This is a title`,
+				``,
+				`[text](#생${CURSOR})`,
+			), workspace, undefined, {});
+
+			assertCompletionsEqual(completions, [
+				{ label: '#생뚱-this-is-a-title' },
+			]);
+		}
+	}));
+
 	test('Should not return suggestions for http links', withStore(async (store) => {
 		const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
 			`[](http:${CURSOR}`,
@@ -251,7 +266,7 @@ suite('Path completions', () => {
 		]);
 	}));
 
-	test('Should support completions on angle bracket path with spaces', withStore(async (store) => {
+	test('Should support path completions on angle bracket path with spaces', withStore(async (store) => {
 		const workspace = store.add(new InMemoryWorkspace([
 			new InMemoryDocument(workspacePath('sub with space', 'a.md'), ''),
 			new InMemoryDocument(workspacePath('b.md'), ''),
@@ -264,6 +279,32 @@ suite('Path completions', () => {
 		assertCompletionsEqual(completions, [
 			{ label: 'a.md', insertText: 'a.md', insertStart: { line: 0, character: 20 } },
 		]);
+	}));
+
+	test('Should support header completions on angle bracket path with spaces', withStore(async (store) => {
+		const workspace = store.add(new InMemoryWorkspace([
+			new InMemoryDocument(workspacePath('file with space.md'), joinLines(
+				'# a B c'
+			)),
+		]));
+
+		{
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`[text](<file with space.md#${CURSOR}`
+			), workspace);
+
+			assertCompletionsEqual(completions, [
+				{ label: '#a-b-c' },
+			]);
+		}
+		{
+			// Make sure no completions returned if file doesn't exist
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`[text](<file with space/other.md#${CURSOR}`
+			), workspace);
+
+			assertCompletionsEqual(completions, []);
+		}
 	}));
 
 	test('Should not escape spaces in path names that use angle brackets', withStore(async (store) => {

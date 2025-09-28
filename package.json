@@ -23,14 +23,15 @@
     "vscode-uri": "^3.0.7"
   },
   "devDependencies": {
+    "@eslint/js": "^9.11.1",
     "@microsoft/api-extractor": "^7.31.2",
     "@types/markdown-it": "^12.2.3",
     "@types/mocha": "^9.1.1",
     "@types/node": "20.x",
     "@types/picomatch": "^2.3.0",
-    "@typescript-eslint/eslint-plugin": "^7.2.0",
-    "@typescript-eslint/parser": "^7.2.0",
-    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^8.44.0",
+    "@typescript-eslint/parser": "^8.44.0",
+    "eslint": "^9.36.0",
     "github-slugger": "^2.0.0",
     "markdown-it": "^13.0.1",
     "mkdirp": "^1.0.4",
@@ -42,7 +43,7 @@
     "api-extractor": "mkdirp etc && npx api-extractor run --local",
     "compile": "tsc -b tsconfig.json",
     "watch": "tsc -b tsconfig.json --watch",
-    "lint": "eslint \"src/**/*.ts\"",
+    "lint": "eslint",
     "prepublishOnly": "npm run compile && npm run api-extractor",
     "test": "mocha -r source-map-support/register 'out/test/**/*.test.js' --ui=tdd --timeout=2000 --exit"
   },

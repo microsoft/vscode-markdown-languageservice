@@ -17,7 +17,7 @@ import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
 import { assertRangeEqual, DisposableStore, joinLines, withStore, workspacePath } from './util';
-import Token = require('markdown-it/lib/token');
+import type Token from 'markdown-it/lib/token';
 
 
 function getHover(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position, workspace: IWorkspace) {
@@ -81,7 +81,7 @@ suite('Hover', () => {
 
 		const hover = await getHover(store, doc, { line: 0, character: 10 }, workspace);
 		assert.ok(hover);
-		
+
 		const src = await findMdImageSrc(hover);
 		assert.strictEqual(src?.toString(), workspacePath('cat.png').toString());
 
@@ -96,7 +96,7 @@ suite('Hover', () => {
 
 		const hover = await getHover(store, doc, { line: 0, character: 10 }, workspace);
 		assert.ok(hover);
-		
+
 		const src = await findMdImageSrc(hover);
 		assert.strictEqual(src?.toString(), workspacePath('s p a c e.png').toString());
 
@@ -111,7 +111,7 @@ suite('Hover', () => {
 
 		const hover = await getHover(store, doc, { line: 0, character: 12 }, workspace);
 		assert.ok(hover);
-		
+
 		const src = await findMdImageSrc(hover);
 		assert.strictEqual(src?.toString(), workspacePath('cat.png').toString());
 

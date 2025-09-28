@@ -88,47 +88,47 @@ function shouldRemoveNewUriExt(config: LsConfiguration, originalHref: InternalHr
 }
 
 export function resolveInternalDocumentLink(
-    sourceDocUri: URI,
-    linkText: string,
-    workspace: IWorkspace
+	sourceDocUri: URI,
+	linkText: string,
+	workspace: IWorkspace
 ): { resource: URI; linkFragment: string; } | undefined {
-    // Assume it must be an relative or absolute file path
-    // Use a fake scheme to avoid parse warnings
-    const tempUri = URI.parse(`vscode-resource:${linkText}`);
+	// Assume it must be an relative or absolute file path
+	// Use a fake scheme to avoid parse warnings
+	const tempUri = URI.parse(`vscode-resource:${linkText}`);
 
-    const docUri = workspace.getContainingDocument?.(sourceDocUri)?.uri ?? sourceDocUri;
+	const docUri = workspace.getContainingDocument?.(sourceDocUri)?.uri ?? sourceDocUri;
 
-    let resourceUri: URI | undefined;
-    if (!tempUri.path) {
-        // Looks like a fragment only link
-        if (typeof tempUri.fragment !== 'string') {
-            return undefined;
-        }
+	let resourceUri: URI | undefined;
+	if (!tempUri.path) {
+		// Looks like a fragment only link
+		if (typeof tempUri.fragment !== 'string') {
+			return undefined;
+		}
 
-        resourceUri = sourceDocUri;
-    } else if (tempUri.path[0] === '/') {
-        const root = getWorkspaceFolder(workspace, docUri);
-        if (root) {
-            resourceUri = Utils.joinPath(root, tempUri.path);
-        }
-    } else {
-        if (docUri.scheme === Schemes.untitled) {
-            const root = getWorkspaceFolder(workspace, docUri);
-            if (root) {
-                resourceUri = Utils.joinPath(root, tempUri.path);
-            }
-        } else {
-            const base = Utils.dirname(docUri);
-            resourceUri = Utils.joinPath(base, tempUri.path);
-        }
-    }
+		resourceUri = sourceDocUri;
+	} else if (tempUri.path[0] === '/') {
+		const root = getWorkspaceFolder(workspace, docUri);
+		if (root) {
+			resourceUri = Utils.joinPath(root, tempUri.path);
+		}
+	} else {
+		if (docUri.scheme === Schemes.untitled) {
+			const root = getWorkspaceFolder(workspace, docUri);
+			if (root) {
+				resourceUri = Utils.joinPath(root, tempUri.path);
+			}
+		} else {
+			const base = Utils.dirname(docUri);
+			resourceUri = Utils.joinPath(base, tempUri.path);
+		}
+	}
 
-    if (!resourceUri) {
-        return undefined;
-    }
+	if (!resourceUri) {
+		return undefined;
+	}
 
-    return {
-        resource: resourceUri,
-        linkFragment: tempUri.fragment,
-    };
+	return {
+		resource: resourceUri,
+		linkFragment: tempUri.fragment,
+	};
 }

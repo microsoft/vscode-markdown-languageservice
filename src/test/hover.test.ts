@@ -17,6 +17,7 @@ import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
 import { assertRangeEqual, DisposableStore, joinLines, withStore, workspacePath } from './util';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 import Token = require('markdown-it/lib/token');
 
 
@@ -81,7 +82,7 @@ suite('Hover', () => {
 
 		const hover = await getHover(store, doc, { line: 0, character: 10 }, workspace);
 		assert.ok(hover);
-		
+
 		const src = await findMdImageSrc(hover);
 		assert.strictEqual(src?.toString(), workspacePath('cat.png').toString());
 
@@ -96,7 +97,7 @@ suite('Hover', () => {
 
 		const hover = await getHover(store, doc, { line: 0, character: 10 }, workspace);
 		assert.ok(hover);
-		
+
 		const src = await findMdImageSrc(hover);
 		assert.strictEqual(src?.toString(), workspacePath('s p a c e.png').toString());
 
@@ -111,7 +112,7 @@ suite('Hover', () => {
 
 		const hover = await getHover(store, doc, { line: 0, character: 12 }, workspace);
 		assert.ok(hover);
-		
+
 		const src = await findMdImageSrc(hover);
 		assert.strictEqual(src?.toString(), workspacePath('cat.png').toString());
 

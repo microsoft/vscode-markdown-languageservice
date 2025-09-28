@@ -17,7 +17,8 @@ import { createNewMarkdownEngine } from './engine';
 import { InMemoryWorkspace } from './inMemoryWorkspace';
 import { nulLogger } from './nulLogging';
 import { assertRangeEqual, DisposableStore, joinLines, withStore, workspacePath } from './util';
-import type Token from 'markdown-it/lib/token';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import Token = require('markdown-it/lib/token');
 
 
 function getHover(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position, workspace: IWorkspace) {

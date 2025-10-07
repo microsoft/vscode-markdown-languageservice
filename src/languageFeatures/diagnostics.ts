@@ -30,7 +30,7 @@ export enum DiagnosticLevel {
 
 	/**
 	 * Report the diagnostic at a hint level.
-	 * 
+	 *
 	 * Hints will typically not be directly reported by editors, but may show up as unused spans.
 	 */
 	hint = 'hint',
@@ -461,8 +461,8 @@ export interface IPullDiagnosticsManager {
 	computeDiagnostics(doc: ITextDocument, options: DiagnosticOptions, token: lsp.CancellationToken): Promise<lsp.Diagnostic[]>;
 
 	/**
-	 * Clean up resources that help provide diagnostics for a document. 
-	 * 
+	 * Clean up resources that help provide diagnostics for a document.
+	 *
 	 * You should call this when you will no longer be making diagnostic requests for a document, for example
 	 * when the file has been closed in the editor (but still exists on disk).
 	 */
@@ -631,7 +631,7 @@ export class DiagnosticsManager extends Disposable implements IPullDiagnosticsMa
 					return typeof value === 'function' ? value.bind(workspace) : value;
 				}
 
-				return async function (this: any, resource: URI): Promise<FileStat | undefined> {
+				return async function (this: unknown, resource: URI): Promise<FileStat | undefined> {
 					const stat = linkWatcher.tryStatFileLink(resource);
 					if (stat) {
 						if (stat.exists) {

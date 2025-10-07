@@ -9,14 +9,14 @@ export interface IDisposable {
 
 export class MultiDisposeError extends Error {
 	constructor(
-		public readonly errors: any[]
+		public readonly errors: unknown[]
 	) {
 		super(`Encountered errors while disposing of store. Errors: [${errors.join(', ')}]`);
 	}
 }
 
 export function disposeAll(disposables: Iterable<IDisposable>) {
-	const errors: any[] = [];
+	const errors: unknown[] = [];
 
 	for (const disposable of disposables) {
 		try {
@@ -38,7 +38,7 @@ export abstract class Disposable {
 
 	protected _disposables: IDisposable[] = [];
 
-	public dispose(): any {
+	public dispose(): void {
 		if (this.#isDisposed) {
 			return;
 		}

@@ -810,12 +810,12 @@ export class MdLinkProvider extends Disposable {
 		}
 	}
 
-	#createCommandUri(command: string, ...args: any[]): string {
+	#createCommandUri(command: string, ...args: unknown[]): string {
 		return `command:${command}?${encodeURIComponent(JSON.stringify(args))}`;
 	}
 
 	#createOpenAtPosCommand(resource: URI, pos: lsp.Position): string {
-		// If the resource itself already has a fragment, we need to handle opening specially 
+		// If the resource itself already has a fragment, we need to handle opening specially
 		// instead of using `file://path.md#L123` style uris
 		if (resource.fragment) {
 			// Match the args of `vscode.open`

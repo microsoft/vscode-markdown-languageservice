@@ -80,6 +80,12 @@ export interface DiagnosticOptions {
 	 * Glob of links that should not be validated.
 	 */
 	readonly ignoreLinks: readonly string[];
+
+	/**
+	 * If true, validate that link path casing matches the actual file on disk.
+	 * Useful when markdown will be deployed to or shared with case-sensitive systems like GitHub.
+	 */
+	readonly validateFileLinksMarkdownCaseSensitive?: boolean;
 }
 
 function toSeverity(level: DiagnosticLevel | undefined): lsp.DiagnosticSeverity | undefined {
@@ -113,6 +119,9 @@ export enum DiagnosticCode {
 
 	/** The link definition is not used anywhere. */
 	link_duplicateDefinition = 'link.duplicate-definition',
+
+	/** The link file case is mismatched. */
+	link_filePathCasingMismatch = 'link.file-path-casing-mismatch',
 }
 
 /**
@@ -421,6 +430,30 @@ export class DiagnosticComputer {
 									});
 								}
 							}
+						}
+					}
+					else if (options.validateFileLinksMarkdownCaseSensitive !== false) {
+						const expectedName = path.path.split('/').pop() ?? '';
+						const parentUri = path.with({ path: path.path.slice(0, path.path.lastIndexOf('/')) });
+						try {
+							const entries = [...await this.#workspace.readDirectory(parentUri)];
+
+							const actualEntry = entries.find(([name]) => name.toLowerCase() === expectedName.toLowerCase());
+							if (actualEntry && actualEntry[0] !== expectedName) {
+								for (const link of links) {
+									if (!this.#isIgnoredLink(options, link.source.hrefPathText)) {
+										diagnostics.push({
+											code: DiagnosticCode.link_filePathCasingMismatch,
+											message: l10n.t("Path casing mismatch: file is '{0}' but link uses '{1}'. Will break on case-sensitive systems like GitHub.", actualEntry[0], expectedName),
+											range: link.source.hrefRange,
+											severity: pathErrorSeverity,
+											data: { fsPath: path.fsPath, hrefText: link.source.hrefPathText }
+										});
+									}
+								}
+							}
+						} catch {
+							// readDirectory failed, skip casing check
 						}
 					}
 				});

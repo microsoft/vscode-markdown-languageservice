@@ -154,6 +154,24 @@ suite('Diagnostic Computer', () => {
 		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
 		assertDiagnosticsEqual(diagnostics, []);
 	}));
+	test('Should warn when link path casing does not match actual file', withStore(async (store) => {
+    const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+        `[link](docs/Whitepaper.pdf)`,
+    ));
+    const workspace = store.add(new InMemoryWorkspace([
+        doc,
+        new InMemoryDocument(workspacePath('docs/whitepaper.pdf'), ''),
+    ]));
+
+    const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+    assertDiagnosticsEqual(diagnostics, [
+    	lsp.Range.create(0, 7, 0, 26),
+    ]);
+	}));
+	// Note: this behavior cannot be fully tested with InMemoryWorkspace since it 
+	// simulates a case-sensitive filesystem. The casing check only triggers on 
+	// macOS/Windows where workspace.stat() succeeds despite path casing mismatches.
+	// See: https://code.visualstudio.com/api/references/vscode-api (FileSystem)
 
 	test('Should not generate diagnostics for email autolink', withStore(async (store) => {
 		const doc1 = new InMemoryDocument(workspacePath('doc1.md'), joinLines(

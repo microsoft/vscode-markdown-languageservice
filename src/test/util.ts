@@ -84,6 +84,7 @@ export const defaultDiagnosticsOptions = Object.freeze<DiagnosticOptions>({
 	validateReferences: DiagnosticLevel.warning,
 	validateUnusedLinkDefinitions: DiagnosticLevel.warning,
 	validateDuplicateLinkDefinitions: DiagnosticLevel.warning,
+	validateFileLinksMarkdownCaseSensitive: true,
 	ignoreLinks: [],
 });
 

@@ -44,7 +44,7 @@ suite('Workspace symbols', () => {
 			new InMemoryDocument(workspacePath('test.md'), `# header1\nabc\n## header2`)
 		]));
 
-		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, ''), ['# header1', '## header2']);
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, ''), ['header1', 'header2']);
 	}));
 
 	test('Should return all content basic workspace', withStore(async (store) => {
@@ -71,7 +71,7 @@ suite('Workspace symbols', () => {
 
 		// Update file
 		workspace.updateDocument(new InMemoryDocument(testFileName, `# new header\nabc\n## header2`, 2 /* version */));
-		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, ''), ['# new header', '## header2']);
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, ''), ['new header', 'header2']);
 	}));
 
 	test('Should remove results when file is deleted', withStore(async (store) => {
@@ -112,7 +112,7 @@ suite('Workspace symbols', () => {
 			))
 		]));
 
-		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, ''), ['# header1']);
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, ''), ['header1']);
 	}));
 
 	test('Should match case insensitively', withStore(async (store) => {
@@ -120,8 +120,8 @@ suite('Workspace symbols', () => {
 			new InMemoryDocument(workspacePath('test.md'), `# aBc1\nabc\n## ABc2`)
 		]));
 
-		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'ABC'), ['# aBc1', '## ABc2']);
-		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'abc'), ['# aBc1', '## ABc2']);
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'ABC'), ['aBc1', 'ABc2']);
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'abc'), ['aBc1', 'ABc2']);
 	}));
 
 	test('Should match fuzzyily', withStore(async (store) => {
@@ -129,11 +129,11 @@ suite('Workspace symbols', () => {
 			new InMemoryDocument(workspacePath('test.md'), `# cat dog fish`)
 		]));
 
-		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'cat'), ['# cat dog fish']);
-		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'cdf'), ['# cat dog fish']);
-		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'catfish'), ['# cat dog fish']);
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'cat'), ['cat dog fish']);
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'cdf'), ['cat dog fish']);
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'catfish'), ['cat dog fish']);
 		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'fishcat'), []); // wrong order
-		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'ccat'), []); 
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'ccat'), []);
 	}));
 
 	test('Should strip markup in headers', withStore(async (store) => {
@@ -144,6 +144,6 @@ suite('Workspace symbols', () => {
 			))
 		]));
 
-		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'a'), ['# a b c', '# a x y']);
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'a'), ['a b c', 'a x y']);
 	}));
 });

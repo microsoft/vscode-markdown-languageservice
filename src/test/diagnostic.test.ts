@@ -393,6 +393,12 @@ suite('Diagnostic Computer', () => {
 			`[link](doc1.md#L1)`,
 			`[link](#L1,2)`,
 			`[link](doc1.md#L1,2)`,
+			`[link](#L10-15)`,
+			`[link](doc1.md#L10-15)`,
+			`[link](#L61-L66)`,
+			`[link](doc1.md#L61-L66)`,
+			`[link](#L5,3-L10,5)`,
+			`[link](doc1.md#L5,3-L10,5)`,
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));
 

@@ -60,7 +60,9 @@ function looksLikeMarkdownExt(config: LsConfiguration, rawExt: string): boolean 
 }
 
 /**
- * Extract position info from link fragments that look like `#L5,3` or `#L5-L10` or `#L5-10`
+ * Extract position info from link fragments that look like `#L5`, `#L5,3`, `#L5-L10`, `#L5-10`, or `#L5,3-L10,5`.
+ *
+ * For range style links, the start position is returned.
  */
 export function parseLocationInfoFromFragment(fragment: string): lsp.Position | undefined {
 	const match = fragment.match(/^L(\d+)(?:,(\d+))?(?:-L?(\d+)(?:,(\d+))?)?$/i);

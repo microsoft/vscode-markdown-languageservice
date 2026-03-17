@@ -36,7 +36,7 @@ export function computeRelativePath(fromDoc: URI, toDoc: URI, preferDotSlash = f
 
 /**
  * Check if `path` looks like it points to `target`.
- * 
+ *
  * Handles cases where `path` doesn't have a file extension but `target` does.
  */
 export function looksLikePathToResource(configuration: LsConfiguration, path: URI, target: URI): boolean {
@@ -60,19 +60,37 @@ function looksLikeMarkdownExt(config: LsConfiguration, rawExt: string): boolean 
 }
 
 /**
- * Extract position info from link fragments that look like `#L5,3`
+ * Extract position/range info from link fragments.
+ *
+ * Supported formats:
+ * - `#73` / `#L73` — single line
+ * - `#73,84` / `#L73,84` — line and column
+ * - `#73-83` / `#L73-L83` — line range
+ * - `#73,84-83,52` / `#L73,84-L83,52` — full range with columns
  */
-export function parseLocationInfoFromFragment(fragment: string): lsp.Position | undefined {
-	const match = fragment.match(/^L(\d+)(?:,(\d+))?$/i);
-	if (!match) {
+export function parseLocationInfoFromFragment(fragment: string): lsp.Range | undefined {
+	const match = fragment.match(/^L?(?<startLine>\d+)(?:,(?<startCol>\d+))?(?:-L?(?<endLine>\d+)(?:,(?<endCol>\d+))?)?$/i);
+	if (!match?.groups) {
 		return undefined;
 	}
 
-	const line = +match[1] - 1;
-	if (isNaN(line)) {
+	const startLine = +match.groups['startLine'] - 1;
+	if (isNaN(startLine)) {
 		return undefined;
 	}
 
-	const column = +match[2] - 1;
-	return { line, character: isNaN(column) ? 0 : column };
+	const startCol = +match.groups['startCol'] - 1;
+	const start: lsp.Position = { line: startLine, character: isNaN(startCol) ? 0 : startCol };
+
+	if (match.groups['endLine'] !== undefined) {
+		const endLine = +match.groups['endLine'] - 1;
+		if (isNaN(endLine)) {
+			return undefined;
+		}
+		const endCol = +match.groups['endCol'] - 1;
+		const end: lsp.Position = { line: endLine, character: isNaN(endCol) ? 0 : endCol };
+		return { start, end };
+	}
+
+	return { start, end: start };
 }

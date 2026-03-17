@@ -94,11 +94,11 @@ export class MdDocumentSymbolProvider {
 			while (additionalSymbols.length && isBefore(additionalSymbols[0].range.end, entry.sectionLocation.range.start)) {
 				parent.children.push(additionalSymbols.shift()!);
 			}
-	
+
 			while (parent && entry.level <= parent.level) {
 				parent = parent.parent;
 			}
-			
+
 			if (!parent) {
 				// Should not happen
 				return;
@@ -107,21 +107,17 @@ export class MdDocumentSymbolProvider {
 			const symbol = this.#tocToDocumentSymbol(entry);
 			symbol.children = [];
 			parent.children.push(symbol);
-			
+
 			parent = { level: entry.level, children: symbol.children, parent, range: entry.sectionLocation.range };
 		}
 	}
 
 	#tocToDocumentSymbol(entry: TocEntry): lsp.DocumentSymbol {
 		return {
-			name: this.#getTocSymbolName(entry),
+			name: entry.text,
 			kind: lsp.SymbolKind.String,
 			range: entry.sectionLocation.range,
 			selectionRange: entry.sectionLocation.range
 		};
-	}
-
-	#getTocSymbolName(entry: TocEntry): string {
-		return '#'.repeat(entry.level) + ' ' + entry.text;
 	}
 }

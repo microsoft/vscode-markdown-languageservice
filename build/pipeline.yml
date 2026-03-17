@@ -28,7 +28,7 @@ extends:
       - name: vscode-markdown-languageservice
 
         buildSteps:
-          - script: npm install
+          - script: npm ci
             displayName: Install dependencies
 
           - script: npm run compile
@@ -49,7 +49,7 @@ extends:
               - 22.x
 
         testSteps:
-          - script: npm install
+          - script: npm ci
             displayName: Install dependencies
 
           - script: npm run compile

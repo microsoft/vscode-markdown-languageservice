@@ -145,7 +145,17 @@ function createBlockRange(block: TokenWithMap, document: ITextDocument, cursorLi
 	} else if (isList(block) && isEmptyOrWhitespace(getLine(document, endLine))) {
 		endLine = endLine - 1;
 	}
-	const range = lsp.Range.create(startLine, 0, endLine, getLine(document, endLine).length);
+
+	// For table rows and table sections, start at the first pipe character instead of column 0
+	let startChar = 0;
+	if (block.type === 'tr_open' || block.type === 'tbody_open' || block.type === 'thead_open') {
+		const lineText = getLine(document, startLine);
+		const pipeIndex = lineText.indexOf('|');
+		if (pipeIndex >= 0) {
+			startChar = pipeIndex;
+		}
+	}
+	const range = lsp.Range.create(startLine, startChar, endLine, getLine(document, endLine).length);
 	if (parent && rangeContains(parent.range, range) && !areRangesEqual(parent.range, range)) {
 		return makeSelectionRange(range, parent);
 	} else if (parent && areRangesEqual(parent.range, range)) {
@@ -157,8 +167,12 @@ function createBlockRange(block: TokenWithMap, document: ITextDocument, cursorLi
 
 async function createInlineRange(document: ITextDocument, cursorPosition: lsp.Position, parent: lsp.SelectionRange | undefined, linkProvider: MdLinkProvider, token: lsp.CancellationToken): Promise<lsp.SelectionRange | undefined> {
 	const lineText = getLine(document, cursorPosition.line);
-	const boldSelection = createBoldRange(lineText, cursorPosition.character, cursorPosition.line, parent);
-	const italicSelection = createOtherInlineRange(lineText, cursorPosition.character, cursorPosition.line, true, parent);
+
+	// Check for table cell selection first
+	const tableCellSelection = createTableCellRange(lineText, cursorPosition.character, cursorPosition.line, parent);
+
+	const boldSelection = createBoldRange(lineText, cursorPosition.character, cursorPosition.line, tableCellSelection ?? parent);
+	const italicSelection = createOtherInlineRange(lineText, cursorPosition.character, cursorPosition.line, true, tableCellSelection ?? parent);
 	let comboSelection: lsp.SelectionRange | undefined;
 	if (boldSelection && italicSelection && !areRangesEqual(boldSelection.range, italicSelection.range)) {
 		if (rangeContains(boldSelection.range, italicSelection.range)) {
@@ -168,14 +182,86 @@ async function createInlineRange(document: ITextDocument, cursorPosition: lsp.Po
 		}
 	}
 
-	const linkSelection = await createLinkRange(document, cursorPosition, comboSelection ?? boldSelection ?? italicSelection ?? parent, linkProvider, token);
+	const linkSelection = await createLinkRange(document, cursorPosition, comboSelection ?? boldSelection ?? italicSelection ?? tableCellSelection ?? parent, linkProvider, token);
 	if (token.isCancellationRequested) {
 		return;
 	}
 
-	const inlineCodeBlockSelection = createOtherInlineRange(lineText, cursorPosition.character, cursorPosition.line, false, linkSelection ?? parent);
-	return inlineCodeBlockSelection ?? linkSelection ?? comboSelection ?? boldSelection ?? italicSelection;
+	const inlineCodeBlockSelection = createOtherInlineRange(lineText, cursorPosition.character, cursorPosition.line, false, linkSelection ?? tableCellSelection ?? parent);
+	return inlineCodeBlockSelection ?? linkSelection ?? comboSelection ?? boldSelection ?? italicSelection ?? tableCellSelection;
 }
+
+// #region Table cell selection
+
+interface TableCellBoundary {
+	/** Character position where the cell starts (at the leading pipe) */
+	readonly start: number;
+	/** Character position where the cell ends (after the trailing pipe) */
+	readonly end: number;
+}
+
+/**
+ * Parse table cell boundaries from a table row line.
+ * Each cell boundary spans from one pipe to the next (inclusive).
+ */
+function getTableCellBoundaries(lineText: string): readonly TableCellBoundary[] {
+	// Find all unescaped pipe positions
+	const pipePositions: number[] = [];
+	for (let i = 0; i < lineText.length; i++) {
+		if (lineText[i] === '|' && (i === 0 || lineText[i - 1] !== '\\')) {
+			pipePositions.push(i);
+		}
+	}
+
+	// Need at least 2 pipes for a valid table row
+	if (pipePositions.length < 2) {
+		return [];
+	}
+
+	// Each cell spans from one pipe to the next (inclusive of trailing pipe)
+	const cells: TableCellBoundary[] = [];
+	for (let i = 0; i < pipePositions.length - 1; i++) {
+		cells.push({
+			start: pipePositions[i],
+			end: pipePositions[i + 1] + 1
+		});
+	}
+	return cells;
+}
+
+/**
+ * Check if a line is a table separator row (e.g., "|---|---|")
+ */
+function isTableSeparatorRow(lineText: string): boolean {
+	const trimmed = lineText.trim();
+	if (!trimmed.startsWith('|') || !trimmed.endsWith('|')) {
+		return false;
+	}
+	// Separator rows contain only pipes, dashes, colons (for alignment), and spaces
+	const content = trimmed.slice(1, -1);
+	return /^[\s|:\-]+$/.test(content) && content.includes('-');
+}
+
+/**
+ * Create selection range for the table cell containing the cursor.
+ */
+function createTableCellRange(lineText: string, cursorChar: number, cursorLine: number, parent?: lsp.SelectionRange): lsp.SelectionRange | undefined {
+	if (isTableSeparatorRow(lineText)) {
+		return undefined;
+	}
+
+	const cells = getTableCellBoundaries(lineText);
+	for (const cell of cells) {
+		if (cursorChar >= cell.start && cursorChar < cell.end) {
+			const cellRange = lsp.Range.create(cursorLine, cell.start, cursorLine, cell.end);
+			return makeSelectionRange(cellRange, parent);
+		}
+	}
+
+	return undefined;
+}
+
+// #endregion
 
 function createFencedRange(token: TokenWithMap, cursorLine: number, document: ITextDocument, parent?: lsp.SelectionRange): lsp.SelectionRange {
 	const startLine = token.map[0];

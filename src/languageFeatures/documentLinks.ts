@@ -289,7 +289,7 @@ class NoLinkRanges {
  * The place a document link links to.
  */
 export type ResolvedDocumentLinkTarget =
-	| { readonly kind: 'file'; readonly uri: URI; position?: lsp.Position; fragment?: string }
+	| { readonly kind: 'file'; readonly uri: URI; positionOrRange?: lsp.Position | lsp.Range; fragment?: string }
 	| { readonly kind: 'folder'; readonly uri: URI }
 	| { readonly kind: 'external'; readonly uri: URI };
 
@@ -677,8 +677,8 @@ export class MdLinkProvider extends Disposable {
 				link.target = target.uri.toString(true);
 				break;
 			case 'file':
-				if (target.position) {
-					link.target = this.#createOpenAtPosCommand(target.uri, target.position);
+				if (target.positionOrRange) {
+					link.target = this.#createOpenAtPosCommand(target.uri, target.positionOrRange);
 				} else {
 					link.target = target.uri.toString(true);
 				}
@@ -742,7 +742,7 @@ export class MdLinkProvider extends Disposable {
 		// Try navigating with fragment that sets line number
 		const locationLinkPosition = parseLocationInfoFromFragment(linkFragment);
 		if (locationLinkPosition) {
-			return { kind: 'file', uri: target, position: locationLinkPosition };
+			return { kind: 'file', uri: target, positionOrRange: locationLinkPosition };
 		}
 
 		// Try navigating to header in file
@@ -755,7 +755,7 @@ export class MdLinkProvider extends Disposable {
 			const toc = await this.#tocProvider.getForContainingDoc(doc, token);
 			const entry = toc.lookupByFragment(linkFragment);
 			if (entry) {
-				return { kind: 'file', uri: URI.parse(entry.headerLocation.uri), position: entry.headerLocation.range.start, fragment: linkFragment };
+				return { kind: 'file', uri: URI.parse(entry.headerLocation.uri), positionOrRange: entry.headerLocation.range.start, fragment: linkFragment };
 			}
 		}
 
@@ -814,18 +814,25 @@ export class MdLinkProvider extends Disposable {
 		return `command:${command}?${encodeURIComponent(JSON.stringify(args))}`;
 	}
 
-	#createOpenAtPosCommand(resource: URI, pos: lsp.Position): string {
+	#createOpenAtPosCommand(resource: URI, posOrRange: lsp.Position | lsp.Range): string {
+		const start = lsp.Range.is(posOrRange) ? posOrRange.start : posOrRange;
+		const end = lsp.Range.is(posOrRange) ? posOrRange.end : posOrRange;
+
 		// If the resource itself already has a fragment, we need to handle opening specially
 		// instead of using `file://path.md#L123` style uris
 		if (resource.fragment) {
 			// Match the args of `vscode.open`
 			return this.#createCommandUri('vscodeMarkdownLanguageservice.open', resource, {
-				selection: lsp.Range.create(pos, pos),
+				selection: lsp.Range.create(start, end),
 			});
 		}
 
+		const startFragment = `L${start.line + 1},${start.character + 1}`;
+		const endFragment = (start.line === end.line && start.character === end.character)
+			? ''
+			: `-L${end.line + 1},${end.character + 1}`;
 		return resource.with({
-			fragment: `L${pos.line + 1},${pos.character + 1}`
+			fragment: startFragment + endFragment
 		}).toString(true);
 	}
 }

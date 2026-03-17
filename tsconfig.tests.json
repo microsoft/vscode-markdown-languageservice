@@ -6,6 +6,10 @@
 			"ES2020",
 			"DOM"
 		],
+		"types": [
+			"node",
+			"mocha"
+		],
 		"rootDir": "./src",
 		"outDir": "./out"
 	},

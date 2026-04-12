@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0-alpha.12 — Unreleased
+- Improve support for line range links.
+- Added basic smart select for tables.
+
 ## 0.5.0-alpha.11 — July 8, 2025
 - Fix completions for unicode headers.
 - Improve completions for references and definitions that contain slashes or unicode
@@ -96,7 +100,7 @@ Highlights of previous alpha releases:
 - Clean up logging API.
 
 ## 0.3.0-alpha.5 — February 20, 2023
-- Allow language service configuration to be changed dynamically. 
+- Allow language service configuration to be changed dynamically.
 
 ## 0.3.0-alpha.4 — February 1, 2023
 - Add support for cross workspace header completions when triggered on `##`.
@@ -135,7 +139,7 @@ Highlights of previous alpha releases:
 - Add `IPullDiagnosticsManager.disposeDocumentResources` to clean up watchers when a file is closed in the editor.
 - Fix false positive diagnostic with files that link to themselves.
 - Use parsed markdown to generate header slugs instead of using the original text.
-- Make `getRenameFilesInWorkspaceEdit` return full sets of participating edits. 
+- Make `getRenameFilesInWorkspaceEdit` return full sets of participating edits.
 - Bundle `d.ts` files using api-extractor.
 
 ## 0.0.1 — August 26, 2022

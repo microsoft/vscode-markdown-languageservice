@@ -76,6 +76,7 @@ suite('Smart select', () => {
 		));
 
 		assertNestedLineNumbersEqual(ranges![0],
+			[4, 4], // cell
 			[4, 4], // row
 			[4, 5], // table body
 			[2, 5], // entire table
@@ -749,6 +750,160 @@ suite('Smart select', () => {
 				[0, 0, 0, 70], // Whole link
 			);
 		}
+	});
+
+	test('Smart select table cell then row', async () => {
+		const ranges = await getSelectionRangesForDocument(joinLines(
+			`| a | b | c |`,
+			`|---|---|---|`,
+			`| 1 | 2${CURSOR} | 3 |`,
+		));
+		// Cell "| 2$$CURSOR$$ " is at chars 4-19, row is full line (0-23), table body same as row, then full table
+		assertNestedRangesEqual(ranges![0],
+			[2, 4, 2, 19], // cell containing "2" with cursor marker
+			[2, 0, 2, 23], // entire row
+			[0, 0, 2, 23], // entire table
+		);
+	});
+
+	test('Smart select table cell in first column', async () => {
+		const ranges = await getSelectionRangesForDocument(joinLines(
+			`| a | b | c |`,
+			`|---|---|---|`,
+			`| ${CURSOR}1 | 2 | 3 |`,
+		));
+		// Cell "| $$CURSOR$$1 " is at chars 0-15, row at 0-23, table at 0-13 on lines 0-2
+		assertNestedRangesEqual(ranges![0],
+			[2, 0, 2, 15], // first cell with cursor marker
+			[2, 0, 2, 23], // entire row
+			[0, 0, 2, 23], // entire table
+		);
+	});
+
+	test('Smart select table cell in last column', async () => {
+		const ranges = await getSelectionRangesForDocument(joinLines(
+			`| a | b | c |`,
+			`|---|---|---|`,
+			`| 1 | 2 | 3${CURSOR} |`,
+		));
+		// Cell "| 3$$CURSOR$$ |" is at chars 8-23, row is 0-23, then table
+		assertNestedRangesEqual(ranges![0],
+			[2, 8, 2, 23], // last cell with cursor marker
+			[2, 0, 2, 23], // entire row
+			[0, 0, 2, 23], // entire table
+		);
+	});
+
+	test('Smart select table header cell', async () => {
+		const ranges = await getSelectionRangesForDocument(joinLines(
+			`| a${CURSOR} | b | c |`,
+			`|---|---|---|`,
+			`| 1 | 2 | 3 |`,
+		));
+		// First cell in header: "| a$$CURSOR$$ " at 0-15, header row at 0-23, then table
+		assertNestedRangesEqual(ranges![0],
+			[0, 0, 0, 15], // first cell with cursor marker
+			[0, 0, 0, 23], // header row
+			[0, 0, 2, 13], // entire table
+		);
+	});
+
+	test('Smart select table with multiple body rows', async () => {
+		const ranges = await getSelectionRangesForDocument(joinLines(
+			`| a | b |`,
+			`|---|---|`,
+			`| 1 | 2 |`,
+			`| 3 | 4${CURSOR} |`,
+		));
+		// Cell "| 4$$CURSOR$$ |" at chars 4-19, row at 0-19, body rows 2-3, table lines 0-3
+		assertNestedRangesEqual(ranges![0],
+			[3, 4, 3, 19], // cell with cursor marker
+			[3, 0, 3, 19], // row
+			[2, 0, 3, 19], // table body (lines 2-3)
+			[0, 0, 3, 19], // entire table
+		);
+	});
+
+	test('Smart select table row then body then entire table', async () => {
+		const ranges = await getSelectionRangesForDocument(joinLines(
+			`# Header`,
+			``,
+			`| col1 | col2 |`,
+			`|------|------|`,
+			`| a    | b    |`,
+			`| c${CURSOR}    | d    |`,
+			`| e    | f    |`,
+			``,
+			`More text`,
+		));
+		// Cell at chars 0-18 (with cursor), row at 0-25, body rows 4-6, table lines 2-6
+		assertNestedRangesEqual(ranges![0],
+			[5, 0, 5, 18], // cell "| c$$CURSOR$$    "
+			[5, 0, 5, 25], // row
+			[4, 0, 6, 15], // table body
+			[2, 0, 6, 15], // entire table
+			[1, 0, 8, 9], // header content
+			[0, 0, 8, 9], // entire header section
+		);
+	});
+
+	test('Smart select indented table cell', async () => {
+		const ranges = await getSelectionRangesForDocument(joinLines(
+			`- list item`,
+			``,
+			`    | a | b |`,
+			`    |---|---|`,
+			`    | 1${CURSOR} | 2 |`,
+		));
+		// Cell "| 1$$CURSOR$$ " at chars 4-19 (after 4-space indent), row at 4-23
+		assertNestedRangesEqual(ranges![0],
+			[4, 4, 4, 19], // cell with cursor marker (starting at pipe after indent)
+			[4, 4, 4, 23], // entire row (starting after indent)
+			[2, 0, 4, 23], // table block
+			[0, 0, 4, 23], // list
+		);
+	});
+
+	test('Smart select table cell with bold content', async () => {
+		const ranges = await getSelectionRangesForDocument(joinLines(
+			`| a | **bold${CURSOR}** |`,
+			`|---|---|`,
+			`| 1 | 2 |`,
+		));
+		// Bold "**bold$$CURSOR$$**" within cell
+		// Line: | a | **bold$$CURSOR$$** |
+		// Positions: 0=|, 4=|, 5= , 6=*, 7=*, 8=b, ... $$CURSOR$$ is 10 chars
+		// bold content (inside **): chars 8 to 22
+		// bold with **: chars 6 to 24
+		// cell: | **...** | at 4-26 (ends at closing pipe + 1)
+		assertNestedRangesEqual(ranges![0],
+			[0, 8, 0, 22], // bold content (inside **)
+			[0, 6, 0, 24], // bold with **
+			[0, 4, 0, 26], // cell
+			[0, 0, 0, 26], // header row
+			[0, 0, 2, 9], // entire table
+		);
+	});
+
+	test('Smart select table cell with inline code', async () => {
+		const ranges = await getSelectionRangesForDocument(joinLines(
+			`| a | \`code${CURSOR}\` |`,
+			`|---|---|`,
+			`| 1 | 2 |`,
+		));
+		// Inline code "`code$$CURSOR$$`" within cell
+		// Line: | a | `code$$CURSOR$$` |
+		// Positions: 0=|, 4=|, 5= , 6=`, 7=c, ... $$CURSOR$$ is 10 chars
+		// code content (inside `): chars 7 to 21
+		// code with backticks: chars 6 to 22
+		// cell at 4-24 (ends at closing pipe + 1)
+		assertNestedRangesEqual(ranges![0],
+			[0, 7, 0, 21], // code content (inside backticks)
+			[0, 6, 0, 22], // code with backticks
+			[0, 4, 0, 24], // cell
+			[0, 0, 0, 24], // header row
+			[0, 0, 2, 9], // entire table
+		);
 	});
 });
 

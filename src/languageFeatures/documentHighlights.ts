@@ -43,7 +43,7 @@ export class MdDocumentHighlightProvider {
 			return [];
 		}
 
-		const header = toc.entries.find(entry => entry.line === position.line);
+		const header = toc.entries.find(entry => rangeContains(entry.declarationLocation.range, position));
 		if (header) {
 			return [...this.#getHighlightsForHeader(document, header, links, toc)];
 		}
@@ -52,7 +52,7 @@ export class MdDocumentHighlightProvider {
 	}
 
 	*#getHighlightsForHeader(document: ITextDocument, header: TocEntry, links: readonly MdLink[], toc: TableOfContents): Iterable<lsp.DocumentHighlight> {
-		yield { range: header.headerLocation.range, kind: lsp.DocumentHighlightKind.Write };
+		yield { range: header.declarationLocation.range, kind: lsp.DocumentHighlightKind.Write };
 
 		const docUri = getDocUri(document);
 		for (const link of links) {
@@ -108,7 +108,7 @@ export class MdDocumentHighlightProvider {
 		if (isSameResource(targetDoc, getDocUri(document))) {
 			const header = toc.lookupByFragment(fragment);
 			if (header) {
-				yield { range: header.headerLocation.range, kind: lsp.DocumentHighlightKind.Write };
+				yield { range: header.declarationLocation.range, kind: lsp.DocumentHighlightKind.Write };
 			}
 		}
 

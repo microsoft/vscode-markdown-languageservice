@@ -756,7 +756,12 @@ export class MdLinkProvider extends Disposable {
 			const toc = await this.#tocProvider.getForContainingDoc(doc, token);
 			const entry = toc.lookByLink({ fragment: linkData.fragment, isAngleBracketLink: linkData.isAngleBracketLink });
 			if (entry) {
-				return { kind: 'file', uri: URI.parse(entry.headerLocation.uri), positionOrRange: entry.headerLocation.range.start, fragment: linkData.fragment };
+				return {
+					kind: 'file',
+					uri: URI.parse(entry.declarationLocation.uri),
+					positionOrRange: entry.declarationLocation.range.start,
+					fragment: linkData.fragment
+				};
 			}
 		}
 

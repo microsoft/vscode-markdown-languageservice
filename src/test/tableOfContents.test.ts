@@ -53,7 +53,7 @@ suite('Table of contents', () => {
 		{
 			const entry = provider.lookupByFragment('a');
 			assert.ok(entry);
-			assert.strictEqual(entry!.line, 0);
+			assert.strictEqual(entry!.declarationLocation.range.start.line, 0);
 		}
 		{
 			assert.strictEqual(provider.lookupByFragment('x'), undefined);
@@ -61,7 +61,7 @@ suite('Table of contents', () => {
 		{
 			const entry = provider.lookupByFragment('c');
 			assert.ok(entry);
-			assert.strictEqual(entry!.line, 2);
+			assert.strictEqual(entry!.declarationLocation.range.start.line, 2);
 		}
 	});
 
@@ -72,9 +72,9 @@ suite('Table of contents', () => {
 		));
 		const provider = await createToc(doc);
 
-		assert.strictEqual((provider.lookupByFragment('fOo'))!.line, 0);
-		assert.strictEqual((provider.lookupByFragment('foo'))!.line, 0);
-		assert.strictEqual((provider.lookupByFragment('FOO'))!.line, 0);
+		assert.strictEqual((provider.lookupByFragment('fOo'))!.declarationLocation.range.start.line, 0);
+		assert.strictEqual((provider.lookupByFragment('foo'))!.declarationLocation.range.start.line, 0);
+		assert.strictEqual((provider.lookupByFragment('FOO'))!.declarationLocation.range.start.line, 0);
 	});
 
 	test('should handle special characters #44779', async () => {
@@ -84,7 +84,7 @@ suite('Table of contents', () => {
 		));
 		const provider = await createToc(doc);
 
-		assert.strictEqual((provider.lookupByFragment('indentação'))!.line, 0);
+		assert.strictEqual((provider.lookupByFragment('indentação'))!.declarationLocation.range.start.line, 0);
 	});
 
 	test('should handle special characters 2, #48482', async () => {
@@ -94,7 +94,7 @@ suite('Table of contents', () => {
 		));
 		const provider = await createToc(doc);
 
-		assert.strictEqual((provider.lookupByFragment('инструкция---делай-раз-делай-два'))!.line, 0);
+		assert.strictEqual((provider.lookupByFragment('инструкция---делай-раз-делай-два'))!.declarationLocation.range.start.line, 0);
 	});
 
 	test('should handle special characters 3, #37079', async () => {
@@ -109,12 +109,12 @@ suite('Table of contents', () => {
 
 		const provider = await createToc(doc);
 
-		assert.strictEqual((provider.lookupByFragment('header-2'))!.line, 0);
-		assert.strictEqual((provider.lookupByFragment('header-3'))!.line, 1);
-		assert.strictEqual((provider.lookupByFragment('Заголовок-2'))!.line, 2);
-		assert.strictEqual((provider.lookupByFragment('Заголовок-3'))!.line, 3);
-		assert.strictEqual((provider.lookupByFragment('Заголовок-header-3'))!.line, 4);
-		assert.strictEqual((provider.lookupByFragment('Заголовок'))!.line, 5);
+		assert.strictEqual((provider.lookupByFragment('header-2'))!.declarationLocation.range.start.line, 0);
+		assert.strictEqual((provider.lookupByFragment('header-3'))!.declarationLocation.range.start.line, 1);
+		assert.strictEqual((provider.lookupByFragment('Заголовок-2'))!.declarationLocation.range.start.line, 2);
+		assert.strictEqual((provider.lookupByFragment('Заголовок-3'))!.declarationLocation.range.start.line, 3);
+		assert.strictEqual((provider.lookupByFragment('Заголовок-header-3'))!.declarationLocation.range.start.line, 4);
+		assert.strictEqual((provider.lookupByFragment('Заголовок'))!.declarationLocation.range.start.line, 5);
 	});
 
 	test('Lookup should support suffixes for repeated headers', async () => {
@@ -128,17 +128,17 @@ suite('Table of contents', () => {
 		{
 			const entry = provider.lookupByFragment('a');
 			assert.ok(entry);
-			assert.strictEqual(entry!.line, 0);
+			assert.strictEqual(entry!.declarationLocation.range.start.line, 0);
 		}
 		{
 			const entry = provider.lookupByFragment('a-1');
 			assert.ok(entry);
-			assert.strictEqual(entry!.line, 1);
+			assert.strictEqual(entry!.declarationLocation.range.start.line, 1);
 		}
 		{
 			const entry = provider.lookupByFragment('a-2');
 			assert.ok(entry);
-			assert.strictEqual(entry!.line, 2);
+			assert.strictEqual(entry!.declarationLocation.range.start.line, 2);
 		}
 	});
 

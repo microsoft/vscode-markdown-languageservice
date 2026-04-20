@@ -6,7 +6,7 @@
 import * as lsp from 'vscode-languageserver-protocol';
 import { ILogger, LogLevel } from '../logging';
 import { IMdParser, Token, TokenWithMap } from '../parser';
-import { MdTableOfContentsProvider } from '../tableOfContents';
+import { MdTableOfContentsProvider, TocHeaderEntry } from '../tableOfContents';
 import { getLine, ITextDocument } from '../types/textDocument';
 import { isEmptyOrWhitespace } from '../util/string';
 
@@ -76,13 +76,15 @@ export class MdFoldingProvider {
 			return [];
 		}
 
-		return toc.entries.map((entry): lsp.FoldingRange => {
-			let endLine = entry.sectionLocation.range.end.line;
-			if (isEmptyOrWhitespace(getLine(document, endLine)) && endLine >= entry.line + 1) {
-				endLine = endLine - 1;
-			}
-			return { startLine: entry.line, endLine };
-		});
+		return toc.entries
+			.filter((entry): entry is TocHeaderEntry => entry.kind === 'header')
+			.map((entry): lsp.FoldingRange => {
+				let endLine = entry.sectionLocation.range.end.line;
+				if (isEmptyOrWhitespace(getLine(document, endLine)) && endLine >= entry.declarationLocation.range.start.line + 1) {
+					endLine = endLine - 1;
+				}
+				return { startLine: entry.declarationLocation.range.start.line, endLine };
+			});
 	}
 
 	async #getBlockFoldingRanges(document: ITextDocument, token: lsp.CancellationToken): Promise<lsp.FoldingRange[]> {

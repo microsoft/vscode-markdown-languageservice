@@ -87,14 +87,14 @@ suite('Document symbols', () => {
 	test('Should return single symbol for single header', withStore(async (store) => {
 		const symbols = await getSymbolsForFile(store, '# h');
 		assertDocumentSymbolsEqual(symbols, [
-			{ name: '# h' },
+			{ name: 'h' },
 		]);
 	}));
 
 	test('Should not care about symbol level for single header', withStore(async (store) => {
 		const symbols = await getSymbolsForFile(store, '### h');
 		assertDocumentSymbolsEqual(symbols, [
-			{ name: '### h' },
+			{ name: 'h' },
 		]);
 	}));
 
@@ -104,8 +104,8 @@ suite('Document symbols', () => {
 			`## h2`,
 		));
 		assertDocumentSymbolsEqual(symbols, [
-			{ name: '## h' },
-			{ name: '## h2' },
+			{ name: 'h' },
+			{ name: 'h2' },
 		]);
 	}));
 
@@ -117,10 +117,10 @@ suite('Document symbols', () => {
 		));
 		assertDocumentSymbolsEqual(symbols, [
 			{
-				name: '# h',
+				name: 'h',
 				children: [
-					{ name: '## h2' },
-					{ name: '## h3' },
+					{ name: 'h2' },
+					{ name: 'h3' },
 				]
 			}
 		]);
@@ -133,9 +133,9 @@ suite('Document symbols', () => {
 		));
 		assertDocumentSymbolsEqual(symbols, [
 			{
-				name: '# h',
+				name: 'h',
 				children: [
-					{ name: '#### h2' }
+					{ name: 'h2' }
 				]
 			}
 		]);
@@ -149,10 +149,10 @@ suite('Document symbols', () => {
 		));
 		assertDocumentSymbolsEqual(symbols, [
 			{
-				name: '# h',
+				name: 'h',
 				children: [
-					{ name: '### h2' },
-					{ name: '## h3' },
+					{ name: 'h2' },
+					{ name: 'h3' },
 				]
 			},
 		]);
@@ -167,8 +167,8 @@ suite('Document symbols', () => {
 			`- bar`,
 		));
 		assertDocumentSymbolsEqual(symbols, [
-			{ name: '# A' },
-			{ name: '# B' },
+			{ name: 'A' },
+			{ name: 'B' },
 		]);
 	}));
 
@@ -207,16 +207,16 @@ suite('Document symbols', () => {
 		assertDocumentSymbolsEqual(symbols, [
 			{ name: '[def 1]', range: lsp.Range.create(0, 0, 0, 27), selectionRange: lsp.Range.create(0, 1, 0, 6), },
 			{
-				name: '# h1',
+				name: 'h1',
 				children: [
 					{ name: '[def 2]', range: lsp.Range.create(2, 0, 2, 27), selectionRange: lsp.Range.create(2, 1, 2, 6), },
 					{
-						name: '#### h2',
+						name: 'h2',
 						children: [
 							{ name: '[def 3]', range: lsp.Range.create(4, 0, 4, 27), selectionRange: lsp.Range.create(4, 1, 4, 6), },
 						]
 					},
-					{ name: '## h3', children: [] },
+					{ name: 'h3', children: [] },
 				]
 			},
 			{ name: '[def 4]', range: lsp.Range.create(6, 0, 6, 27), selectionRange: lsp.Range.create(6, 1, 6, 6), },
@@ -229,8 +229,8 @@ suite('Document symbols', () => {
 			'## [a `b` **c**](http://example.com)',
 		));
 		assertDocumentSymbolsEqual(symbols, [
-			{ name: '## a b c' },
-			{ name: '## a b c' },
+			{ name: 'a b c' },
+			{ name: 'a b c' },
 		]);
 	}));
 
@@ -239,7 +239,7 @@ suite('Document symbols', () => {
 			'## <b>a</b> `b` **c**',
 		));
 		assertDocumentSymbolsEqual(symbols, [
-			{ name: '## a b c' },
+			{ name: 'a b c' },
 		]);
 	}));
 });

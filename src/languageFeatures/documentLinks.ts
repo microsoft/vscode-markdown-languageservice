@@ -25,6 +25,7 @@ import { tryDecodeUri } from '../util/uri';
 import { IWorkspace, tryAppendMarkdownFileExtension } from '../workspace';
 import { MdDocumentInfoCache, MdWorkspaceInfoCache } from '../workspaceCache';
 
+type LinkData = { path: URI, fragment: string; isAngleBracketLink: boolean };
 
 function createHref(
 	sourceDocUri: URI,
@@ -662,30 +663,30 @@ export class MdLinkProvider extends Disposable {
 		return coalesce(links.map(data => this.#toValidDocumentLink(data, definitions)));
 	}
 
-	public async resolveDocumentLink(link: lsp.DocumentLink, token: lsp.CancellationToken): Promise<lsp.DocumentLink | undefined> {
-		const href = this.#reviveLinkHrefData(link);
-		if (!href) {
+	public async resolveDocumentLink(inLink: lsp.DocumentLink, token: lsp.CancellationToken): Promise<lsp.DocumentLink | undefined> {
+		const linkData = this.#reviveLinkHrefData(inLink);
+		if (!linkData) {
 			return undefined;
 		}
 
-		const target = await this.#resolveInternalLinkTarget(href.path, href.fragment, token);
+		const target = await this.#resolveInternalLinkTarget(linkData, token);
 		switch (target.kind) {
 			case 'folder':
-				link.target = this.#createCommandUri('revealInExplorer', href.path);
+				inLink.target = this.#createCommandUri('revealInExplorer', linkData.path);
 				break;
 			case 'external':
-				link.target = target.uri.toString(true);
+				inLink.target = target.uri.toString(true);
 				break;
 			case 'file':
 				if (target.positionOrRange) {
-					link.target = this.#createOpenAtPosCommand(target.uri, target.positionOrRange);
+					inLink.target = this.#createOpenAtPosCommand(target.uri, target.positionOrRange);
 				} else {
-					link.target = target.uri.toString(true);
+					inLink.target = target.uri.toString(true);
 				}
 				break;
 		}
 
-		return link;
+		return inLink;
 	}
 
 	public async resolveLinkTarget(linkText: string, sourceDoc: URI, token: lsp.CancellationToken): Promise<ResolvedDocumentLinkTarget | undefined> {
@@ -699,11 +700,11 @@ export class MdLinkProvider extends Disposable {
 			return undefined;
 		}
 
-		return this.#resolveInternalLinkTarget(resolved.resource, resolved.linkFragment, token);
+		return this.#resolveInternalLinkTarget({ path: resolved.resource, fragment: resolved.linkFragment, isAngleBracketLink: false }, token);
 	}
 
-	async #resolveInternalLinkTarget(linkPath: URI, linkFragment: string, token: lsp.CancellationToken): Promise<ResolvedDocumentLinkTarget> {
-		let target = linkPath;
+	async #resolveInternalLinkTarget(linkData: LinkData, token: lsp.CancellationToken): Promise<ResolvedDocumentLinkTarget> {
+		let target = linkData.path;
 
 		// If there's a containing document, don't bother with trying to resolve the
 		// link to a workspace file as one will not exist
@@ -735,12 +736,12 @@ export class MdLinkProvider extends Disposable {
 			}
 		}
 
-		if (!linkFragment) {
+		if (!linkData.fragment) {
 			return { kind: 'file', uri: target };
 		}
 
 		// Try navigating with fragment that sets line number
-		const locationLinkPosition = parseLocationInfoFromFragment(linkFragment);
+		const locationLinkPosition = parseLocationInfoFromFragment(linkData.fragment);
 		if (locationLinkPosition) {
 			return { kind: 'file', uri: target, positionOrRange: locationLinkPosition };
 		}
@@ -753,16 +754,16 @@ export class MdLinkProvider extends Disposable {
 
 		if (doc) {
 			const toc = await this.#tocProvider.getForContainingDoc(doc, token);
-			const entry = toc.lookupByFragment(linkFragment);
+			const entry = toc.lookByLink({ fragment: linkData.fragment, isAngleBracketLink: linkData.isAngleBracketLink });
 			if (entry) {
-				return { kind: 'file', uri: URI.parse(entry.headerLocation.uri), positionOrRange: entry.headerLocation.range.start, fragment: linkFragment };
+				return { kind: 'file', uri: URI.parse(entry.headerLocation.uri), positionOrRange: entry.headerLocation.range.start, fragment: linkData.fragment };
 			}
 		}
 
 		return { kind: 'file', uri: target };
 	}
 
-	#reviveLinkHrefData(link: lsp.DocumentLink): { path: URI, fragment: string } | undefined {
+	#reviveLinkHrefData(link: lsp.DocumentLink): LinkData | undefined {
 		if (!link.data) {
 			return undefined;
 		}
@@ -772,7 +773,11 @@ export class MdLinkProvider extends Disposable {
 			return undefined;
 		}
 
-		return { path: URI.from(mdLink.href.path), fragment: mdLink.href.fragment };
+		return {
+			path: URI.from(mdLink.href.path),
+			fragment: mdLink.href.fragment,
+			isAngleBracketLink: mdLink.source.isAngleBracketLink,
+		};
 	}
 
 	#toValidDocumentLink(link: MdLink, definitionSet: LinkDefinitionSet): lsp.DocumentLink | undefined {

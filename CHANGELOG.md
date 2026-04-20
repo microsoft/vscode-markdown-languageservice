@@ -3,6 +3,7 @@
 ## 0.5.0-alpha.12 — Unreleased
 - Improve support for line range links.
 - Added basic smart select for tables.
+- Fix resolving of angle bracket document links with spaces in fragment
 
 ## 0.5.0-alpha.11 — July 8, 2025
 - Fix completions for unicode headers.

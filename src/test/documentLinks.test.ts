@@ -843,6 +843,17 @@ suite('Link computer', () => {
 			lsp.Range.create(10, 0, 10, 6),
 		]);
 	});
+
+	test('Should support angle bracket fragment links', async () => {
+		const links = await getLinksForText(joinLines(
+			`# A b c`,
+			`[text](<#a b c>):`,
+		));
+
+		assertLinksEqual(links, [
+			lsp.Range.create(1, 8, 1, 14),
+		]);
+	});
 });
 
 
@@ -850,13 +861,15 @@ suite('Link provider', () => {
 
 	const testFile = workspacePath('x.md');
 
-	function getLinksForFile(fileContents: string) {
-		const doc = new InMemoryDocument(testFile, fileContents);
-		const workspace = new InMemoryWorkspace([doc]);
-
+	function createLinkProvider(workspace: InMemoryWorkspace) {
 		const engine = createNewMarkdownEngine();
 		const tocProvider = new MdTableOfContentsProvider(engine, workspace, nulLogger);
-		const provider = new MdLinkProvider(getLsConfiguration({}), engine, workspace, tocProvider, nulLogger);
+		return new MdLinkProvider(getLsConfiguration({}), engine, workspace, tocProvider, nulLogger);
+	}
+
+	function getLinksForFile(fileContents: string) {
+		const doc = new InMemoryDocument(testFile, fileContents);
+		const provider = createLinkProvider(new InMemoryWorkspace([doc]));
 		return provider.provideDocumentLinks(doc, noopToken);
 	}
 
@@ -928,5 +941,54 @@ suite('Link provider', () => {
 			`[link](${exampleUrl})`
 		));
 		assert.strictEqual(links[0].target, exampleUrl);
+	});
+
+	test('Should resolve href fragment links in angle brackets', async () => {
+		const doc = new InMemoryDocument(testFile, joinLines(
+			`# a b c`,
+			`[link](<#a b c>)`,
+			`[link](<#a-b-c>)`
+		));
+		const provider = createLinkProvider(new InMemoryWorkspace([doc]));
+		const links = await provider.provideDocumentLinks(doc, noopToken);
+		assert.strictEqual(links.length, 2);
+
+		const expectedFragmentTarget = doc.$uri.with({ fragment: 'L1,1' }).toString(true);
+
+		{
+			const resolved = await provider.resolveDocumentLink(links[0], noopToken);
+			assert.strictEqual(resolved?.target, expectedFragmentTarget);
+		}
+
+		{
+			const resolved1 = await provider.resolveDocumentLink(links[1], noopToken);
+			assert.strictEqual(resolved1?.target, expectedFragmentTarget);
+		}
+	});
+
+	test('Should resolve href fragment links in angle brackets in other files', async () => {
+		const targetDoc = new InMemoryDocument(workspacePath('space file'), joinLines(
+			`# a b c`,
+		));
+
+		const activeDoc = new InMemoryDocument(workspacePath('other'), joinLines(
+			`[link](<space file#a b c>)`,
+			`[link](<space file#a-b-c>)`
+		));
+		const provider = createLinkProvider(new InMemoryWorkspace([targetDoc, activeDoc]));
+		const links = await provider.provideDocumentLinks(activeDoc, noopToken);
+		assert.strictEqual(links.length, 2);
+
+		const expectedFragmentTarget = targetDoc.$uri.with({ fragment: 'L1,1' }).toString(true);
+
+		{
+			const resolved = await provider.resolveDocumentLink(links[0], noopToken);
+			assert.strictEqual(resolved?.target, expectedFragmentTarget);
+		}
+
+		{
+			const resolved1 = await provider.resolveDocumentLink(links[1], noopToken);
+			assert.strictEqual(resolved1?.target, expectedFragmentTarget);
+		}
 	});
 });

@@ -36,9 +36,9 @@ export class MdDefinitionProvider {
 			return [];
 		}
 
-		const header = toc.entries.find(entry => entry.line === position.line);
-		if (header) {
-			return header.headerLocation;
+		const entryAtPosition = toc.entries.find(entry => rangeContains(entry.declarationLocation.range, position));
+		if (entryAtPosition) {
+			return entryAtPosition.declarationLocation;
 		}
 
 		return this.#getDefinitionOfLinkAtPosition(document, position, token);
@@ -74,7 +74,7 @@ export class MdDefinitionProvider {
 		}
 
 		const toc = await this.#tocProvider.get(resolvedResource);
-		return toc?.lookupByFragment(sourceLink.href.fragment)?.headerLocation;
+		return toc?.lookupByFragment(sourceLink.href.fragment)?.declarationLocation;
 	}
 
 	#getDefinitionOfRef(ref: string, allLinksInFile: readonly MdLink[]) {

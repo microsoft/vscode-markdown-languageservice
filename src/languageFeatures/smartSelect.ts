@@ -5,7 +5,7 @@
 import * as lsp from 'vscode-languageserver-protocol';
 import { ILogger, LogLevel } from '../logging';
 import { IMdParser, Token, TokenWithMap } from '../parser';
-import { MdTableOfContentsProvider, TocEntry } from '../tableOfContents';
+import { MdTableOfContentsProvider, TocEntry, TocHeaderEntry } from '../tableOfContents';
 import { translatePosition } from '../types/position';
 import { areRangesEqual, modifyRange, rangeContains } from '../types/range';
 import { getLine, ITextDocument } from '../types/textDocument';
@@ -83,28 +83,31 @@ export class MdSelectionRangeProvider {
 			return undefined;
 		}
 
-		const headerInfo = getHeadersForPosition(toc.entries, position);
+		const headerInfo = getHeadersForPosition(toc.entries.filter((entry): entry is TocHeaderEntry => entry.kind === 'header'), position);
 		const headers = headerInfo.headers;
 
 		let currentRange: lsp.SelectionRange | undefined;
 		for (let i = 0; i < headers.length; i++) {
-			currentRange = createHeaderRange(headers[i], i === headers.length - 1, headerInfo.headerOnThisLine, currentRange, getFirstChildHeader(document, headers[i], toc.entries));
+			const tocEntry = headers[i];
+			if (tocEntry.kind === 'header') {
+				currentRange = createHeaderRange(tocEntry, i === headers.length - 1, headerInfo.headerOnThisLine, currentRange, getFirstChildHeader(document, tocEntry, toc.entries));
+			}
 		}
 		return currentRange;
 	}
 }
 
-function getHeadersForPosition(toc: readonly TocEntry[], position: lsp.Position): { headers: TocEntry[]; headerOnThisLine: boolean } {
+function getHeadersForPosition(toc: readonly TocHeaderEntry[], position: lsp.Position): { headers: TocEntry[]; headerOnThisLine: boolean } {
 	const enclosingHeaders = toc.filter(header => header.sectionLocation.range.start.line <= position.line && header.sectionLocation.range.end.line >= position.line);
-	const sortedHeaders = enclosingHeaders.sort((header1, header2) => (header1.line - position.line) - (header2.line - position.line));
-	const onThisLine = toc.find(header => header.line === position.line) !== undefined;
+	const sortedHeaders = enclosingHeaders.sort((header1, header2) => (header1.declarationLocation.range.start.line - position.line) - (header2.declarationLocation.range.start.line - position.line));
+	const onThisLine = toc.find(header => header.declarationLocation.range.start.line === position.line) !== undefined;
 	return {
 		headers: sortedHeaders,
 		headerOnThisLine: onThisLine
 	};
 }
 
-function createHeaderRange(header: TocEntry, isClosestHeaderToPosition: boolean, onHeaderLine: boolean, parent?: lsp.SelectionRange, startOfChildRange?: lsp.Position): lsp.SelectionRange | undefined {
+function createHeaderRange(header: TocHeaderEntry, isClosestHeaderToPosition: boolean, onHeaderLine: boolean, parent?: lsp.SelectionRange, startOfChildRange?: lsp.Position): lsp.SelectionRange | undefined {
 	const range = header.sectionLocation.range;
 	const contentRange = lsp.Range.create(translatePosition(range.start, { lineDelta: 1 }), range.end);
 	if (onHeaderLine && isClosestHeaderToPosition && startOfChildRange) {
@@ -414,10 +417,10 @@ function isBlockElement(token: Token): boolean {
 	return !['list_item_close', 'paragraph_close', 'bullet_list_close', 'inline', 'heading_close', 'heading_open'].includes(token.type);
 }
 
-function getFirstChildHeader(document: ITextDocument, header?: TocEntry, toc?: readonly TocEntry[]): lsp.Position | undefined {
+function getFirstChildHeader(document: ITextDocument, header?: TocHeaderEntry, toc?: readonly TocEntry[]): lsp.Position | undefined {
 	let childRange: lsp.Position | undefined;
 	if (header && toc) {
-		const children = toc.filter(t => rangeContains(header.sectionLocation.range, t.sectionLocation.range) && t.sectionLocation.range.start.line > header.sectionLocation.range.start.line).sort((t1, t2) => t1.line - t2.line);
+		const children = toc.filter((t): t is TocHeaderEntry => t.kind === 'header' && rangeContains(header.sectionLocation.range, t.sectionLocation.range) && t.sectionLocation.range.start.line > header.sectionLocation.range.start.line).sort((t1, t2) => t1.declarationLocation.range.start.line - t2.declarationLocation.range.start.line);
 		if (children.length > 0) {
 			childRange = children[0].sectionLocation.range.start;
 			const lineText = getLine(document, childRange.line - 1);

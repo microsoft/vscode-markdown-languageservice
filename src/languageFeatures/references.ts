@@ -7,7 +7,7 @@ import { URI } from 'vscode-uri';
 import { LsConfiguration } from '../config';
 import { ILogger, LogLevel } from '../logging';
 import { IMdParser } from '../parser';
-import { MdTableOfContentsProvider, TocEntry } from '../tableOfContents';
+import { MdTableOfContentsProvider, TocHeaderEntry } from '../tableOfContents';
 import { HrefKind, MdLink, MdLinkKind } from '../types/documentLink';
 import { translatePosition } from '../types/position';
 import { areRangesEqual, modifyRange, rangeContains } from '../types/range';
@@ -42,27 +42,9 @@ export interface MdHeaderReference {
 
 	readonly isTriggerLocation: boolean;
 	readonly isDefinition: boolean;
-
-	/**
-	 * The range of the header.
-	 *
-	 * In `# a b c #` this would be the range of `# a b c #`
-	 */
 	readonly location: lsp.Location;
 
-	/**
-	 * The text of the header.
-	 *
-	 * In `# a b c #` this would be `a b c`
-	 */
-	readonly headerText: string;
-
-	/**
-	 * The range of the header text itself.
-	 *
-	 * In `# a b c #` this would be the range of `a b c`
-	 */
-	readonly headerTextLocation: lsp.Location;
+	readonly header: TocHeaderEntry;
 }
 
 export type MdReference = MdLinkReference | MdHeaderReference;
@@ -112,9 +94,13 @@ export class MdReferencesProvider extends Disposable {
 			return [];
 		}
 
-		const header = toc.entries.find(entry => entry.line === position.line);
+		const header = toc.entries.find(entry => rangeContains(entry.declarationLocation.range, position));
 		if (header) {
-			return this.#getReferencesToHeader(document, header, token);
+			if (header.kind === 'header') {
+				return this.#getReferencesToHeader(document, header, token);
+			} else {
+				return [];
+			}
 		} else {
 			return this.#getReferencesToLinkAtPosition(document, position, token);
 		}
@@ -131,7 +117,7 @@ export class MdReferencesProvider extends Disposable {
 		return Array.from(this.#findLinksToFile(resource, allLinksInWorkspace, undefined));
 	}
 
-	async #getReferencesToHeader(document: ITextDocument, header: TocEntry, token: lsp.CancellationToken): Promise<MdReference[]> {
+	async #getReferencesToHeader(document: ITextDocument, header: TocHeaderEntry, token: lsp.CancellationToken): Promise<MdReference[]> {
 		const links = await this.#getAllLinksInWorkspace();
 		if (token.isCancellationRequested) {
 			return [];
@@ -143,9 +129,8 @@ export class MdReferencesProvider extends Disposable {
 			kind: MdReferenceKind.Header,
 			isTriggerLocation: true,
 			isDefinition: true,
-			location: header.headerLocation,
-			headerText: header.text,
-			headerTextLocation: header.headerTextLocation
+			location: header.declarationLocation,
+			header,
 		});
 
 		for (const link of links) {
@@ -205,7 +190,7 @@ export class MdReferencesProvider extends Disposable {
 			const references: MdReference[] = [];
 
 			for (const link of allLinksInWorkspace) {
-				if (link.href.kind === HrefKind.External && isSameResource(link.href.uri,  sourceLink.href.uri)) {
+				if (link.href.kind === HrefKind.External && isSameResource(link.href.uri, sourceLink.href.uri)) {
 					const isTriggerLocation = sourceLink.source.resource.fsPath === link.source.resource.fsPath && areRangesEqual(sourceLink.source.hrefRange, link.source.hrefRange);
 					references.push({
 						kind: MdReferenceKind.Link,
@@ -229,14 +214,13 @@ export class MdReferencesProvider extends Disposable {
 		if (resolvedResource && this.#isMarkdownPath(resolvedResource) && sourceLink.href.fragment && sourceLink.source.hrefFragmentRange && rangeContains(sourceLink.source.hrefFragmentRange, triggerPosition)) {
 			const toc = await this.#tocProvider.get(resolvedResource);
 			const entry = toc?.lookupByFragment(sourceLink.href.fragment);
-			if (entry) {
+			if (entry && entry.kind === 'header') {
 				references.push({
 					kind: MdReferenceKind.Header,
 					isTriggerLocation: false,
 					isDefinition: true,
-					location: entry.headerLocation,
-					headerText: entry.text,
-					headerTextLocation: entry.headerTextLocation
+					location: entry.declarationLocation,
+					header: entry,
 				});
 			}
 

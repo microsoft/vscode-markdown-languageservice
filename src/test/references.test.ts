@@ -712,10 +712,10 @@ suite('References', () => {
 				];
 
 				// Trigger h1
-				assertReferencesEqual(await getReferences(store, doc, { line: 0, character: 10 }, workspace), ...firstHeaderLocations);
+				assertReferencesEqual(await getReferences(store, doc, { line: 0, character: 4 }, workspace), ...firstHeaderLocations);
 
 				// Trigger doc link to h1
-				assertReferencesEqual(await getReferences(store, doc, { line: 2, character: 10 }, workspace), ...firstHeaderLocations);
+				assertReferencesEqual(await getReferences(store, doc, { line: 2, character: 8 }, workspace), ...firstHeaderLocations);
 
 				// Trigger other link to h1
 				assertReferencesEqual(await getReferences(store, otherDoc, { line: 0, character: 12 }, workspace), ...firstHeaderLocations);
@@ -728,7 +728,7 @@ suite('References', () => {
 				];
 
 				// Trigger h2
-				assertReferencesEqual(await getReferences(store, doc, { line: 1, character: 10 }, workspace), ...secondHeaderLocations);
+				assertReferencesEqual(await getReferences(store, doc, { line: 1, character: 4 }, workspace), ...secondHeaderLocations);
 
 				// Trigger doc link to h2
 				assertReferencesEqual(await getReferences(store, doc, { line: 3, character: 10 }, workspace), ...secondHeaderLocations);

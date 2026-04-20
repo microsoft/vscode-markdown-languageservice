@@ -88,7 +88,7 @@ export class MdRenameProvider {
 		const triggerRef = allRefsInfo.triggerRef;
 		switch (triggerRef.kind) {
 			case MdReferenceKind.Header: {
-				return { range: triggerRef.headerTextLocation.range, placeholder: triggerRef.headerText };
+				return { range: triggerRef.header.idDeclarationLocation.range, placeholder: triggerRef.header.text };
 			}
 			case MdReferenceKind.Link: {
 				if (triggerRef.link.kind === MdLinkKind.Definition) {
@@ -108,7 +108,7 @@ export class MdRenameProvider {
 					const declaration = this.#findHeaderDeclaration(allRefsInfo.references);
 					return {
 						range: hrefFragmentRange,
-						placeholder: declaration ? declaration.headerText : document.getText(hrefFragmentRange),
+						placeholder: declaration ? declaration.header.text : document.getText(hrefFragmentRange),
 					};
 				}
 
@@ -207,7 +207,7 @@ export class MdRenameProvider {
 			// There are two cases of this to consider:
 			//
 			// - The new name duplicates an existing header. In this case, we need to use the unique slug of the new header
-			// but also potentially update links to the other duplicated headers. 
+			// but also potentially update links to the other duplicated headers.
 			//
 			// - The old header was duplicated. This may result in links to other instances of the duplicated headers changing
 			//
@@ -245,7 +245,7 @@ export class MdRenameProvider {
 						return;
 					}
 
-					if (oldEntry.headerLocation.range.start.line === existingHeader.location.range.start.line) {
+					if (oldEntry.declarationLocation.range.start.line === existingHeader.location.range.start.line) {
 						newSlug = newEntry.slug; // Take the new slug from the edited document
 						return;
 					}
@@ -256,7 +256,7 @@ export class MdRenameProvider {
 				});
 
 				for (const changedHeader of changedHeaders) {
-					const refs = await this.#getAllReferences(doc, changedHeader.headerLocation.range.start, token);
+					const refs = await this.#getAllReferences(doc, changedHeader.declarationLocation.range.start, token);
 					if (token.isCancellationRequested) {
 						return;
 					}
@@ -273,7 +273,7 @@ export class MdRenameProvider {
 		for (const ref of allRefsInfo.references) {
 			switch (ref.kind) {
 				case MdReferenceKind.Header:
-					builder.replace(URI.parse(ref.location.uri), ref.headerTextLocation.range, newHeaderText);
+					builder.replace(URI.parse(ref.location.uri), ref.header.idDeclarationLocation.range, newHeaderText);
 					break;
 
 				case MdReferenceKind.Link:

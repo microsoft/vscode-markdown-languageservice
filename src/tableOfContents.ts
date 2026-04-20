@@ -13,7 +13,11 @@ import { Disposable } from './util/dispose';
 import { IWorkspace } from './workspace';
 import { MdDocumentInfoCache } from './workspaceCache';
 
-export interface TocEntry {
+export type TocEntry = TocHeaderEntry;
+
+export interface TocHeaderEntry {
+	readonly kind: 'header';
+
 	readonly slug: ISlug;
 
 	/**
@@ -22,7 +26,34 @@ export interface TocEntry {
 	readonly text: string;
 
 	readonly level: number;
-	readonly line: number;
+
+	/**
+	 * The range of the header declaration.
+	 *
+	 * For the doc:
+	 *
+	 * ```md
+	 * # Head #
+	 * text
+	 * ```
+	 *
+	 * This is the range of `# Head #`
+	 */
+	readonly declarationLocation: lsp.Location;
+
+	/**
+	 * The range of the header text.
+	 *
+	 * For the doc:
+	 *
+	 * ```md
+	 * # Head #
+	 * text
+	 * ```
+	 *
+	 * This is the range of `Head`
+	 */
+	readonly idDeclarationLocation: lsp.Location;
 
 	/**
 	 * The entire range of the header section.
@@ -38,34 +69,6 @@ export interface TocEntry {
 	 * This is the range from `# Head #` to `# Next head #`
 	 */
 	readonly sectionLocation: lsp.Location;
-
-	/**
-	 * The range of the header declaration.
-	 *
-	 * For the doc:
-	 *
-	 * ```md
-	 * # Head #
-	 * text
-	 * ```
-	 *
-	 * This is the range of `# Head #`
-	 */
-	readonly headerLocation: lsp.Location;
-
-	/**
-	 * The range of the header text.
-	 *
-	 * For the doc:
-	 *
-	 * ```md
-	 * # Head #
-	 * text
-	 * ```
-	 *
-	 * This is the range of `Head`
-	 */
-	readonly headerTextLocation: lsp.Location;
 }
 
 export class TableOfContents {
@@ -146,22 +149,27 @@ export class TableOfContents {
 			};
 
 			toc.push({
+				kind: 'header',
 				slug,
 				text: bodyText.trim(),
 				level: TableOfContents.#getHeaderLevel(open.markup),
-				line: lineNumber,
 				sectionLocation: headerLocation, // Populated in next steps
-				headerLocation,
-				headerTextLocation
+				declarationLocation: headerLocation,
+				idDeclarationLocation: headerTextLocation
 			});
 		}
 
 		// Get full range of section
 		return toc.map((entry, startIndex): TocEntry => {
+			if (entry.kind !== 'header') {
+				return entry;
+			};
+
 			let end: number | undefined = undefined;
 			for (let i = startIndex + 1; i < toc.length; ++i) {
-				if (toc[i].level <= entry.level) {
-					end = toc[i].line - 1;
+				const targetToc = toc[i];
+				if (targetToc.kind === 'header' && targetToc.level <= entry.level) {
+					end = targetToc.declarationLocation.range.start.line - 1;
 					break;
 				}
 			}

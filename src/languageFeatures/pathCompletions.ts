@@ -10,7 +10,7 @@ import * as lsp from 'vscode-languageserver-protocol';
 import { URI, Utils } from 'vscode-uri';
 import { LsConfiguration, isExcludedPath } from '../config';
 import { IMdParser } from '../parser';
-import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOfContents';
+import { MdTableOfContentsProvider, TableOfContents, TocHeaderEntry } from '../tableOfContents';
 import { translatePosition } from '../types/position';
 import { ITextDocument, getDocUri, getLine } from '../types/textDocument';
 import { htmlTagPathAttrs } from '../util/html';
@@ -108,14 +108,14 @@ export enum IncludeWorkspaceHeaderCompletions {
 
 	/**
 	 * Return workspace header completions after `##` is typed.
-	 * 
-	 * This lets the user signal 
+	 *
+	 * This lets the user signal
 	 */
 	onDoubleHash = 'onDoubleHash',
 
 	/**
 	 * Return workspace header completions after either a single `#` is typed or after `##`
-	 * 
+	 *
 	 * For a single hash, this means the workspace header completions will be returned along side the current file header completions.
 	 */
 	onSingleOrDoubleHash = 'onSingleOrDoubleHash',
@@ -128,7 +128,7 @@ export interface PathCompletionOptions {
 	/**
 	 * Should header completions for other files in the workspace be returned when
 	 * you trigger completions.
-	 * 
+	 *
 	 * Defaults to {@link IncludeWorkspaceHeaderCompletions.never never} (not returned).
 	 */
 	readonly includeWorkspaceHeaderCompletions?: IncludeWorkspaceHeaderCompletions;
@@ -393,15 +393,17 @@ export class MdPathCompletionProvider {
 
 		const replacementRange = lsp.Range.create(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
 		for (const entry of toc.entries) {
-			const completionItem = this.#createHeaderCompletion(entry, insertionRange, replacementRange);
-			completionItem.labelDetails = {
+			if (entry.kind !== 'header') {
+				continue;
+			}
 
-			};
+			const completionItem = this.#createHeaderCompletion(entry, insertionRange, replacementRange);
+			completionItem.labelDetails = {};
 			yield completionItem;
 		}
 	}
 
-	#createHeaderCompletion(entry: TocEntry, insertionRange: lsp.Range, replacementRange: lsp.Range, filePath = ''): lsp.CompletionItem {
+	#createHeaderCompletion(entry: TocHeaderEntry, insertionRange: lsp.Range, replacementRange: lsp.Range, filePath = ''): lsp.CompletionItem {
 		const label = '#' + decodeURIComponent(entry.slug.value);
 		const newText = filePath + '#' + decodeURIComponent(entry.slug.value);
 		return {
@@ -416,7 +418,7 @@ export class MdPathCompletionProvider {
 		};
 	}
 
-	#ownHeaderEntryDetails(entry: TocEntry): string | undefined {
+	#ownHeaderEntryDetails(entry: TocHeaderEntry): string | undefined {
 		return l10n.t(`Link to '{0}'`, '#'.repeat(entry.level) + ' ' + entry.text);
 	}
 
@@ -441,6 +443,10 @@ export class MdPathCompletionProvider {
 			const normalizedPath = this.#normalizeFileNameCompletion(rawPath);
 			const path = this.#getPathInsertText(context, normalizedPath);
 			for (const entry of toc.entries) {
+				if (entry.kind !== 'header') {
+					continue;
+				}
+
 				const completionItem = this.#createHeaderCompletion(entry, insertionRange, replacementRange, path);
 				completionItem.filterText = '#' + completionItem.label;
 				completionItem.sortText = isHeaderInCurrentDocument ? sortTexts.localHeader : sortTexts.workspaceHeader;

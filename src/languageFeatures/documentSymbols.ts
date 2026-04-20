@@ -5,7 +5,7 @@
 
 import * as lsp from 'vscode-languageserver-protocol';
 import { ILogger, LogLevel } from '../logging';
-import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOfContents';
+import { MdTableOfContentsProvider, TableOfContents, TocEntry, TocHeaderEntry } from '../tableOfContents';
 import { MdLinkDefinition, MdLinkKind } from '../types/documentLink';
 import { isBefore } from '../types/position';
 import { ITextDocument } from '../types/textDocument';
@@ -91,14 +91,18 @@ export class MdDocumentSymbolProvider {
 	#buildTocSymbolTree(root: MarkdownSymbol, entries: readonly TocEntry[], additionalSymbols: lsp.DocumentSymbol[]): void {
 		let parent: MarkdownSymbol | undefined = root;
 		for (const entry of entries) {
+			if (entry.kind !== 'header') {
+				continue;
+			}
+
 			while (additionalSymbols.length && isBefore(additionalSymbols[0].range.end, entry.sectionLocation.range.start)) {
 				parent.children.push(additionalSymbols.shift()!);
 			}
-	
+
 			while (parent && entry.level <= parent.level) {
 				parent = parent.parent;
 			}
-			
+
 			if (!parent) {
 				// Should not happen
 				return;
@@ -107,12 +111,12 @@ export class MdDocumentSymbolProvider {
 			const symbol = this.#tocToDocumentSymbol(entry);
 			symbol.children = [];
 			parent.children.push(symbol);
-			
+
 			parent = { level: entry.level, children: symbol.children, parent, range: entry.sectionLocation.range };
 		}
 	}
 
-	#tocToDocumentSymbol(entry: TocEntry): lsp.DocumentSymbol {
+	#tocToDocumentSymbol(entry: TocHeaderEntry): lsp.DocumentSymbol {
 		return {
 			name: this.#getTocSymbolName(entry),
 			kind: lsp.SymbolKind.String,
@@ -121,7 +125,7 @@ export class MdDocumentSymbolProvider {
 		};
 	}
 
-	#getTocSymbolName(entry: TocEntry): string {
+	#getTocSymbolName(entry: TocHeaderEntry): string {
 		return '#'.repeat(entry.level) + ' ' + entry.text;
 	}
 }

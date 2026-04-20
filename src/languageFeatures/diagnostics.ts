@@ -9,7 +9,7 @@ import * as lsp from 'vscode-languageserver-protocol';
 import { URI } from 'vscode-uri';
 import { LsConfiguration } from '../config';
 import { ILogger, LogLevel } from '../logging';
-import { MdTableOfContentsProvider, TableOfContents } from '../tableOfContents';
+import { MdTableOfContentsProvider } from '../tableOfContents';
 import { HrefKind, InternalHref, LinkDefinitionSet, MdLink, MdLinkDefinition, MdLinkKind, MdLinkSource, ReferenceLinkMap } from '../types/documentLink';
 import { translatePosition } from '../types/position';
 import { modifyRange } from '../types/range';
@@ -228,7 +228,7 @@ export class DiagnosticComputer {
 				&& link.source.hrefText.startsWith('#')
 				&& isSameResource(link.href.path, getDocUri(doc))
 				&& link.href.fragment
-				&& !tocLookupByLink(toc, { source: link.source, fragment: link.href.fragment })
+				&& !toc.lookByLink({ isAngleBracketLink: link.source.isAngleBracketLink, fragment: link.href.fragment })
 			) {
 				// Don't validate line number links
 				if (parseLocationInfoFromFragment(link.href.fragment)) {
@@ -407,7 +407,7 @@ export class DiagnosticComputer {
 									continue;
 								}
 
-								if (!(toc && tocLookupByLink(toc, link)) && !this.#isIgnoredLink(options, link.source.hrefPathText) && !this.#isIgnoredLink(options, link.source.hrefText)) {
+								if (!(toc && toc.lookByLink({ isAngleBracketLink: link.source.isAngleBracketLink, fragment: link.fragment })) && !this.#isIgnoredLink(options, link.source.hrefPathText) && !this.#isIgnoredLink(options, link.source.hrefText)) {
 									const range = (link.source.hrefFragmentRange && modifyRange(link.source.hrefFragmentRange, translatePosition(link.source.hrefFragmentRange.start, { characterDelta: -1 }), undefined)) ?? link.source.hrefRange;
 									diagnostics.push({
 										code: DiagnosticCode.link_noSuchHeaderInFile,
@@ -667,6 +667,4 @@ export class DiagnosticsManager extends Disposable implements IPullDiagnosticsMa
 	}
 }
 
-function tocLookupByLink(toc: TableOfContents, link: { readonly source: MdLinkSource; readonly fragment: string; }) {
-	return link.source.isAngleBracketLink ? toc.lookupByHeading(link.fragment) : toc.lookupByFragment(link.fragment);
-}
+

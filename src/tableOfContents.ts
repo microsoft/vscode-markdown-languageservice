@@ -228,8 +228,11 @@ export class TableOfContents {
 		const slug = this.#slugifier.fromHeading(text);
 		return this.entries.find(entry => entry.slug.equals(slug));
 	}
-}
 
+	public lookByLink(link: { readonly isAngleBracketLink: boolean; readonly fragment: string; }): TocEntry | undefined {
+		return link.isAngleBracketLink ? this.lookupByHeading(link.fragment) : this.lookupByFragment(link.fragment);
+	}
+}
 
 export class MdTableOfContentsProvider extends Disposable {
 

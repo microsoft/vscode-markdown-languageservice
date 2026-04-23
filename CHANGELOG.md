@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0-alpha.12 — Unreleased
+## 0.5.0-alpha.12 — April 23, 2026
 - Improve support for line range links.
 - Added basic smart select for tables.
 - Fix resolving of angle bracket document links with spaces in fragment

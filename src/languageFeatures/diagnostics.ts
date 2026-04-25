@@ -217,7 +217,7 @@ export class DiagnosticComputer {
 			return [];
 		}
 
-		const toc = await this.#tocProvider.getForDocument(doc);
+		const toc = await this.#tocProvider.getForDocument(doc, { includeHtmlIds: true });
 		if (token.isCancellationRequested) {
 			return [];
 		}
@@ -396,7 +396,7 @@ export class DiagnosticComputer {
 						// Validate each of the links to headers in the file
 						const fragmentLinks = links.filter(x => x.fragment);
 						if (fragmentLinks.length) {
-							const toc = await this.#tocProvider.get(resolvedHrefPath);
+							const toc = await this.#tocProvider.get(resolvedHrefPath, { includeHtmlIds: true });
 							if (token.isCancellationRequested) {
 								return;
 							}

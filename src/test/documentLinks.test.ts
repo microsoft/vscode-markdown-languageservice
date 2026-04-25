@@ -991,4 +991,53 @@ suite('Link provider', () => {
 			assert.strictEqual(resolved1?.target, expectedFragmentTarget);
 		}
 	});
+
+	test('Should resolve link to HTML id anchor in same file', async () => {
+		const doc = new InMemoryDocument(testFile, joinLines(
+			`<div id="my-target"></div>`,
+			``,
+			`[link](#my-target)`,
+		));
+		const provider = createLinkProvider(new InMemoryWorkspace([doc]));
+		const links = await provider.provideDocumentLinks(doc, noopToken);
+		assert.strictEqual(links.length, 1);
+
+		const resolved = await provider.resolveDocumentLink(links[0], noopToken);
+		const expectedTarget = doc.$uri.with({ fragment: 'L1,10' }).toString(true);
+		assert.strictEqual(resolved?.target, expectedTarget);
+	});
+
+	test('Should resolve link to HTML id anchor in other file', async () => {
+		const targetDoc = new InMemoryDocument(workspacePath('other.md'), joinLines(
+			`<span id="my-target">content</span>`,
+		));
+		const activeDoc = new InMemoryDocument(testFile, joinLines(
+			`[link](other.md#my-target)`,
+		));
+		const provider = createLinkProvider(new InMemoryWorkspace([targetDoc, activeDoc]));
+		const links = await provider.provideDocumentLinks(activeDoc, noopToken);
+		assert.strictEqual(links.length, 1);
+
+		const resolved = await provider.resolveDocumentLink(links[0], noopToken);
+		const expectedTarget = targetDoc.$uri.with({ fragment: 'L1,11' }).toString(true);
+		assert.strictEqual(resolved?.target, expectedTarget);
+	});
+
+	test('Should resolve link to header over HTML id when both match', async () => {
+		const doc = new InMemoryDocument(testFile, joinLines(
+			`# My Header`,
+			``,
+			`<div id="my-header"></div>`,
+			``,
+			`[link](#my-header)`,
+		));
+		const provider = createLinkProvider(new InMemoryWorkspace([doc]));
+		const links = await provider.provideDocumentLinks(doc, noopToken);
+		assert.strictEqual(links.length, 1);
+
+		const resolved = await provider.resolveDocumentLink(links[0], noopToken);
+		// Should resolve to the header (line 1), not the HTML id (line 3)
+		const expectedTarget = doc.$uri.with({ fragment: 'L1,1' }).toString(true);
+		assert.strictEqual(resolved?.target, expectedTarget);
+	});
 });

@@ -4,16 +4,19 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as lsp from 'vscode-languageserver-protocol';
+import { HTMLElement, parse as parseHtml } from 'node-html-parser';
 import { URI } from 'vscode-uri';
 import { ILogger, LogLevel } from './logging';
 import { IMdParser, Token } from './parser';
 import { ISlug, ISlugifier } from './slugify';
 import { getDocUri, getLine, ITextDocument } from './types/textDocument';
 import { Disposable } from './util/dispose';
+import { NoLinkRanges } from './util/noLinkRanges';
+import { ResourceMap } from './util/resourceMap';
 import { IWorkspace } from './workspace';
 import { MdDocumentInfoCache } from './workspaceCache';
 
-export type TocEntry = TocHeaderEntry;
+export type TocEntry = TocHeaderEntry | TocHtmlIdEntry;
 
 export interface TocHeaderEntry {
 	readonly kind: 'header';
@@ -71,14 +74,53 @@ export interface TocHeaderEntry {
 	readonly sectionLocation: lsp.Location;
 }
 
+export interface TocHtmlIdEntry {
+	readonly kind: 'html-id';
+
+	readonly slug: ISlug;
+
+	/**
+	 * The raw id attribute value.
+	 */
+	readonly text: string;
+
+	/**
+	 * Location of the id attribute value in the document.
+	 */
+	readonly declarationLocation: lsp.Location;
+}
+
+export interface TocCreateOptions {
+	readonly includeHtmlIds?: boolean;
+}
+
 export class TableOfContents {
 
-	public static async create(parser: IMdParser, document: ITextDocument, token: lsp.CancellationToken): Promise<TableOfContents> {
-		const entries = await this.#buildToc(parser, document, token);
-		return new TableOfContents(entries, parser.slugifier);
+	public static async create(parser: IMdParser, document: ITextDocument, token: lsp.CancellationToken, options?: TocCreateOptions): Promise<TableOfContents> {
+		const tokens = await parser.tokenize(document);
+		if (token.isCancellationRequested) {
+			return new TableOfContents([], parser.slugifier);
+		}
+
+		const headerEntries = await this.#buildTocFromTokens(parser, document, tokens, token);
+		if (token.isCancellationRequested) {
+			return new TableOfContents([], parser.slugifier);
+		}
+
+		if (options?.includeHtmlIds) {
+			const htmlIdEntries = this.#getHtmlIdEntries(parser, document, tokens);
+
+			// Filter out html id entries that duplicate existing header slugs
+			const headerSlugs = new Set(headerEntries.map(e => e.slug.value));
+			const uniqueHtmlIds = htmlIdEntries.filter(e => !headerSlugs.has(e.slug.value));
+
+			return new TableOfContents([...headerEntries, ...uniqueHtmlIds], parser.slugifier);
+		}
+
+		return new TableOfContents(headerEntries, parser.slugifier);
 	}
 
-	public static async createForContainingDoc(parser: IMdParser, workspace: IWorkspace, document: ITextDocument, token: lsp.CancellationToken): Promise<TableOfContents> {
+	public static async createForContainingDoc(parser: IMdParser, workspace: IWorkspace, document: ITextDocument, token: lsp.CancellationToken, options?: TocCreateOptions): Promise<TableOfContents> {
 		const context = workspace.getContainingDocument?.(getDocUri(document));
 		if (context) {
 			const entries = (await Promise.all(Array.from(context.children, async cell => {
@@ -86,23 +128,36 @@ export class TableOfContents {
 				if (!doc || token.isCancellationRequested) {
 					return [];
 				}
-				return this.#buildToc(parser, doc, token);
+				return this.#buildToc(parser, doc, token, options);
 			}))).flat();
 			return new TableOfContents(entries, parser.slugifier);
 		}
 
-		return this.create(parser, document, token);
+		return this.create(parser, document, token, options);
 	}
 
-	static async #buildToc(parser: IMdParser, document: ITextDocument, token: lsp.CancellationToken): Promise<TocEntry[]> {
-		const docUri = getDocUri(document);
-
-		const toc: TocEntry[] = [];
+	static async #buildToc(parser: IMdParser, document: ITextDocument, token: lsp.CancellationToken, options?: TocCreateOptions): Promise<TocEntry[]> {
 		const tokens = await parser.tokenize(document);
 		if (token.isCancellationRequested) {
 			return [];
 		}
 
+		const headerEntries = await this.#buildTocFromTokens(parser, document, tokens, token);
+
+		if (options?.includeHtmlIds) {
+			const htmlIdEntries = this.#getHtmlIdEntries(parser, document, tokens);
+			const headerSlugs = new Set(headerEntries.map(e => e.slug.value));
+			const uniqueHtmlIds = htmlIdEntries.filter(e => !headerSlugs.has(e.slug.value));
+			return [...headerEntries, ...uniqueHtmlIds];
+		}
+
+		return headerEntries;
+	}
+
+	static async #buildTocFromTokens(parser: IMdParser, document: ITextDocument, tokens: readonly Token[], _token: lsp.CancellationToken): Promise<TocEntry[]> {
+		const docUri = getDocUri(document);
+
+		const toc: TocHeaderEntry[] = [];
 		const slugBuilder = parser.slugifier.createBuilder();
 
 		type HeaderInfo = { open: Token; body: Token[] };
@@ -218,6 +273,68 @@ export class TableOfContents {
 			.trim();
 	}
 
+	static readonly #htmlIdAttrPattern = /\bid\s*=\s*["']/i;
+
+	static #getHtmlIdEntries(parser: IMdParser, document: ITextDocument, tokens: readonly Token[]): TocHtmlIdEntry[] {
+		const text = document.getText();
+		if (!/<\w/.test(text)) {
+			return [];
+		}
+
+		let tree: ReturnType<typeof parseHtml>;
+		try {
+			tree = parseHtml(text);
+		} catch {
+			return [];
+		}
+
+		const docUri = getDocUri(document);
+		const noLinkRanges = NoLinkRanges.compute(tokens, document);
+
+		const entries: TocHtmlIdEntry[] = [];
+		const existingSlugs = new Set<string>();
+
+		this.#collectHtmlIdEntries(tree, document, parser, docUri, noLinkRanges, existingSlugs, entries);
+
+		return entries;
+	}
+
+	static #collectHtmlIdEntries(node: HTMLElement, document: ITextDocument, parser: IMdParser, docUri: URI, noLinkRanges: NoLinkRanges, existingSlugs: Set<string>, entries: TocHtmlIdEntry[]): void {
+		const idValue = node.attributes?.['id'];
+		if (idValue) {
+			const attrMatch = node.outerHTML.match(this.#htmlIdAttrPattern);
+			if (attrMatch) {
+				const offset = node.range[0] + attrMatch.index! + attrMatch[0].length;
+				const position = document.positionAt(offset);
+
+				// Exclude code blocks and inline code, but allow html_block since ids inside HTML are valid
+				if (!noLinkRanges.contains(position, 'html_block')) {
+					const slug = parser.slugifier.fromFragment(idValue);
+					if (!existingSlugs.has(slug.value)) {
+						existingSlugs.add(slug.value);
+
+						const endPosition = document.positionAt(offset + idValue.length);
+						entries.push({
+							kind: 'html-id',
+							slug,
+							text: idValue,
+							declarationLocation: {
+								uri: docUri.toString(),
+								range: lsp.Range.create(position, endPosition),
+							},
+						});
+					}
+				}
+			}
+		}
+
+		for (const child of node.childNodes) {
+			if (child instanceof HTMLElement) {
+				this.#collectHtmlIdEntries(child, document, parser, docUri, noLinkRanges, existingSlugs, entries);
+			}
+		}
+	}
+
 	readonly #slugifier: ISlugifier;
 
 	private constructor(
@@ -245,6 +362,7 @@ export class TableOfContents {
 export class MdTableOfContentsProvider extends Disposable {
 
 	readonly #cache: MdDocumentInfoCache<TableOfContents>;
+	readonly #htmlIdResources = new ResourceMap<true>();
 
 	readonly #parser: IMdParser;
 	readonly #workspace: IWorkspace;
@@ -262,20 +380,30 @@ export class MdTableOfContentsProvider extends Disposable {
 		this.#logger = logger;
 
 		this.#cache = this._register(new MdDocumentInfoCache<TableOfContents>(workspace, (doc, token) => {
-			this.#logger.log(LogLevel.Debug, 'TableOfContentsProvider.create', { document: doc.uri, version: doc.version });
-			return TableOfContents.create(parser, doc, token);
+			const includeHtmlIds = this.#htmlIdResources.has(getDocUri(doc));
+			this.#logger.log(LogLevel.Debug, 'TableOfContentsProvider.create', { document: doc.uri, version: doc.version, includeHtmlIds });
+			return TableOfContents.create(parser, doc, token, { includeHtmlIds });
 		}));
 	}
 
-	public get(resource: URI): Promise<TableOfContents | undefined> {
+	public get(resource: URI, options?: TocCreateOptions): Promise<TableOfContents | undefined> {
+		if (options?.includeHtmlIds && !this.#htmlIdResources.has(resource)) {
+			this.#htmlIdResources.set(resource, true);
+			this.#cache.invalidate(resource);
+		}
 		return this.#cache.get(resource);
 	}
 
-	public getForDocument(doc: ITextDocument): Promise<TableOfContents> {
+	public getForDocument(doc: ITextDocument, options?: TocCreateOptions): Promise<TableOfContents> {
+		const uri = getDocUri(doc);
+		if (options?.includeHtmlIds && !this.#htmlIdResources.has(uri)) {
+			this.#htmlIdResources.set(uri, true);
+			this.#cache.invalidate(uri);
+		}
 		return this.#cache.getForDocument(doc);
 	}
 
-	public getForContainingDoc(doc: ITextDocument, token: lsp.CancellationToken): Promise<TableOfContents> {
-		return TableOfContents.createForContainingDoc(this.#parser, this.#workspace, doc, token);
+	public getForContainingDoc(doc: ITextDocument, token: lsp.CancellationToken, options?: TocCreateOptions): Promise<TableOfContents> {
+		return TableOfContents.createForContainingDoc(this.#parser, this.#workspace, doc, token, options);
 	}
 }

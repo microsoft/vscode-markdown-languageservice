@@ -9,8 +9,7 @@ import type { CancellationToken, CompletionContext } from 'vscode-languageserver
 import * as lsp from 'vscode-languageserver-protocol';
 import { URI, Utils } from 'vscode-uri';
 import { LsConfiguration, isExcludedPath } from '../config';
-import { IMdParser } from '../parser';
-import { MdTableOfContentsProvider, TableOfContents, TocHeaderEntry } from '../tableOfContents';
+import { MdTableOfContentsProvider, TableOfContents, TocEntry, TocHeaderEntry, TocHtmlIdEntry } from '../tableOfContents';
 import { translatePosition } from '../types/position';
 import { ITextDocument, getDocUri, getLine } from '../types/textDocument';
 import { htmlTagPathAttrs } from '../util/html';
@@ -87,6 +86,11 @@ interface PathCompletionContext {
 	 * Indicates that the completion does not require encoding.
 	 */
 	readonly isAngleBracketPath?: boolean;
+
+	/**
+	 * Indicates that the link is an image link: `![alt](...)`
+	 */
+	readonly isImageLink?: boolean;
 }
 
 function tryDecodeUriComponent(str: string): string {
@@ -146,27 +150,27 @@ export class MdPathCompletionProvider {
 
 	readonly #configuration: LsConfiguration;
 	readonly #workspace: IWorkspace;
-	readonly #parser: IMdParser;
 	readonly #linkProvider: MdLinkProvider;
+	readonly #tocProvider: MdTableOfContentsProvider;
 
 	readonly #workspaceTocCache: MdWorkspaceInfoCache<TableOfContents>;
 
 	constructor(
 		configuration: LsConfiguration,
 		workspace: IWorkspace,
-		parser: IMdParser,
 		linkProvider: MdLinkProvider,
 		tocProvider: MdTableOfContentsProvider,
 	) {
 		this.#configuration = configuration;
 		this.#workspace = workspace;
-		this.#parser = parser;
 		this.#linkProvider = linkProvider;
+		this.#tocProvider = tocProvider;
 
 		this.#workspaceTocCache = new MdWorkspaceInfoCache(workspace, (doc) => tocProvider.getForDocument(doc));
 	}
 
 	public async provideCompletionItems(document: ITextDocument, position: lsp.Position, context: CompletionContext & PathCompletionOptions, token: CancellationToken): Promise<lsp.CompletionItem[]> {
+		console.log('provideCompletionItems', { document, position, context });
 		const pathContext = this.#getPathCompletionContext(document, position);
 		if (!pathContext) {
 			return [];
@@ -188,43 +192,50 @@ export class MdPathCompletionProvider {
 			case CompletionContextKind.LinkDefinition:
 			case CompletionContextKind.Link:
 			case CompletionContextKind.HtmlAttribute: {
-				if (
-					(context.linkPrefix.startsWith('#') && options.includeWorkspaceHeaderCompletions === IncludeWorkspaceHeaderCompletions.onSingleOrDoubleHash) ||
-					(context.linkPrefix.startsWith('##') && (options.includeWorkspaceHeaderCompletions === IncludeWorkspaceHeaderCompletions.onDoubleHash || options.includeWorkspaceHeaderCompletions === IncludeWorkspaceHeaderCompletions.onSingleOrDoubleHash))
-				) {
-					const insertRange = lsp.Range.create(context.linkTextStartPosition, position);
-					yield* this.#provideWorkspaceHeaderSuggestions(document, position, context, insertRange, token);
-					return;
-				}
+				if (!context.isImageLink) {
+					if (
+						(context.linkPrefix.startsWith('#') && options.includeWorkspaceHeaderCompletions === IncludeWorkspaceHeaderCompletions.onSingleOrDoubleHash) ||
+						(context.linkPrefix.startsWith('##') && (options.includeWorkspaceHeaderCompletions === IncludeWorkspaceHeaderCompletions.onDoubleHash || options.includeWorkspaceHeaderCompletions === IncludeWorkspaceHeaderCompletions.onSingleOrDoubleHash))
+					) {
+						const insertRange = lsp.Range.create(context.linkTextStartPosition, position);
+						yield* this.#provideWorkspaceHeaderSuggestions(document, position, context, insertRange, token);
+						return;
+					}
 
-				const isAnchorInCurrentDoc = context.anchorInfo && context.anchorInfo.beforeAnchor.length === 0;
+					const isAnchorInCurrentDoc = context.anchorInfo && context.anchorInfo.beforeAnchor.length === 0;
 
-				// Add anchor #links in current doc
-				if (context.linkPrefix.length === 0 || isAnchorInCurrentDoc) {
-					const insertRange = lsp.Range.create(context.linkTextStartPosition, position);
-					yield* this.#provideHeaderSuggestions(document, position, context, insertRange, token);
-				}
+					// Add anchor #links in current doc
+					if (context.linkPrefix.length === 0 || isAnchorInCurrentDoc) {
+						const insertRange = lsp.Range.create(context.linkTextStartPosition, position);
+						yield* this.#provideHeaderSuggestions(document, position, context, insertRange, token, true);
+					}
 
-				if (token.isCancellationRequested) {
-					return;
-				}
+					if (token.isCancellationRequested) {
+						return;
+					}
 
-				if (!isAnchorInCurrentDoc) {
-					if (context.anchorInfo) { // Anchor to a different document
-						const rawUri = this.#resolveReference(document, context.anchorInfo.beforeAnchor);
-						if (rawUri) {
-							const otherDoc = await openLinkToMarkdownFile(this.#configuration, this.#workspace, rawUri);
-							if (token.isCancellationRequested) {
-								return;
+					if (!isAnchorInCurrentDoc) {
+						if (context.anchorInfo) { // Anchor to a different document
+							const rawUri = this.#resolveReference(document, context.anchorInfo.beforeAnchor);
+							if (rawUri) {
+								const otherDoc = await openLinkToMarkdownFile(this.#configuration, this.#workspace, rawUri);
+								if (token.isCancellationRequested) {
+									return;
+								}
+
+								if (otherDoc) {
+									const anchorStartPosition = translatePosition(position, { characterDelta: -(context.anchorInfo.anchorPrefix.length + 1) });
+									const range = lsp.Range.create(anchorStartPosition, position);
+									yield* this.#provideHeaderSuggestions(otherDoc, position, context, range, token, false);
+								}
 							}
-
-							if (otherDoc) {
-								const anchorStartPosition = translatePosition(position, { characterDelta: -(context.anchorInfo.anchorPrefix.length + 1) });
-								const range = lsp.Range.create(anchorStartPosition, position);
-								yield* this.#provideHeaderSuggestions(otherDoc, position, context, range, token);
-							}
+						} else { // Normal path suggestions
+							yield* this.#providePathSuggestions(document, position, context, token);
 						}
-					} else { // Normal path suggestions
+					}
+				} else {
+					// Image links only get path suggestions, not header/anchor completions
+					if (!context.anchorInfo && !context.linkPrefix.startsWith('#')) {
 						yield* this.#providePathSuggestions(document, position, context, token);
 					}
 				}
@@ -290,8 +301,9 @@ export class MdPathCompletionProvider {
 				return undefined;
 			}
 
+			const isImageLink = linePrefixText.charAt(linkPrefixMatch.index! - 1) === '!';
 			const suffix = lineSuffixText.match(/^[^\)\s][^\)\s\>]*/);
-			return this.#createCompletionContext(CompletionContextKind.Link, position, prefix, suffix?.[0] ?? '', isAngleBracketLink);
+			return this.#createCompletionContext(CompletionContextKind.Link, position, prefix, suffix?.[0] ?? '', isAngleBracketLink, isImageLink);
 		}
 
 		const definitionLinkPrefixMatch = linePrefixText.match(this.#definitionPattern);
@@ -333,7 +345,7 @@ export class MdPathCompletionProvider {
 		return undefined;
 	}
 
-	#createCompletionContext(kind: CompletionContextKind, position: lsp.Position, prefix: string, suffix: string, isAngleBracketPath: boolean): PathCompletionContext | undefined {
+	#createCompletionContext(kind: CompletionContextKind, position: lsp.Position, prefix: string, suffix: string, isAngleBracketPath: boolean, isImageLink?: boolean): PathCompletionContext | undefined {
 		return {
 			kind,
 			linkPrefix: prefix,
@@ -341,6 +353,7 @@ export class MdPathCompletionProvider {
 			linkSuffix: suffix,
 			anchorInfo: this.#getAnchorContext(prefix),
 			isAngleBracketPath,
+			isImageLink,
 		};
 	}
 
@@ -385,31 +398,35 @@ export class MdPathCompletionProvider {
 		}
 	}
 
-	async *#provideHeaderSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, insertionRange: lsp.Range, token: CancellationToken): AsyncIterable<lsp.CompletionItem> {
-		const toc = await TableOfContents.createForContainingDoc(this.#parser, this.#workspace, document, token);
+	async *#provideHeaderSuggestions(document: ITextDocument, position: lsp.Position, context: PathCompletionContext, insertionRange: lsp.Range, token: CancellationToken, isCurrentDoc: boolean): AsyncIterable<lsp.CompletionItem> {
+		const toc = await this.#tocProvider.getForContainingDoc(document, token, isCurrentDoc ? { includeHtmlIds: true } : undefined);
 		if (token.isCancellationRequested) {
 			return;
 		}
 
 		const replacementRange = lsp.Range.create(insertionRange.start, translatePosition(position, { characterDelta: context.linkSuffix.length }));
 		for (const entry of toc.entries) {
-			if (entry.kind !== 'header') {
-				continue;
-			}
-
-			const completionItem = this.#createHeaderCompletion(entry, insertionRange, replacementRange);
+			const completionItem = this.#createTocCompletion(entry, insertionRange, replacementRange, undefined);
 			completionItem.labelDetails = {};
 			yield completionItem;
 		}
 	}
 
-	#createHeaderCompletion(entry: TocHeaderEntry, insertionRange: lsp.Range, replacementRange: lsp.Range, filePath = ''): lsp.CompletionItem {
+	#createTocCompletion(entry: TocEntry, insertionRange: lsp.Range, replacementRange: lsp.Range, filePathOnSystem: string | undefined): lsp.CompletionItem {
+		if (entry.kind === 'html-id') {
+			return this.#createHtmlIdCompletion(entry, insertionRange, replacementRange, filePathOnSystem);
+		} else {
+			return this.#createHeaderCompletion(entry, insertionRange, replacementRange, filePathOnSystem);
+		}
+	}
+
+	#createHeaderCompletion(entry: TocHeaderEntry, insertionRange: lsp.Range, replacementRange: lsp.Range, filePathOnSystem: string | undefined): lsp.CompletionItem {
 		const label = '#' + decodeURIComponent(entry.slug.value);
-		const newText = filePath + '#' + decodeURIComponent(entry.slug.value);
+		const newText = (filePathOnSystem ?? '') + '#' + decodeURIComponent(entry.slug.value);
 		return {
 			kind: lsp.CompletionItemKind.Reference,
 			label,
-			detail: this.#ownHeaderEntryDetails(entry),
+			detail: l10n.t(`Link to '{0}'`, '#'.repeat(entry.level) + ' ' + entry.text),
 			textEdit: {
 				newText,
 				insert: insertionRange,
@@ -418,8 +435,19 @@ export class MdPathCompletionProvider {
 		};
 	}
 
-	#ownHeaderEntryDetails(entry: TocHeaderEntry): string | undefined {
-		return l10n.t(`Link to '{0}'`, '#'.repeat(entry.level) + ' ' + entry.text);
+	#createHtmlIdCompletion(entry: TocHtmlIdEntry, insertionRange: lsp.Range, replacementRange: lsp.Range, filePathOnSystem: string | undefined): lsp.CompletionItem {
+		const label = '#' + decodeURIComponent(entry.slug.value);
+		const newText = (filePathOnSystem ?? '') + '#' + decodeURIComponent(entry.slug.value);
+		return {
+			kind: lsp.CompletionItemKind.Value,
+			label,
+			detail: l10n.t(`Link to HTML id '{0}'`, entry.text),
+			textEdit: {
+				newText,
+				insert: insertionRange,
+				replace: replacementRange,
+			},
+		};
 	}
 
 	/**
@@ -440,20 +468,19 @@ export class MdPathCompletionProvider {
 				continue;
 			}
 
+			// For the current document, use the TOC that includes HTML id entries
+			const effectiveToc = isHeaderInCurrentDocument
+				? await this.#tocProvider.getForDocument(document, { includeHtmlIds: true })
+				: toc;
+
 			const normalizedPath = this.#normalizeFileNameCompletion(rawPath);
 			const path = this.#getPathInsertText(context, normalizedPath);
-			for (const entry of toc.entries) {
-				if (entry.kind !== 'header') {
-					continue;
-				}
-
-				const completionItem = this.#createHeaderCompletion(entry, insertionRange, replacementRange, path);
+			for (const entry of effectiveToc.entries) {
+				const completionItem = this.#createTocCompletion(entry, insertionRange, replacementRange, path);
 				completionItem.filterText = '#' + completionItem.label;
 				completionItem.sortText = isHeaderInCurrentDocument ? sortTexts.localHeader : sortTexts.workspaceHeader;
 
-				if (isHeaderInCurrentDocument) {
-					completionItem.detail = this.#ownHeaderEntryDetails(entry);
-				} else if (path) {
+				if (!isHeaderInCurrentDocument && path) {
 					completionItem.detail = l10n.t(`Link to '# {0}' in '{1}'`, entry.text, path);
 					completionItem.labelDetails = { description: path };
 				}

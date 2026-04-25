@@ -817,6 +817,30 @@ suite('Path completions', () => {
 				{ label: '#header', insertText: 'a%25b.md#header' },
 			]);
 		}));
+
+		test('Should include html id completions for current doc in workspace header mode', withStore(async (store) => {
+			const doc = new InMemoryDocument(workspacePath('new.md'), joinLines(
+				`# My Header`,
+				``,
+				`<div id="html-target"></div>`,
+				``,
+				`[](##${CURSOR}`,
+			));
+			const workspace = store.add(new InMemoryWorkspace([
+				doc,
+				new InMemoryDocument(workspacePath('other.md'), joinLines(
+					'# Other Header',
+				)),
+			]));
+
+			const completions = await getCompletionsAtCursor(store, doc, workspace, undefined, { includeWorkspaceHeaderCompletions: IncludeWorkspaceHeaderCompletions.onDoubleHash });
+
+			assertCompletionsEqual(completions, [
+				{ label: '#my-header' },
+				{ label: '#html-target' },
+				{ label: '#other-header', insertText: 'other.md#other-header' },
+			]);
+		}));
 	});
 
 	suite('Html attribute path completions', () => {
@@ -908,6 +932,177 @@ suite('Path completions', () => {
 				{ label: `double qu"ot"e.md`, insertText: 'double qu&quot;ot&quot;e.md' },
 				{ label: `single qu'ot'e.md`, insertText: 'single qu&apos;ot&apos;e.md' },
 			]);
+		}));
+	});
+
+	suite('HTML id anchor completions', () => {
+
+		test('Should return completions for html id attributes in current doc', withStore(async (store) => {
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`[](#${CURSOR}`,
+				``,
+				`# A b C`,
+				``,
+				`<div id="my-section"></div>`,
+			));
+
+			assertCompletionsEqual(completions, [
+				{ label: '#a-b-c' },
+				{ label: '#my-section' },
+			]);
+		}));
+
+		test('Should return completions for html id with single quotes', withStore(async (store) => {
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`[](#${CURSOR}`,
+				``,
+				`<span id='custom-id'></span>`,
+			));
+
+			assertCompletionsEqual(completions, [
+				{ label: '#custom-id' },
+			]);
+		}));
+
+		test('Should not return html id completions from inside code blocks', withStore(async (store) => {
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`[](#${CURSOR}`,
+				``,
+				'```html',
+				`<div id="code-id"></div>`,
+				'```',
+			));
+
+			assertCompletionsEqual(completions, []);
+		}));
+
+		test('Should not return html id completions from inside inline code', withStore(async (store) => {
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`[](#${CURSOR}`,
+				``,
+				'`<div id="inline-id"></div>`',
+			));
+
+			assertCompletionsEqual(completions, []);
+		}));
+
+		test('Should return html id alongside headers', withStore(async (store) => {
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`[](#${CURSOR}`,
+				``,
+				`# Header One`,
+				``,
+				`<div id="html-anchor"></div>`,
+				``,
+				`# Header Two`,
+			));
+
+			assertCompletionsEqual(completions, [
+				{ label: '#header-one' },
+				{ label: '#header-two' },
+				{ label: '#html-anchor' },
+			]);
+		}));
+
+		test('Should not duplicate html id that matches a header slug', withStore(async (store) => {
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`[](#${CURSOR}`,
+				``,
+				`# My Header`,
+				``,
+				`<div id="my-header"></div>`,
+			));
+
+			assertCompletionsEqual(completions, [
+				{ label: '#my-header' },
+			]);
+		}));
+
+		test('Should return html ids from various tag types', withStore(async (store) => {
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`[](#${CURSOR}`,
+				``,
+				`<section id="sec-1"></section>`,
+				`<a id="anchor-1"></a>`,
+			));
+
+			assertCompletionsEqual(completions, [
+				{ label: '#anchor-1' },
+				{ label: '#sec-1' },
+			]);
+		}));
+
+		test('Should not return html id completions for links to other files', withStore(async (store) => {
+			const workspace = store.add(new InMemoryWorkspace([
+				new InMemoryDocument(workspacePath('other.md'), joinLines(
+					`# Other Header`,
+					`<div id="other-id"></div>`,
+				)),
+			]));
+
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`[](/other.md#${CURSOR}`,
+			), workspace);
+
+			// Should only have the header, not the html id (other file uses standard TOC)
+			assertCompletionsEqual(completions, [
+				{ label: '#other-header' },
+			]);
+		}));
+	});
+
+	suite('Image link completions', () => {
+
+		test('Should not return header suggestions for image link with anchor', withStore(async (store) => {
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`![img](#${CURSOR}`,
+				``,
+				`# Some Header`,
+			));
+
+			assertCompletionsEqual(completions, []);
+		}));
+
+		test('Should not return header suggestions for image link to other file anchor', withStore(async (store) => {
+			const workspace = store.add(new InMemoryWorkspace([
+				new InMemoryDocument(workspacePath('other.md'), joinLines(
+					`# Other Header`,
+				)),
+			]));
+
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`![img](other.md#${CURSOR}`,
+			), workspace);
+
+			assertCompletionsEqual(completions, []);
+		}));
+
+		test('Should not return workspace header suggestions for image link', withStore(async (store) => {
+			const workspace = store.add(new InMemoryWorkspace([
+				new InMemoryDocument(workspacePath('other.md'), joinLines(
+					`# Other Header`,
+				)),
+			]));
+
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`![img](##${CURSOR}`,
+			), workspace, undefined, { includeWorkspaceHeaderCompletions: IncludeWorkspaceHeaderCompletions.onDoubleHash });
+
+			assertCompletionsEqual(completions, []);
+		}));
+
+		test('Should return path suggestions for image link', withStore(async (store) => {
+			const workspace = store.add(new InMemoryWorkspace([
+				new InMemoryDocument(workspacePath('img.png'), ''),
+				new InMemoryDocument(workspacePath('other.md'), ''),
+			]));
+
+			const completions = await getCompletionsAtCursorForFileContents(store, workspacePath('new.md'), joinLines(
+				`![img](./${CURSOR}`,
+			), workspace);
+
+			assert.ok(completions.length > 0, 'Should return path completions for image links');
+			assert.ok(completions.some(c => c.label === 'img.png'), 'Should include image files');
 		}));
 	});
 });

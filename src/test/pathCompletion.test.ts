@@ -25,7 +25,7 @@ async function getCompletionsAtCursor(store: DisposableStore, doc: InMemoryDocum
 	const engine = createNewMarkdownEngine();
 	const tocProvider = store.add(new MdTableOfContentsProvider(engine, workspace, nulLogger));
 	const linkProvider = store.add(new MdLinkProvider(config, engine, workspace, tocProvider, nulLogger));
-	const provider = new MdPathCompletionProvider(config, workspace, engine, linkProvider, tocProvider);
+	const provider = new MdPathCompletionProvider(config, workspace, linkProvider, tocProvider);
 	const cursorPositions = getCursorPositions(doc.getText(), doc);
 
 	const completions = await provider.provideCompletionItems(doc, cursorPositions[0], {

@@ -693,3 +693,90 @@ suite('Diagnostic Manager', () => {
 		assert.strictEqual(workspace.statCallList.length, 0);
 	}));
 });
+
+suite('Diagnostic Computer — HTML id anchors', () => {
+
+	test('Should not generate diagnostic for link to HTML id in own file', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`<div id="my-target"></div>`,
+			``,
+			`[link](#my-target)`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		assertDiagnosticsEqual(diagnostics, []);
+	}));
+
+	test('Should still generate diagnostic for link to non-existent fragment even with HTML ids present', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`<div id="my-target"></div>`,
+			``,
+			`[good](#my-target)`,
+			`[bad](#no-such-target)`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		assertDiagnosticsEqual(diagnostics, [
+			lsp.Range.create(3, 6, 3, 21),
+		]);
+	}));
+
+	test('Should not generate diagnostic for link to HTML id in code block', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`~~~`,
+			`<div id="my-target"></div>`,
+			`~~~`,
+			`[bad](#my-target)`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		assertDiagnosticsEqual(diagnostics, [
+			lsp.Range.create(3, 6, 3, 16),
+		]);
+	}));
+
+	test('Should not generate diagnostic for link to HTML id in other file', withStore(async (store) => {
+		const doc1 = new InMemoryDocument(workspacePath('doc1.md'), joinLines(
+			`[good](doc2.md#my-target)`,
+			`[bad](doc2.md#no-such-target)`,
+		));
+		const doc2 = new InMemoryDocument(workspacePath('doc2.md'), joinLines(
+			`<span id="my-target">content</span>`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc1, doc2]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc1, workspace, { validateMarkdownFileLinkFragments: DiagnosticLevel.warning });
+		assertDiagnosticsEqual(diagnostics, [
+			lsp.Range.create(1, 13, 1, 28),
+		]);
+	}));
+
+	test('Should not generate diagnostic for link to header that also has an HTML id', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`# My Header`,
+			``,
+			`<div id="my-header"></div>`,
+			``,
+			`[good](#my-header)`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		assertDiagnosticsEqual(diagnostics, []);
+	}));
+
+	test('Should not generate diagnostic for link to HTML id with single quotes', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`<div id='my-target'></div>`,
+			``,
+			`[link](#my-target)`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		assertDiagnosticsEqual(diagnostics, []);
+	}));
+});

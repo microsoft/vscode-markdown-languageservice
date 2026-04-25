@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0-alpha.13 — Unreleased
+- Fixed image completions returning header suggestions.
+- Added support for using html ids for path completions and validation.
+
 ## 0.5.0-alpha.12 — April 23, 2026
 - Improve support for line range links.
 - Added basic smart select for tables.

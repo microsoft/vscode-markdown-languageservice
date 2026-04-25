@@ -85,11 +85,16 @@ export class MdDocumentInfoCache<T> extends Disposable {
 	}
 
 	#resetEntry(document: ITextDocument): Lazy<Promise<T>> {
-		// TODO: cancel old request?
+		const uri = getDocUri(document);
+		const existing = this.#cache.get(uri);
+		if (existing) {
+			existing.cts.cancel();
+			existing.cts.dispose();
+		}
 
 		const cts = new CancellationTokenSource();
 		const value = lazy(() => this.#getValue(document, cts.token));
-		this.#cache.set(getDocUri(document), { value, cts });
+		this.#cache.set(uri, { value, cts });
 		return value;
 	}
 
@@ -100,6 +105,14 @@ export class MdDocumentInfoCache<T> extends Disposable {
 	}
 
 	#onDidDeleteDocument(resource: URI) {
+		this.#evict(resource);
+	}
+
+	public invalidate(resource: URI): void {
+		this.#evict(resource);
+	}
+
+	#evict(resource: URI): void {
 		const entry = this.#cache.get(resource);
 		if (entry) {
 			entry.cts.cancel();

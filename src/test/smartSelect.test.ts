@@ -76,6 +76,7 @@ suite('Smart select', () => {
 		));
 
 		assertNestedLineNumbersEqual(ranges![0],
+			[4, 4], // cell content
 			[4, 4], // cell
 			[4, 4], // row
 			[4, 5], // table body
@@ -760,6 +761,7 @@ suite('Smart select', () => {
 		));
 		// Cell "| 2$$CURSOR$$ " is at chars 4-19, row is full line (0-23), table body same as row, then full table
 		assertNestedRangesEqual(ranges![0],
+			[2, 5, 2, 18], // cell content (between pipes)
 			[2, 4, 2, 19], // cell containing "2" with cursor marker
 			[2, 0, 2, 23], // entire row
 			[0, 0, 2, 23], // entire table
@@ -774,6 +776,7 @@ suite('Smart select', () => {
 		));
 		// Cell "| $$CURSOR$$1 " is at chars 0-15, row at 0-23, table at 0-13 on lines 0-2
 		assertNestedRangesEqual(ranges![0],
+			[2, 1, 2, 14], // cell content (between pipes)
 			[2, 0, 2, 15], // first cell with cursor marker
 			[2, 0, 2, 23], // entire row
 			[0, 0, 2, 23], // entire table
@@ -788,6 +791,7 @@ suite('Smart select', () => {
 		));
 		// Cell "| 3$$CURSOR$$ |" is at chars 8-23, row is 0-23, then table
 		assertNestedRangesEqual(ranges![0],
+			[2, 9, 2, 22], // cell content (between pipes)
 			[2, 8, 2, 23], // last cell with cursor marker
 			[2, 0, 2, 23], // entire row
 			[0, 0, 2, 23], // entire table
@@ -802,6 +806,7 @@ suite('Smart select', () => {
 		));
 		// First cell in header: "| a$$CURSOR$$ " at 0-15, header row at 0-23, then table
 		assertNestedRangesEqual(ranges![0],
+			[0, 1, 0, 14], // cell content (between pipes)
 			[0, 0, 0, 15], // first cell with cursor marker
 			[0, 0, 0, 23], // header row
 			[0, 0, 2, 13], // entire table
@@ -817,6 +822,7 @@ suite('Smart select', () => {
 		));
 		// Cell "| 4$$CURSOR$$ |" at chars 4-19, row at 0-19, body rows 2-3, table lines 0-3
 		assertNestedRangesEqual(ranges![0],
+			[3, 5, 3, 18], // cell content (between pipes)
 			[3, 4, 3, 19], // cell with cursor marker
 			[3, 0, 3, 19], // row
 			[2, 0, 3, 19], // table body (lines 2-3)
@@ -838,6 +844,7 @@ suite('Smart select', () => {
 		));
 		// Cell at chars 0-18 (with cursor), row at 0-25, body rows 4-6, table lines 2-6
 		assertNestedRangesEqual(ranges![0],
+			[5, 1, 5, 17], // cell content (between pipes)
 			[5, 0, 5, 18], // cell "| c$$CURSOR$$    "
 			[5, 0, 5, 25], // row
 			[4, 0, 6, 15], // table body
@@ -857,6 +864,7 @@ suite('Smart select', () => {
 		));
 		// Cell "| 1$$CURSOR$$ " at chars 4-19 (after 4-space indent), row at 4-23
 		assertNestedRangesEqual(ranges![0],
+			[4, 5, 4, 18], // cell content (between pipes)
 			[4, 4, 4, 19], // cell with cursor marker (starting at pipe after indent)
 			[4, 4, 4, 23], // entire row (starting after indent)
 			[2, 0, 4, 23], // table block
@@ -879,6 +887,7 @@ suite('Smart select', () => {
 		assertNestedRangesEqual(ranges![0],
 			[0, 8, 0, 22], // bold content (inside **)
 			[0, 6, 0, 24], // bold with **
+			[0, 5, 0, 25], // cell content (between pipes)
 			[0, 4, 0, 26], // cell
 			[0, 0, 0, 26], // header row
 			[0, 0, 2, 9], // entire table
@@ -900,6 +909,7 @@ suite('Smart select', () => {
 		assertNestedRangesEqual(ranges![0],
 			[0, 7, 0, 21], // code content (inside backticks)
 			[0, 6, 0, 22], // code with backticks
+			[0, 5, 0, 23], // cell content (between pipes)
 			[0, 4, 0, 24], // cell
 			[0, 0, 0, 24], // header row
 			[0, 0, 2, 9], // entire table

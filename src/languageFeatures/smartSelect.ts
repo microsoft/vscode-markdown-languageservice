@@ -257,7 +257,20 @@ function createTableCellRange(lineText: string, cursorChar: number, cursorLine: 
 	for (const cell of cells) {
 		if (cursorChar >= cell.start && cursorChar < cell.end) {
 			const cellRange = lsp.Range.create(cursorLine, cell.start, cursorLine, cell.end);
-			return makeSelectionRange(cellRange, parent);
+			const cellSelectionRange = makeSelectionRange(cellRange, parent);
+
+			// Add inner content range: everything between the pipe characters
+			const contentStart = cell.start + 1; // skip leading pipe
+			const contentEnd = cell.end - 1; // skip trailing pipe
+
+			if (contentStart < contentEnd) {
+				const contentRange = lsp.Range.create(cursorLine, contentStart, cursorLine, contentEnd);
+				if (!areRangesEqual(contentRange, cellRange)) {
+					return makeSelectionRange(contentRange, cellSelectionRange);
+				}
+			}
+
+			return cellSelectionRange;
 		}
 	}
 

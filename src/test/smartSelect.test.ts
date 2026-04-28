@@ -887,6 +887,7 @@ suite('Smart select', () => {
 		assertNestedRangesEqual(ranges![0],
 			[0, 8, 0, 22], // bold content (inside **)
 			[0, 6, 0, 24], // bold with **
+			[0, 5, 0, 25], // cell content (between pipes)
 			[0, 4, 0, 26], // cell
 			[0, 0, 0, 26], // header row
 			[0, 0, 2, 9], // entire table
@@ -908,6 +909,7 @@ suite('Smart select', () => {
 		assertNestedRangesEqual(ranges![0],
 			[0, 7, 0, 21], // code content (inside backticks)
 			[0, 6, 0, 22], // code with backticks
+			[0, 5, 0, 23], // cell content (between pipes)
 			[0, 4, 0, 24], // cell
 			[0, 0, 0, 24], // header row
 			[0, 0, 2, 9], // entire table

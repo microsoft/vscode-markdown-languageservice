@@ -4,12 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as lsp from 'vscode-languageserver-protocol';
-import { ITextDocument } from '../types/textDocument';
-import { Disposable } from '../util/dispose';
-import { fuzzyContains } from '../util/string';
-import { IWorkspace } from '../workspace';
-import { MdWorkspaceInfoCache } from '../workspaceCache';
-import { MdDocumentSymbolProvider } from './documentSymbols';
+import { ITextDocument } from '../types/textDocument.js';
+import { Disposable } from '../util/dispose.js';
+import { fuzzyContains } from '../util/string.js';
+import { IWorkspace } from '../workspace.js';
+import { MdWorkspaceInfoCache } from '../workspaceCache.js';
+import { MdDocumentSymbolProvider } from './documentSymbols.js';
 
 export class MdWorkspaceSymbolProvider extends Disposable {
 

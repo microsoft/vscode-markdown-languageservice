@@ -4,16 +4,16 @@
  *--------------------------------------------------------------------------------------------*/
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-protocol';
-import { getLsConfiguration } from '../config';
-import { MdLinkProvider } from '../languageFeatures/documentLinks';
-import { MdOrganizeLinkDefinitionProvider } from '../languageFeatures/organizeLinkDefs';
-import { MdTableOfContentsProvider } from '../tableOfContents';
-import { InMemoryDocument } from '../types/inMemoryDocument';
-import { noopToken } from '../util/cancellation';
-import { createNewMarkdownEngine } from './engine';
-import { InMemoryWorkspace } from './inMemoryWorkspace';
-import { nulLogger } from './nulLogging';
-import { DisposableStore, joinLines, withStore, workspacePath } from './util';
+import { getLsConfiguration } from '../config.js';
+import { MdLinkProvider } from '../languageFeatures/documentLinks.js';
+import { MdOrganizeLinkDefinitionProvider } from '../languageFeatures/organizeLinkDefs.js';
+import { MdTableOfContentsProvider } from '../tableOfContents.js';
+import { InMemoryDocument } from '../types/inMemoryDocument.js';
+import { noopToken } from '../util/cancellation.js';
+import { createNewMarkdownEngine } from './engine.js';
+import { InMemoryWorkspace } from './inMemoryWorkspace.js';
+import { nulLogger } from './nulLogging.js';
+import { DisposableStore, joinLines, withStore, workspacePath } from './util.js';
 
 async function getOrganizeEdits(store: DisposableStore, doc: InMemoryDocument, removeUnused = false): Promise<lsp.TextEdit[]> {
 	const workspace = store.add(new InMemoryWorkspace([doc]));

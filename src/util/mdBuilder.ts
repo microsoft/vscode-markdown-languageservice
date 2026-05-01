@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { URI } from 'vscode-uri';
-import { escapeForAngleBracketLink, needsAngleBracketLink } from './mdLinks';
+import { escapeForAngleBracketLink, needsAngleBracketLink } from './mdLinks.js';
+import { URI } from './vscodeUri.js';
 
 export function inlineCode(text: string): string {
 	text = text.replace(/\n/, '');

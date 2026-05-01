@@ -80,7 +80,7 @@ Currently supported language features:
 	- Header within the current file.
 	- Files in the workspace.
 	- Headers in other files.
-	
+
 	Also can generate diagnostics for:
 
 	- Unused link definitions.
@@ -145,7 +145,7 @@ const myDocument = TextDocument.create(
 const symbols = await languageService.getDocumentSymbols(myDocument, { includeLinkDefinitions: true }, cts.token);
 ```
 
-See [example.cjs](./example.cjs) for complete, minimal example of using the language service. You can run in using `node example.cjs`.
+See [example.mjs](./example.mjs) for complete, minimal example of using the language service. You can run in using `node example.mjs`.
 
 
 ## Additional Links

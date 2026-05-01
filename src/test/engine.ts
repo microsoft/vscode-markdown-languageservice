@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as MarkdownIt from 'markdown-it';
-import { IMdParser } from '../parser';
-import { githubSlugifier } from '../slugify';
+import MarkdownIt from 'markdown-it';
+import { IMdParser } from '../parser.js';
+import { githubSlugifier } from '../slugify.js';
 
 export function createNewMarkdownEngine(): IMdParser {
 	const md = MarkdownIt({ html: true, });

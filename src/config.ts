@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as picomatch from 'picomatch';
-import { URI } from 'vscode-uri';
+import picomatch from 'picomatch';
+import { URI } from './util/vscodeUri.js';
 
 /**
  * Preferred style for file paths to {@link markdownFileExtensions markdown files}.
@@ -53,7 +53,7 @@ export interface LsConfiguration {
 
 	/**
 	 * Preferred style for file paths to {@link markdownFileExtensions markdown files}.
-	 * 
+	 *
 	 * This is used for paths added by the language service, such as for path completions and on file renames.
 	 */
 	readonly preferredMdPathExtensionStyle?: PreferredMdPathExtensionStyle;

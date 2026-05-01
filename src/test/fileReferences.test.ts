@@ -4,18 +4,18 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { URI } from 'vscode-uri';
-import { getLsConfiguration } from '../config';
-import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks';
-import { MdReference, MdReferencesProvider } from '../languageFeatures/references';
-import { MdTableOfContentsProvider } from '../tableOfContents';
-import { InMemoryDocument } from '../types/inMemoryDocument';
-import { noopToken } from '../util/cancellation';
-import { IWorkspace } from '../workspace';
-import { createNewMarkdownEngine } from './engine';
-import { InMemoryWorkspace } from './inMemoryWorkspace';
-import { nulLogger } from './nulLogging';
-import { DisposableStore, joinLines, withStore, workspacePath } from './util';
+import { getLsConfiguration } from '../config.js';
+import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks.js';
+import { MdReference, MdReferencesProvider } from '../languageFeatures/references.js';
+import { MdTableOfContentsProvider } from '../tableOfContents.js';
+import { InMemoryDocument } from '../types/inMemoryDocument.js';
+import { noopToken } from '../util/cancellation.js';
+import { URI } from '../util/vscodeUri.js';
+import { IWorkspace } from '../workspace.js';
+import { createNewMarkdownEngine } from './engine.js';
+import { InMemoryWorkspace } from './inMemoryWorkspace.js';
+import { nulLogger } from './nulLogging.js';
+import { DisposableStore, joinLines, withStore, workspacePath } from './util.js';
 
 
 function getFileReferences(store: DisposableStore, resource: URI, workspace: IWorkspace) {

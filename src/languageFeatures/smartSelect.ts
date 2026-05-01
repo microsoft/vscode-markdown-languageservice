@@ -3,16 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as lsp from 'vscode-languageserver-protocol';
-import { ILogger, LogLevel } from '../logging';
-import { IMdParser, Token, TokenWithMap } from '../parser';
-import { MdTableOfContentsProvider, TocEntry, TocHeaderEntry } from '../tableOfContents';
-import { translatePosition } from '../types/position';
-import { areRangesEqual, modifyRange, rangeContains } from '../types/range';
-import { getLine, ITextDocument } from '../types/textDocument';
-import { coalesce } from '../util/arrays';
-import { isEmptyOrWhitespace } from '../util/string';
-import { MdLinkProvider } from './documentLinks';
-import { HrefKind, MdLinkKind } from '../types/documentLink';
+import { ILogger, LogLevel } from '../logging.js';
+import { IMdParser, Token, TokenWithMap } from '../parser.js';
+import { MdTableOfContentsProvider, TocEntry, TocHeaderEntry } from '../tableOfContents.js';
+import { HrefKind, MdLinkKind } from '../types/documentLink.js';
+import { translatePosition } from '../types/position.js';
+import { areRangesEqual, modifyRange, rangeContains } from '../types/range.js';
+import { getLine, ITextDocument } from '../types/textDocument.js';
+import { coalesce } from '../util/arrays.js';
+import { isEmptyOrWhitespace } from '../util/string.js';
+import { MdLinkProvider } from './documentLinks.js';
 
 export class MdSelectionRangeProvider {
 

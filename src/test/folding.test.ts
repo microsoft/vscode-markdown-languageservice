@@ -5,15 +5,15 @@
 
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI } from 'vscode-uri';
-import { MdFoldingProvider } from '../languageFeatures/folding';
-import { MdTableOfContentsProvider } from '../tableOfContents';
-import { InMemoryDocument } from '../types/inMemoryDocument';
-import { noopToken } from '../util/cancellation';
-import { createNewMarkdownEngine } from './engine';
-import { InMemoryWorkspace } from './inMemoryWorkspace';
-import { nulLogger } from './nulLogging';
-import { DisposableStore, joinLines, withStore } from './util';
+import { MdFoldingProvider } from '../languageFeatures/folding.js';
+import { MdTableOfContentsProvider } from '../tableOfContents.js';
+import { InMemoryDocument } from '../types/inMemoryDocument.js';
+import { noopToken } from '../util/cancellation.js';
+import { URI } from '../util/vscodeUri.js';
+import { createNewMarkdownEngine } from './engine.js';
+import { InMemoryWorkspace } from './inMemoryWorkspace.js';
+import { nulLogger } from './nulLogging.js';
+import { DisposableStore, joinLines, withStore } from './util.js';
 
 const testFileName = URI.file('test.md');
 

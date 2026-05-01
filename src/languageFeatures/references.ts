@@ -3,19 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI } from 'vscode-uri';
-import { LsConfiguration } from '../config';
-import { ILogger, LogLevel } from '../logging';
-import { IMdParser } from '../parser';
-import { MdTableOfContentsProvider, TocHeaderEntry } from '../tableOfContents';
-import { HrefKind, MdLink, MdLinkKind } from '../types/documentLink';
-import { translatePosition } from '../types/position';
-import { areRangesEqual, modifyRange, rangeContains } from '../types/range';
-import { getDocUri, ITextDocument } from '../types/textDocument';
-import { Disposable } from '../util/dispose';
-import { isSameResource, looksLikeMarkdownUri, looksLikePathToResource } from '../util/path';
-import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
-import { MdWorkspaceInfoCache } from '../workspaceCache';
+import { LsConfiguration } from '../config.js';
+import { ILogger, LogLevel } from '../logging.js';
+import { IMdParser } from '../parser.js';
+import { MdTableOfContentsProvider, TocHeaderEntry } from '../tableOfContents.js';
+import { HrefKind, MdLink, MdLinkKind } from '../types/documentLink.js';
+import { translatePosition } from '../types/position.js';
+import { areRangesEqual, modifyRange, rangeContains } from '../types/range.js';
+import { getDocUri, ITextDocument } from '../types/textDocument.js';
+import { Disposable } from '../util/dispose.js';
+import { isSameResource, looksLikeMarkdownUri, looksLikePathToResource } from '../util/path.js';
+import { URI } from '../util/vscodeUri.js';
+import { IWorkspace, statLinkToMarkdownFile } from '../workspace.js';
+import { MdWorkspaceInfoCache } from '../workspaceCache.js';
 
 export enum MdReferenceKind {
 	Link = 1,

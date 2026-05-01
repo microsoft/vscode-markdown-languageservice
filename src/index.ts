@@ -4,42 +4,42 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI } from 'vscode-uri';
-import { getLsConfiguration, LsConfiguration } from './config';
-import { MdExtractLinkDefinitionCodeActionProvider } from './languageFeatures/codeActions/extractLinkDef';
-import { MdRemoveLinkDefinitionCodeActionProvider } from './languageFeatures/codeActions/removeLinkDefinition';
-import { MdDefinitionProvider } from './languageFeatures/definitions';
-import { DiagnosticComputer, DiagnosticOptions, DiagnosticsManager, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
-import { MdDocumentHighlightProvider } from './languageFeatures/documentHighlights';
-import { createWorkspaceLinkCache, MdLinkProvider, ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks';
-import { MdDocumentSymbolProvider } from './languageFeatures/documentSymbols';
-import { FileRename, MdFileRenameProvider } from './languageFeatures/fileRename';
-import { MdFoldingProvider } from './languageFeatures/folding';
-import { MdHoverProvider } from './languageFeatures/hover';
-import { MdOrganizeLinkDefinitionProvider } from './languageFeatures/organizeLinkDefs';
-import { MdPathCompletionProvider, PathCompletionOptions } from './languageFeatures/pathCompletions';
-import { MdReferencesProvider } from './languageFeatures/references';
-import { MdRenameProvider } from './languageFeatures/rename';
-import { MdSelectionRangeProvider } from './languageFeatures/smartSelect';
-import { MdUpdatePastedLinksProvider } from './languageFeatures/updatePastedLinks';
-import { MdWorkspaceSymbolProvider } from './languageFeatures/workspaceSymbols';
-import { ILogger } from './logging';
-import { IMdParser } from './parser';
-import { MdTableOfContentsProvider } from './tableOfContents';
-import { ITextDocument } from './types/textDocument';
-import { isWorkspaceWithFileWatching, IWorkspace } from './workspace';
+import { URI } from './util/vscodeUri.js';
+import { getLsConfiguration, LsConfiguration } from './config.js';
+import { MdExtractLinkDefinitionCodeActionProvider } from './languageFeatures/codeActions/extractLinkDef.js';
+import { MdRemoveLinkDefinitionCodeActionProvider } from './languageFeatures/codeActions/removeLinkDefinition.js';
+import { MdDefinitionProvider } from './languageFeatures/definitions.js';
+import { DiagnosticComputer, DiagnosticOptions, DiagnosticsManager, IPullDiagnosticsManager } from './languageFeatures/diagnostics.js';
+import { MdDocumentHighlightProvider } from './languageFeatures/documentHighlights.js';
+import { createWorkspaceLinkCache, MdLinkProvider, ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks.js';
+import { MdDocumentSymbolProvider } from './languageFeatures/documentSymbols.js';
+import { FileRename, MdFileRenameProvider } from './languageFeatures/fileRename.js';
+import { MdFoldingProvider } from './languageFeatures/folding.js';
+import { MdHoverProvider } from './languageFeatures/hover.js';
+import { MdOrganizeLinkDefinitionProvider } from './languageFeatures/organizeLinkDefs.js';
+import { MdPathCompletionProvider, PathCompletionOptions } from './languageFeatures/pathCompletions.js';
+import { MdReferencesProvider } from './languageFeatures/references.js';
+import { MdRenameProvider } from './languageFeatures/rename.js';
+import { MdSelectionRangeProvider } from './languageFeatures/smartSelect.js';
+import { MdUpdatePastedLinksProvider } from './languageFeatures/updatePastedLinks.js';
+import { MdWorkspaceSymbolProvider } from './languageFeatures/workspaceSymbols.js';
+import { ILogger } from './logging.js';
+import { IMdParser } from './parser.js';
+import { MdTableOfContentsProvider } from './tableOfContents.js';
+import { ITextDocument } from './types/textDocument.js';
+import { isWorkspaceWithFileWatching, IWorkspace } from './workspace.js';
 
-export { LsConfiguration, PreferredMdPathExtensionStyle } from './config';
-export { DiagnosticCode, DiagnosticLevel, DiagnosticOptions, IPullDiagnosticsManager } from './languageFeatures/diagnostics';
-export { ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks';
-export { FileRename } from './languageFeatures/fileRename';
-export { IncludeWorkspaceHeaderCompletions, PathCompletionOptions as MdPathCompletionOptions } from './languageFeatures/pathCompletions';
-export { RenameNotSupportedAtLocationError } from './languageFeatures/rename';
-export { ILogger, LogLevel } from './logging';
-export { IMdParser, Token } from './parser';
-export { githubSlugifier, ISlug, ISlugifier } from './slugify';
-export { ITextDocument } from './types/textDocument';
-export { ContainingDocumentContext, FileStat, FileWatcherOptions, IFileSystemWatcher, IWorkspace, IWorkspaceWithWatching } from './workspace';
+export { LsConfiguration, PreferredMdPathExtensionStyle } from './config.js';
+export { DiagnosticCode, DiagnosticLevel, DiagnosticOptions, IPullDiagnosticsManager } from './languageFeatures/diagnostics.js';
+export { ResolvedDocumentLinkTarget } from './languageFeatures/documentLinks.js';
+export { FileRename } from './languageFeatures/fileRename.js';
+export { IncludeWorkspaceHeaderCompletions, PathCompletionOptions as MdPathCompletionOptions } from './languageFeatures/pathCompletions.js';
+export { RenameNotSupportedAtLocationError } from './languageFeatures/rename.js';
+export { ILogger, LogLevel } from './logging.js';
+export { IMdParser, Token } from './parser.js';
+export { githubSlugifier, ISlug, ISlugifier } from './slugify.js';
+export { ITextDocument } from './types/textDocument.js';
+export { ContainingDocumentContext, FileStat, FileWatcherOptions, IFileSystemWatcher, IWorkspace, IWorkspaceWithWatching } from './workspace.js';
 
 /**
  * Provides language tooling methods for working with markdown.

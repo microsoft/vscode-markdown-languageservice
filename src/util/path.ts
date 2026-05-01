@@ -5,9 +5,9 @@
 
 import * as path from 'path';
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI, Utils } from 'vscode-uri';
-import { LsConfiguration } from '../config';
-import { Schemes } from './schemes';
+import { LsConfiguration } from '../config.js';
+import { Schemes } from './schemes.js';
+import { URI, Utils } from './vscodeUri.js';
 
 export function isSameResource(a: URI, b: URI): boolean {
 	return a.toString() === b.toString();

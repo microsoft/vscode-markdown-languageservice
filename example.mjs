@@ -2,13 +2,12 @@
  * Demonstrates how to use vscode-markdown-languageservice to process a markdown file.
  */
 // @ts-check
-/* eslint-disable @typescript-eslint/no-require-imports */
 
-const mdls = require('.');
-const MarkdownIt = require('markdown-it');
-const { URI } = require('vscode-uri');
-const { CancellationTokenSource, Emitter } = require('vscode-languageserver-protocol');
-const { TextDocument } = require('vscode-languageserver-textdocument');
+import * as mdls from './out/index.js';
+import MarkdownIt from 'markdown-it';
+import { URI } from 'vscode-uri';
+import { CancellationTokenSource, Emitter } from 'vscode-languageserver-protocol';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
 // First we need to create the services that the markdown language service depends on.
 // This allows vscode-markdown-languageservice to work with as many use cases as possible.

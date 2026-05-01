@@ -5,17 +5,17 @@
 
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-protocol';
-import { getLsConfiguration, LsConfiguration, PreferredMdPathExtensionStyle } from '../config';
-import { MdLinkProvider } from '../languageFeatures/documentLinks';
-import { MdUpdatePastedLinksProvider } from '../languageFeatures/updatePastedLinks';
-import { MdTableOfContentsProvider } from '../tableOfContents';
-import { InMemoryDocument } from '../types/inMemoryDocument';
-import { noopToken } from '../util/cancellation';
-import { IWorkspace } from '../workspace';
-import { createNewMarkdownEngine } from './engine';
-import { InMemoryWorkspace } from './inMemoryWorkspace';
-import { nulLogger } from './nulLogging';
-import { DisposableStore, joinLines, withStore, workspacePath } from './util';
+import { getLsConfiguration, LsConfiguration, PreferredMdPathExtensionStyle } from '../config.js';
+import { MdLinkProvider } from '../languageFeatures/documentLinks.js';
+import { MdUpdatePastedLinksProvider } from '../languageFeatures/updatePastedLinks.js';
+import { MdTableOfContentsProvider } from '../tableOfContents.js';
+import { InMemoryDocument } from '../types/inMemoryDocument.js';
+import { noopToken } from '../util/cancellation.js';
+import { IWorkspace } from '../workspace.js';
+import { createNewMarkdownEngine } from './engine.js';
+import { InMemoryWorkspace } from './inMemoryWorkspace.js';
+import { nulLogger } from './nulLogging.js';
+import { DisposableStore, joinLines, withStore, workspacePath } from './util.js';
 
 
 async function applyUpdateLinksEdits(store: DisposableStore, docs: { copyFrom: InMemoryDocument, pasteTo: InMemoryDocument }, edits: readonly lsp.TextEdit[], workspace: IWorkspace, configOverrides: Partial<LsConfiguration> = {}): Promise<string | undefined> {

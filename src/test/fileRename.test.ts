@@ -5,19 +5,19 @@
 
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI } from 'vscode-uri';
-import { getLsConfiguration, LsConfiguration, PreferredMdPathExtensionStyle } from '../config';
-import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks';
-import { FileRenameResponse, MdFileRenameProvider } from '../languageFeatures/fileRename';
-import { MdReferencesProvider } from '../languageFeatures/references';
-import { MdTableOfContentsProvider } from '../tableOfContents';
-import { InMemoryDocument } from '../types/inMemoryDocument';
-import { noopToken } from '../util/cancellation';
-import { IWorkspace } from '../workspace';
-import { createNewMarkdownEngine } from './engine';
-import { InMemoryWorkspace } from './inMemoryWorkspace';
-import { nulLogger } from './nulLogging';
-import { assertRangeEqual, DisposableStore, joinLines, withStore, workspacePath } from './util';
+import { getLsConfiguration, LsConfiguration, PreferredMdPathExtensionStyle } from '../config.js';
+import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks.js';
+import { FileRenameResponse, MdFileRenameProvider } from '../languageFeatures/fileRename.js';
+import { MdReferencesProvider } from '../languageFeatures/references.js';
+import { MdTableOfContentsProvider } from '../tableOfContents.js';
+import { InMemoryDocument } from '../types/inMemoryDocument.js';
+import { noopToken } from '../util/cancellation.js';
+import { URI } from '../util/vscodeUri.js';
+import { IWorkspace } from '../workspace.js';
+import { createNewMarkdownEngine } from './engine.js';
+import { InMemoryWorkspace } from './inMemoryWorkspace.js';
+import { nulLogger } from './nulLogging.js';
+import { assertRangeEqual, DisposableStore, joinLines, withStore, workspacePath } from './util.js';
 
 /**
  * Get all the edits for a file rename.
@@ -653,7 +653,7 @@ suite('File Rename', () => {
 		const newDoc = new InMemoryDocument(newDocUri, joinLines(
 			/* 00 */ `[abc](/top.md)`, // skip
 			/* 01 */ `[abc](/old/sibling.md)`, // edit 0
-			/* 02 */ `[abc](../top.md)`, // skip 
+			/* 02 */ `[abc](../top.md)`, // skip
 			/* 03 */ `[abc](../old/sibling.md)`, // edit 1
 			/* 04 */ `[abc](../old/)`, // edit 2
 			/* 05 */ `[abc](../old)`, // edit 3

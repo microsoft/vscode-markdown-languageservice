@@ -5,20 +5,20 @@
 
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI } from 'vscode-uri';
-import { getLsConfiguration } from '../config';
-import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks';
-import { MdReferencesProvider } from '../languageFeatures/references';
-import { MdRenameProvider } from '../languageFeatures/rename';
-import { githubSlugifier } from '../slugify';
-import { MdTableOfContentsProvider } from '../tableOfContents';
-import { InMemoryDocument } from '../types/inMemoryDocument';
-import { noopToken } from '../util/cancellation';
-import { IWorkspace } from '../workspace';
-import { createNewMarkdownEngine } from './engine';
-import { InMemoryWorkspace } from './inMemoryWorkspace';
-import { nulLogger } from './nulLogging';
-import { assertRangeEqual, DisposableStore, joinLines, withStore, workspacePath } from './util';
+import { getLsConfiguration } from '../config.js';
+import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks.js';
+import { MdReferencesProvider } from '../languageFeatures/references.js';
+import { MdRenameProvider } from '../languageFeatures/rename.js';
+import { githubSlugifier } from '../slugify.js';
+import { MdTableOfContentsProvider } from '../tableOfContents.js';
+import { InMemoryDocument } from '../types/inMemoryDocument.js';
+import { noopToken } from '../util/cancellation.js';
+import { URI } from '../util/vscodeUri.js';
+import { IWorkspace } from '../workspace.js';
+import { createNewMarkdownEngine } from './engine.js';
+import { InMemoryWorkspace } from './inMemoryWorkspace.js';
+import { nulLogger } from './nulLogging.js';
+import { assertRangeEqual, DisposableStore, joinLines, withStore, workspacePath } from './util.js';
 
 
 /**
@@ -324,7 +324,7 @@ suite('Rename', () => {
 				const edit = await getRenameEdits(store, doc, { line: 1, character: 0 }, 'header a', workspace);
 				assertEditsEqual(edit!, {
 					uri, edits: [
-						// Update link to duplicated header after new header 
+						// Update link to duplicated header after new header
 						lsp.TextEdit.replace(lsp.Range.create(5, 6, 5, 16), 'header-a-2'),
 
 						// And the header itself
@@ -908,4 +908,4 @@ suite('Rename', () => {
 			});
 		}));
 	});
-}); 
+});

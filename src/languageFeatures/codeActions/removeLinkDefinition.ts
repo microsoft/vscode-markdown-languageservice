@@ -5,12 +5,12 @@
 
 import * as l10n from '@vscode/l10n';
 import * as lsp from 'vscode-languageserver-protocol';
-import { MdLinkDefinition } from '../../types/documentLink';
-import { rangeIntersects } from '../../types/range';
-import { getDocUri, ITextDocument } from '../../types/textDocument';
-import { WorkspaceEditBuilder } from '../../util/editBuilder';
-import { DiagnosticCode } from '../diagnostics';
-import { codeActionKindContains } from './util';
+import { MdLinkDefinition } from '../../types/documentLink.js';
+import { rangeIntersects } from '../../types/range.js';
+import { getDocUri, ITextDocument } from '../../types/textDocument.js';
+import { WorkspaceEditBuilder } from '../../util/editBuilder.js';
+import { DiagnosticCode } from '../diagnostics.js';
+import { codeActionKindContains } from './util.js';
 
 
 export class MdRemoveLinkDefinitionCodeActionProvider {

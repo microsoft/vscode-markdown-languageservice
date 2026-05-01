@@ -4,22 +4,22 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import * as picomatch from 'picomatch';
+import picomatch from 'picomatch';
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI } from 'vscode-uri';
-import { LsConfiguration } from '../config';
-import { ILogger, LogLevel } from '../logging';
-import { MdTableOfContentsProvider } from '../tableOfContents';
-import { HrefKind, InternalHref, LinkDefinitionSet, MdLink, MdLinkDefinition, MdLinkKind, MdLinkSource, ReferenceLinkMap } from '../types/documentLink';
-import { translatePosition } from '../types/position';
-import { modifyRange } from '../types/range';
-import { getDocUri, ITextDocument } from '../types/textDocument';
-import { Disposable, IDisposable } from '../util/dispose';
-import { Limiter } from '../util/limiter';
-import { isSameResource, looksLikeMarkdownUri, parseLocationInfoFromFragment } from '../util/path';
-import { ResourceMap } from '../util/resourceMap';
-import { FileStat, IWorkspace, IWorkspaceWithWatching, statLinkToMarkdownFile } from '../workspace';
-import { MdLinkProvider } from './documentLinks';
+import { LsConfiguration } from '../config.js';
+import { ILogger, LogLevel } from '../logging.js';
+import { MdTableOfContentsProvider } from '../tableOfContents.js';
+import { HrefKind, InternalHref, LinkDefinitionSet, MdLink, MdLinkDefinition, MdLinkKind, MdLinkSource, ReferenceLinkMap } from '../types/documentLink.js';
+import { translatePosition } from '../types/position.js';
+import { modifyRange } from '../types/range.js';
+import { getDocUri, ITextDocument } from '../types/textDocument.js';
+import { Disposable, IDisposable } from '../util/dispose.js';
+import { Limiter } from '../util/limiter.js';
+import { isSameResource, looksLikeMarkdownUri, parseLocationInfoFromFragment } from '../util/path.js';
+import { ResourceMap } from '../util/resourceMap.js';
+import { URI } from '../util/vscodeUri.js';
+import { FileStat, IWorkspace, IWorkspaceWithWatching, statLinkToMarkdownFile } from '../workspace.js';
+import { MdLinkProvider } from './documentLinks.js';
 
 /**
  * The severity at which diagnostics are reported

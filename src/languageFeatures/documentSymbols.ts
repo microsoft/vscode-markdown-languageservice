@@ -4,12 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as lsp from 'vscode-languageserver-protocol';
-import { ILogger, LogLevel } from '../logging';
-import { MdTableOfContentsProvider, TableOfContents, TocEntry, TocHeaderEntry } from '../tableOfContents';
-import { MdLinkDefinition, MdLinkKind } from '../types/documentLink';
-import { isBefore } from '../types/position';
-import { ITextDocument } from '../types/textDocument';
-import { MdLinkProvider } from './documentLinks';
+import { ILogger, LogLevel } from '../logging.js';
+import { MdTableOfContentsProvider, TableOfContents, TocEntry, TocHeaderEntry } from '../tableOfContents.js';
+import { MdLinkDefinition, MdLinkKind } from '../types/documentLink.js';
+import { isBefore } from '../types/position.js';
+import { ITextDocument } from '../types/textDocument.js';
+import { MdLinkProvider } from './documentLinks.js';
 
 interface MarkdownSymbol {
 	readonly level: number;

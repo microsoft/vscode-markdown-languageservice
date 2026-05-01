@@ -5,12 +5,12 @@
 
 import * as lsp from 'vscode-languageserver-protocol';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { URI } from 'vscode-uri';
-import { ITextDocument } from './textDocument';
+import { URI } from '../util/vscodeUri.js';
+import { ITextDocument } from './textDocument.js';
 
 /**
  * Represents a temporary version of a document.
- * 
+ *
  * This indicates that the document should not be cached or reuse cached results.
  */
 export const tempDocVersion = -1;

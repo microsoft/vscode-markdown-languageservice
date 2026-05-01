@@ -1,6 +1,7 @@
 # Changelog
 
-## 0.5.0-alpha.13 — Unreleased
+## 0.5.0-alpha.13 — April 30, 2026
+- Switch package to esm.
 - Fixed image completions returning header suggestions.
 - Added support for using html ids for path completions and validation.
 

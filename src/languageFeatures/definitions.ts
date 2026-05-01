@@ -3,13 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as lsp from 'vscode-languageserver-protocol';
-import { LsConfiguration } from '../config';
-import { MdTableOfContentsProvider } from '../tableOfContents';
-import { HrefKind, LinkDefinitionSet, MdLink, MdLinkKind } from '../types/documentLink';
-import { rangeContains } from '../types/range';
-import { ITextDocument } from '../types/textDocument';
-import { IWorkspace, statLinkToMarkdownFile } from '../workspace';
-import { MdWorkspaceInfoCache } from '../workspaceCache';
+import { LsConfiguration } from '../config.js';
+import { MdTableOfContentsProvider } from '../tableOfContents.js';
+import { HrefKind, LinkDefinitionSet, MdLink, MdLinkKind } from '../types/documentLink.js';
+import { rangeContains } from '../types/range.js';
+import { ITextDocument } from '../types/textDocument.js';
+import { IWorkspace, statLinkToMarkdownFile } from '../workspace.js';
+import { MdWorkspaceInfoCache } from '../workspaceCache.js';
 
 export class MdDefinitionProvider {
 

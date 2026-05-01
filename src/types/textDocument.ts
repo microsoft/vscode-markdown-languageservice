@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI } from 'vscode-uri';
-import { maxLspUInt } from '../util/number';
+import { URI } from '../util/vscodeUri.js';
+import { maxLspUInt } from '../util/number.js';
 
 /**
  * A document in the workspace.

@@ -3,17 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI } from 'vscode-uri';
-import { LsConfiguration } from '../config';
-import { HrefKind, LinkDefinitionSet, MdLinkDefinition } from '../types/documentLink';
-import { InMemoryDocument, tempDocVersion } from '../types/inMemoryDocument';
-import { isBefore, isBeforeOrEqual } from '../types/position';
-import { rangeContains } from '../types/range';
-import { getDocUri, ITextDocument } from '../types/textDocument';
-import { removeNewUriExtIfNeeded } from '../util/mdLinks';
-import { computeRelativePath, isSameResource } from '../util/path';
-import { createAddDefinitionEdit } from './codeActions/extractLinkDef';
-import { MdLinkProvider } from './documentLinks';
+import { LsConfiguration } from '../config.js';
+import { HrefKind, LinkDefinitionSet, MdLinkDefinition } from '../types/documentLink.js';
+import { InMemoryDocument, tempDocVersion } from '../types/inMemoryDocument.js';
+import { isBefore, isBeforeOrEqual } from '../types/position.js';
+import { rangeContains } from '../types/range.js';
+import { getDocUri, ITextDocument } from '../types/textDocument.js';
+import { removeNewUriExtIfNeeded } from '../util/mdLinks.js';
+import { computeRelativePath, isSameResource } from '../util/path.js';
+import { URI } from '../util/vscodeUri.js';
+import { createAddDefinitionEdit } from './codeActions/extractLinkDef.js';
+import { MdLinkProvider } from './documentLinks.js';
 
 class PasteLinksCopyMetadata {
 

@@ -5,15 +5,15 @@
 
 import * as l10n from '@vscode/l10n';
 import * as lsp from 'vscode-languageserver-protocol';
-import { ExternalHref, HrefKind, InternalHref, LinkDefinitionSet, MdAutoLink, MdInlineLink, MdLink, MdLinkDefinition, MdLinkKind } from '../../types/documentLink';
-import { comparePosition, translatePosition } from '../../types/position';
-import { rangeIntersects } from '../../types/range';
-import { getDocUri, getLine, ITextDocument } from '../../types/textDocument';
-import { WorkspaceEditBuilder } from '../../util/editBuilder';
-import { MdDocumentLinksInfo, MdLinkProvider } from '../documentLinks';
-import { getExistingDefinitionBlock } from '../organizeLinkDefs';
-import { codeActionKindContains } from './util';
-import { isSameResource } from '../../util/path';
+import { ExternalHref, HrefKind, InternalHref, LinkDefinitionSet, MdAutoLink, MdInlineLink, MdLink, MdLinkDefinition, MdLinkKind } from '../../types/documentLink.js';
+import { comparePosition, translatePosition } from '../../types/position.js';
+import { rangeIntersects } from '../../types/range.js';
+import { getDocUri, getLine, ITextDocument } from '../../types/textDocument.js';
+import { WorkspaceEditBuilder } from '../../util/editBuilder.js';
+import { isSameResource } from '../../util/path.js';
+import { MdDocumentLinksInfo, MdLinkProvider } from '../documentLinks.js';
+import { getExistingDefinitionBlock } from '../organizeLinkDefs.js';
+import { codeActionKindContains } from './util.js';
 
 export class MdExtractLinkDefinitionCodeActionProvider {
 

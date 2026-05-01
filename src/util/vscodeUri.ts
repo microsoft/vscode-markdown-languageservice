@@ -3,4 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-export { URI, Utils } from 'vscode-uri';
+import uri from 'vscode-uri';
+
+export const URI = uri.URI;
+// eslint-disable-next-line no-redeclare
+export type URI = uri.URI;
+
+export const Utils = uri.Utils;

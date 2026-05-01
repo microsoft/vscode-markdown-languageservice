@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ISlugifier } from './slugify';
-import { ITextDocument } from './types/textDocument';
+import { ISlugifier } from './slugify.js';
+import { ITextDocument } from './types/textDocument.js';
 
 export interface Token {
 	readonly type: string;

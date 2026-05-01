@@ -5,18 +5,18 @@
 
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI } from 'vscode-uri';
-import { getLsConfiguration } from '../config';
-import { MdLinkComputer, MdLinkProvider } from '../languageFeatures/documentLinks';
-import { MdTableOfContentsProvider } from '../tableOfContents';
-import { InternalHref, MdLink } from '../types/documentLink';
-import { InMemoryDocument } from '../types/inMemoryDocument';
-import { noopToken } from '../util/cancellation';
-import { ContainingDocumentContext, IWorkspace } from '../workspace';
-import { createNewMarkdownEngine } from './engine';
-import { InMemoryWorkspace } from './inMemoryWorkspace';
-import { nulLogger } from './nulLogging';
-import { assertRangeEqual, joinLines, workspacePath } from './util';
+import { getLsConfiguration } from '../config.js';
+import { MdLinkComputer, MdLinkProvider } from '../languageFeatures/documentLinks.js';
+import { MdTableOfContentsProvider } from '../tableOfContents.js';
+import { InternalHref, MdLink } from '../types/documentLink.js';
+import { InMemoryDocument } from '../types/inMemoryDocument.js';
+import { noopToken } from '../util/cancellation.js';
+import { URI } from '../util/vscodeUri.js';
+import { ContainingDocumentContext, IWorkspace } from '../workspace.js';
+import { createNewMarkdownEngine } from './engine.js';
+import { InMemoryWorkspace } from './inMemoryWorkspace.js';
+import { nulLogger } from './nulLogging.js';
+import { assertRangeEqual, joinLines, workspacePath } from './util.js';
 
 
 suite('Link computer', () => {

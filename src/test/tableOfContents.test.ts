@@ -4,13 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { URI } from 'vscode-uri';
-import { TableOfContents } from '../tableOfContents';
-import { InMemoryDocument } from '../types/inMemoryDocument';
-import { ITextDocument } from '../types/textDocument';
-import { noopToken } from '../util/cancellation';
-import { createNewMarkdownEngine } from './engine';
-import { joinLines } from './util';
+import { TableOfContents } from '../tableOfContents.js';
+import { InMemoryDocument } from '../types/inMemoryDocument.js';
+import { ITextDocument } from '../types/textDocument.js';
+import { noopToken } from '../util/cancellation.js';
+import { URI } from '../util/vscodeUri.js';
+import { createNewMarkdownEngine } from './engine.js';
+import { joinLines } from './util.js';
 
 
 const testFileName = URI.file('test.md');

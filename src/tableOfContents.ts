@@ -5,16 +5,16 @@
 
 import * as lsp from 'vscode-languageserver-protocol';
 import { HTMLElement, parse as parseHtml } from 'node-html-parser';
-import { URI } from 'vscode-uri';
-import { ILogger, LogLevel } from './logging';
-import { IMdParser, Token } from './parser';
-import { ISlug, ISlugifier } from './slugify';
-import { getDocUri, getLine, ITextDocument } from './types/textDocument';
-import { Disposable } from './util/dispose';
-import { NoLinkRanges } from './util/noLinkRanges';
-import { ResourceMap } from './util/resourceMap';
-import { IWorkspace } from './workspace';
-import { MdDocumentInfoCache } from './workspaceCache';
+import { URI } from './util/vscodeUri.js';
+import { ILogger, LogLevel } from './logging.js';
+import { IMdParser, Token } from './parser.js';
+import { ISlug, ISlugifier } from './slugify.js';
+import { getDocUri, getLine, ITextDocument } from './types/textDocument.js';
+import { Disposable } from './util/dispose.js';
+import { NoLinkRanges } from './util/noLinkRanges.js';
+import { ResourceMap } from './util/resourceMap.js';
+import { IWorkspace } from './workspace.js';
+import { MdDocumentInfoCache } from './workspaceCache.js';
 
 export type TocEntry = TocHeaderEntry | TocHtmlIdEntry;
 

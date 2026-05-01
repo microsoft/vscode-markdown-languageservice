@@ -5,16 +5,16 @@
 
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI } from 'vscode-uri';
-import { MdSelectionRangeProvider } from '../languageFeatures/smartSelect';
-import { MdTableOfContentsProvider } from '../tableOfContents';
-import { InMemoryDocument } from '../types/inMemoryDocument';
-import { createNewMarkdownEngine } from './engine';
-import { InMemoryWorkspace } from './inMemoryWorkspace';
-import { nulLogger } from './nulLogging';
-import { CURSOR, getCursorPositions, joinLines } from './util';
-import { MdLinkProvider } from '../languageFeatures/documentLinks';
-import { getLsConfiguration } from '../config';
+import { getLsConfiguration } from '../config.js';
+import { MdLinkProvider } from '../languageFeatures/documentLinks.js';
+import { MdSelectionRangeProvider } from '../languageFeatures/smartSelect.js';
+import { MdTableOfContentsProvider } from '../tableOfContents.js';
+import { InMemoryDocument } from '../types/inMemoryDocument.js';
+import { URI } from '../util/vscodeUri.js';
+import { createNewMarkdownEngine } from './engine.js';
+import { InMemoryWorkspace } from './inMemoryWorkspace.js';
+import { nulLogger } from './nulLogging.js';
+import { CURSOR, getCursorPositions, joinLines } from './util.js';
 
 
 const testFileName = URI.file('test.md');
@@ -931,8 +931,8 @@ function assertNestedRangesEqual(range: lsp.SelectionRange, ...expectedRanges: [
 	assert.strictEqual(lineage.length, expectedRanges.length, `expected depth: ${expectedRanges.length}, but was length: ${lineage.length}. Values: ${getValues(lineage)}`);
 	for (let i = 0; i < lineage.length; i++) {
 		assertLineNumbersEqual(lineage[i], expectedRanges[i][0], expectedRanges[i][2], `parent at a depth of ${i}. Expected: ${expectedRanges[i][0]} but was ${lineage[i].range.start.line}`);
-		assert(lineage[i].range.start.character === expectedRanges[i][1], `parent at a depth of ${i} on start char. Expected: ${expectedRanges[i][1]} but was ${lineage[i].range.start.character}`);
-		assert(lineage[i].range.end.character === expectedRanges[i][3], `parent at a depth of ${i} on end char. Expected: ${expectedRanges[i][3]} but was ${lineage[i].range.end.character}`);
+		assert.ok(lineage[i].range.start.character === expectedRanges[i][1], `parent at a depth of ${i} on start char. Expected: ${expectedRanges[i][1]} but was ${lineage[i].range.start.character}`);
+		assert.ok(lineage[i].range.end.character === expectedRanges[i][3], `parent at a depth of ${i} on end char. Expected: ${expectedRanges[i][3]} but was ${lineage[i].range.end.character}`);
 	}
 }
 

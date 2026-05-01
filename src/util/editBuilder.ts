@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI } from 'vscode-uri';
+import { URI } from './vscodeUri.js';
 
 export class WorkspaceEditBuilder {
 

@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as lsp from 'vscode-languageserver-protocol';
-import { Token } from '../parser';
-import { rangeContains } from '../types/range';
-import { ITextDocument } from '../types/textDocument';
+import { Token } from '../parser.js';
+import { rangeContains } from '../types/range.js';
+import { ITextDocument } from '../types/textDocument.js';
 
 const inlineCodePattern = /(?<!`)(`+)((?:.+?|.*?(?:(?:\r?\n).+?)*?)(?:\r?\n)?\1)(?!`)/gm;
 

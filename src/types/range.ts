@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Position, Range } from 'vscode-languageserver-protocol';
-import { arePositionsEqual, isBefore } from './position';
+import { arePositionsEqual, isBefore } from './position.js';
 
 
 export function areRangesEqual(a: Range, b: Range): boolean {

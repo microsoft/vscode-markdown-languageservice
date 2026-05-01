@@ -3,12 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ILogger, LogLevel } from '../logging.js';
+import uri from 'vscode-uri';
 
-export const nulLogger = new class implements ILogger {
-	readonly level = LogLevel.Off;
+export const URI = uri.URI;
+// eslint-disable-next-line no-redeclare
+export type URI = uri.URI;
 
-	log(): void {
-		// noop
-	}
-};
+export const Utils = uri.Utils;

@@ -5,17 +5,17 @@
 
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-protocol';
-import { getLsConfiguration } from '../config';
-import { MdDocumentHighlightProvider } from '../languageFeatures/documentHighlights';
-import { MdLinkProvider } from '../languageFeatures/documentLinks';
-import { MdTableOfContentsProvider } from '../tableOfContents';
-import { InMemoryDocument } from '../types/inMemoryDocument';
-import { noopToken } from '../util/cancellation';
-import { IWorkspace } from '../workspace';
-import { createNewMarkdownEngine } from './engine';
-import { InMemoryWorkspace } from './inMemoryWorkspace';
-import { nulLogger } from './nulLogging';
-import { assertRangeEqual, DisposableStore, joinLines, withStore, workspacePath } from './util';
+import { getLsConfiguration } from '../config.js';
+import { MdDocumentHighlightProvider } from '../languageFeatures/documentHighlights.js';
+import { MdLinkProvider } from '../languageFeatures/documentLinks.js';
+import { MdTableOfContentsProvider } from '../tableOfContents.js';
+import { InMemoryDocument } from '../types/inMemoryDocument.js';
+import { noopToken } from '../util/cancellation.js';
+import { IWorkspace } from '../workspace.js';
+import { createNewMarkdownEngine } from './engine.js';
+import { InMemoryWorkspace } from './inMemoryWorkspace.js';
+import { nulLogger } from './nulLogging.js';
+import { assertRangeEqual, DisposableStore, joinLines, withStore, workspacePath } from './util.js';
 
 
 function getDocumentHighlights(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position, workspace: IWorkspace) {
@@ -212,7 +212,7 @@ suite('Document highlights', () => {
 
 	test('Should highlight reference links when on link reference or definition', withStore(async (store) => {
 		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
-			`[text][def]`, // trigger 1 
+			`[text][def]`, // trigger 1
 			`[def]`,
 			`[def][]`,
 			`[def][def]`,
@@ -248,7 +248,7 @@ suite('Document highlights', () => {
 			`text [link](http://example.com/b)`,
 			``,
 			`[ref]: http://example.com/a`, // trigger 2
-			`[ref]: http://example.com/b`, 
+			`[ref]: http://example.com/b`,
 
 		));
 		const workspace = store.add(new InMemoryWorkspace([doc]));

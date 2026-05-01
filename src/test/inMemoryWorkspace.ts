@@ -6,13 +6,13 @@
 import * as assert from 'assert';
 import * as path from 'path';
 import { Emitter } from 'vscode-languageserver-protocol';
-import { URI } from 'vscode-uri';
-import { InMemoryDocument } from '../types/inMemoryDocument';
-import { getDocUri, ITextDocument } from '../types/textDocument';
-import { Disposable } from '../util/dispose';
-import { ResourceMap } from '../util/resourceMap';
-import { FileStat, FileWatcherOptions, IFileSystemWatcher, IWorkspaceWithWatching } from '../workspace';
-import { workspaceRoot } from './util';
+import { InMemoryDocument } from '../types/inMemoryDocument.js';
+import { getDocUri, ITextDocument } from '../types/textDocument.js';
+import { Disposable } from '../util/dispose.js';
+import { ResourceMap } from '../util/resourceMap.js';
+import { URI } from '../util/vscodeUri.js';
+import { FileStat, FileWatcherOptions, IFileSystemWatcher, IWorkspaceWithWatching } from '../workspace.js';
+import { workspaceRoot } from './util.js';
 
 export class InMemoryWorkspace extends Disposable implements IWorkspaceWithWatching {
 

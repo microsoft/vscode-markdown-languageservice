@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as lsp from 'vscode-languageserver-protocol';
-import { ILogger, LogLevel } from '../logging';
-import { IMdParser, Token, TokenWithMap } from '../parser';
-import { MdTableOfContentsProvider, TocHeaderEntry } from '../tableOfContents';
-import { getLine, ITextDocument } from '../types/textDocument';
-import { isEmptyOrWhitespace } from '../util/string';
+import { ILogger, LogLevel } from '../logging.js';
+import { IMdParser, Token, TokenWithMap } from '../parser.js';
+import { MdTableOfContentsProvider, TocHeaderEntry } from '../tableOfContents.js';
+import { getLine, ITextDocument } from '../types/textDocument.js';
+import { isEmptyOrWhitespace } from '../util/string.js';
 
 const rangeLimit = 5000;
 

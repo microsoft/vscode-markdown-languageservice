@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI } from 'vscode-uri';
+import { URI } from '../util/vscodeUri.js';
 
 export enum HrefKind {
 	External,

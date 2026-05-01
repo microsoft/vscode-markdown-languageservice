@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { URI, Utils } from 'vscode-uri';
-import { LsConfiguration, PreferredMdPathExtensionStyle } from '../config';
-import { InternalHref } from '../types/documentLink';
-import { IWorkspace, getWorkspaceFolder } from '../workspace';
-import { looksLikeMarkdownUri } from './path';
-import { Schemes } from './schemes';
+import { LsConfiguration, PreferredMdPathExtensionStyle } from '../config.js';
+import { InternalHref } from '../types/documentLink.js';
+import { IWorkspace, getWorkspaceFolder } from '../workspace.js';
+import { looksLikeMarkdownUri } from './path.js';
+import { Schemes } from './schemes.js';
+import { URI, Utils } from './vscodeUri.js';
 
 /**
  * Escapes special characters so that {@linkcode linkText} can be used in an angle bracket link.

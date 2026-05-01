@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as lsp from 'vscode-languageserver-protocol';
-import { HrefKind, MdLinkDefinition, MdLinkKind } from '../types/documentLink';
-import { getLine, ITextDocument } from '../types/textDocument';
-import { maxLspUInt } from '../util/number';
-import { isEmptyOrWhitespace } from '../util/string';
-import { MdLinkProvider } from './documentLinks';
+import { HrefKind, MdLinkDefinition, MdLinkKind } from '../types/documentLink.js';
+import { getLine, ITextDocument } from '../types/textDocument.js';
+import { maxLspUInt } from '../util/number.js';
+import { isEmptyOrWhitespace } from '../util/string.js';
+import { MdLinkProvider } from './documentLinks.js';
 
 export class MdOrganizeLinkDefinitionProvider {
 

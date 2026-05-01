@@ -4,17 +4,17 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI } from 'vscode-uri';
-import { LsConfiguration } from '../config';
-import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOfContents';
-import { HrefKind, InternalHref, MdLink, MdLinkKind } from '../types/documentLink';
-import { translatePosition } from '../types/position';
-import { modifyRange, rangeContains } from '../types/range';
-import { getDocUri, ITextDocument } from '../types/textDocument';
-import { isSameResource, looksLikePathToResource } from '../util/path';
-import { tryAppendMarkdownFileExtension } from '../workspace';
-import { MdLinkProvider } from './documentLinks';
-import { getFilePathRange } from './rename';
+import { LsConfiguration } from '../config.js';
+import { MdTableOfContentsProvider, TableOfContents, TocEntry } from '../tableOfContents.js';
+import { HrefKind, InternalHref, MdLink, MdLinkKind } from '../types/documentLink.js';
+import { translatePosition } from '../types/position.js';
+import { modifyRange, rangeContains } from '../types/range.js';
+import { getDocUri, ITextDocument } from '../types/textDocument.js';
+import { isSameResource, looksLikePathToResource } from '../util/path.js';
+import { URI } from '../util/vscodeUri.js';
+import { tryAppendMarkdownFileExtension } from '../workspace.js';
+import { MdLinkProvider } from './documentLinks.js';
+import { getFilePathRange } from './rename.js';
 
 export class MdDocumentHighlightProvider {
 

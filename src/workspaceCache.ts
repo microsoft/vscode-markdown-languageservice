@@ -4,12 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CancellationToken, CancellationTokenSource } from 'vscode-languageserver-protocol';
-import { URI } from 'vscode-uri';
-import { getDocUri, ITextDocument } from './types/textDocument';
-import { Disposable } from './util/dispose';
-import { lazy, Lazy } from './util/lazy';
-import { ResourceMap } from './util/resourceMap';
-import { IWorkspace } from './workspace';
+import { URI } from './util/vscodeUri.js';
+import { getDocUri, ITextDocument } from './types/textDocument.js';
+import { Disposable } from './util/dispose.js';
+import { lazy, Lazy } from './util/lazy.js';
+import { ResourceMap } from './util/resourceMap.js';
+import { IWorkspace } from './workspace.js';
 
 
 

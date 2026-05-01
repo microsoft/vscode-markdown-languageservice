@@ -6,10 +6,10 @@
 import * as assert from 'assert';
 import * as os from 'os';
 import * as lsp from 'vscode-languageserver-protocol';
-import * as URI from 'vscode-uri';
-import { DiagnosticLevel, DiagnosticOptions } from '../languageFeatures/diagnostics';
-import { InMemoryDocument } from '../types/inMemoryDocument';
-import { Disposable, disposeAll, IDisposable } from '../util/dispose';
+import { DiagnosticLevel, DiagnosticOptions } from '../languageFeatures/diagnostics.js';
+import { InMemoryDocument } from '../types/inMemoryDocument.js';
+import { Disposable, disposeAll, IDisposable } from '../util/dispose.js';
+import * as URI from '../util/vscodeUri.js';
 
 export const joinLines = (...args: string[]) => args.join('\n');
 

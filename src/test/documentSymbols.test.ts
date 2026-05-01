@@ -5,16 +5,16 @@
 
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-protocol';
-import { getLsConfiguration } from '../config';
-import { MdLinkProvider } from '../languageFeatures/documentLinks';
-import { MdDocumentSymbolProvider, ProvideDocumentSymbolOptions } from '../languageFeatures/documentSymbols';
-import { MdTableOfContentsProvider } from '../tableOfContents';
-import { InMemoryDocument } from '../types/inMemoryDocument';
-import { noopToken } from '../util/cancellation';
-import { createNewMarkdownEngine } from './engine';
-import { InMemoryWorkspace } from './inMemoryWorkspace';
-import { nulLogger } from './nulLogging';
-import { assertRangeEqual, DisposableStore, joinLines, withStore, workspacePath } from './util';
+import { getLsConfiguration } from '../config.js';
+import { MdLinkProvider } from '../languageFeatures/documentLinks.js';
+import { MdDocumentSymbolProvider, ProvideDocumentSymbolOptions } from '../languageFeatures/documentSymbols.js';
+import { MdTableOfContentsProvider } from '../tableOfContents.js';
+import { InMemoryDocument } from '../types/inMemoryDocument.js';
+import { noopToken } from '../util/cancellation.js';
+import { createNewMarkdownEngine } from './engine.js';
+import { InMemoryWorkspace } from './inMemoryWorkspace.js';
+import { nulLogger } from './nulLogging.js';
+import { assertRangeEqual, DisposableStore, joinLines, withStore, workspacePath } from './util.js';
 
 
 function getSymbolsForFile(store: DisposableStore, fileContents: string, options: ProvideDocumentSymbolOptions = {}) {

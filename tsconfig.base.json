@@ -1,11 +1,12 @@
 {
 	"compilerOptions": {
-		"target": "es2022",
+		"target": "ES2024",
 		"lib": [
-			"ES2021",
+			"ES2024",
 		],
 		"sourceMap": true,
-		"module": "commonjs",
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
 		"strict": true,
 		"noImplicitAny": true,
 		"noImplicitReturns": true,

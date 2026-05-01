@@ -7,21 +7,21 @@ import * as l10n from '@vscode/l10n';
 import { dirname, extname, resolve } from 'path';
 import type { CancellationToken, CompletionContext } from 'vscode-languageserver-protocol';
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI, Utils } from 'vscode-uri';
-import { LsConfiguration, isExcludedPath } from '../config';
-import { MdTableOfContentsProvider, TableOfContents, TocEntry, TocHeaderEntry, TocHtmlIdEntry } from '../tableOfContents';
-import { translatePosition } from '../types/position';
-import { ITextDocument, getDocUri, getLine } from '../types/textDocument';
-import { htmlTagPathAttrs } from '../util/html';
-import * as mdBuilder from '../util/mdBuilder';
-import { escapeForAngleBracketLink, hasBalancedParens } from '../util/mdLinks';
-import { MediaType, getMediaPreviewType } from '../util/media';
-import { computeRelativePath, isSameResource, looksLikeMarkdownFilePath } from '../util/path';
-import { Schemes } from '../util/schemes';
-import { r } from '../util/string';
-import { FileStat, IWorkspace, getWorkspaceFolder, openLinkToMarkdownFile } from '../workspace';
-import { MdWorkspaceInfoCache } from '../workspaceCache';
-import { MdLinkProvider } from './documentLinks';
+import { LsConfiguration, isExcludedPath } from '../config.js';
+import { MdTableOfContentsProvider, TableOfContents, TocEntry, TocHeaderEntry, TocHtmlIdEntry } from '../tableOfContents.js';
+import { translatePosition } from '../types/position.js';
+import { ITextDocument, getDocUri, getLine } from '../types/textDocument.js';
+import { htmlTagPathAttrs } from '../util/html.js';
+import * as mdBuilder from '../util/mdBuilder.js';
+import { escapeForAngleBracketLink, hasBalancedParens } from '../util/mdLinks.js';
+import { MediaType, getMediaPreviewType } from '../util/media.js';
+import { computeRelativePath, isSameResource, looksLikeMarkdownFilePath } from '../util/path.js';
+import { Schemes } from '../util/schemes.js';
+import { r } from '../util/string.js';
+import { URI, Utils } from '../util/vscodeUri.js';
+import { FileStat, IWorkspace, getWorkspaceFolder, openLinkToMarkdownFile } from '../workspace.js';
+import { MdWorkspaceInfoCache } from '../workspaceCache.js';
+import { MdLinkProvider } from './documentLinks.js';
 
 enum CompletionContextKind {
 	/** `[...](|)` */

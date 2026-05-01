@@ -5,18 +5,18 @@
 
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI } from 'vscode-uri';
-import { getLsConfiguration, LsConfiguration, PreferredMdPathExtensionStyle } from '../config';
-import { MdLinkProvider } from '../languageFeatures/documentLinks';
-import { IncludeWorkspaceHeaderCompletions, MdPathCompletionProvider, PathCompletionOptions } from '../languageFeatures/pathCompletions';
-import { MdTableOfContentsProvider } from '../tableOfContents';
-import { InMemoryDocument } from '../types/inMemoryDocument';
-import { noopToken } from '../util/cancellation';
-import { IWorkspace } from '../workspace';
-import { createNewMarkdownEngine } from './engine';
-import { InMemoryWorkspace } from './inMemoryWorkspace';
-import { nulLogger } from './nulLogging';
-import { assertPositionEqual, CURSOR, DisposableStore, getCursorPositions, joinLines, withStore, workspacePath } from './util';
+import { getLsConfiguration, LsConfiguration, PreferredMdPathExtensionStyle } from '../config.js';
+import { MdLinkProvider } from '../languageFeatures/documentLinks.js';
+import { IncludeWorkspaceHeaderCompletions, MdPathCompletionProvider, PathCompletionOptions } from '../languageFeatures/pathCompletions.js';
+import { MdTableOfContentsProvider } from '../tableOfContents.js';
+import { InMemoryDocument } from '../types/inMemoryDocument.js';
+import { noopToken } from '../util/cancellation.js';
+import { URI } from '../util/vscodeUri.js';
+import { IWorkspace } from '../workspace.js';
+import { createNewMarkdownEngine } from './engine.js';
+import { InMemoryWorkspace } from './inMemoryWorkspace.js';
+import { nulLogger } from './nulLogging.js';
+import { assertPositionEqual, CURSOR, DisposableStore, getCursorPositions, joinLines, withStore, workspacePath } from './util.js';
 
 
 async function getCompletionsAtCursor(store: DisposableStore, doc: InMemoryDocument, workspace: IWorkspace, configOverrides: Partial<LsConfiguration> = {}, context: Partial<PathCompletionOptions> = {}) {

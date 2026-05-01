@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { InMemoryDocument } from '../types/inMemoryDocument';
-import { MdWorkspaceInfoCache } from '../workspaceCache';
-import { InMemoryWorkspace } from './inMemoryWorkspace';
-import { joinLines, withStore, workspacePath } from './util';
+import { InMemoryDocument } from '../types/inMemoryDocument.js';
+import { MdWorkspaceInfoCache } from '../workspaceCache.js';
+import { InMemoryWorkspace } from './inMemoryWorkspace.js';
+import { joinLines, withStore, workspacePath } from './util.js';
 
 
 suite('Workspace Cache', () => {

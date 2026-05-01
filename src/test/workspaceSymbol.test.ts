@@ -4,18 +4,18 @@
  *--------------------------------------------------------------------------------------------*/
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-protocol';
-import { IWorkspace } from '..';
-import { getLsConfiguration } from '../config';
-import { MdLinkProvider } from '../languageFeatures/documentLinks';
-import { MdDocumentSymbolProvider } from '../languageFeatures/documentSymbols';
-import { MdWorkspaceSymbolProvider } from '../languageFeatures/workspaceSymbols';
-import { MdTableOfContentsProvider } from '../tableOfContents';
-import { InMemoryDocument } from '../types/inMemoryDocument';
-import { noopToken } from '../util/cancellation';
-import { createNewMarkdownEngine } from './engine';
-import { InMemoryWorkspace } from './inMemoryWorkspace';
-import { nulLogger } from './nulLogging';
-import { DisposableStore, joinLines, withStore, workspacePath } from './util';
+import { getLsConfiguration } from '../config.js';
+import { IWorkspace } from '../index.js';
+import { MdLinkProvider } from '../languageFeatures/documentLinks.js';
+import { MdDocumentSymbolProvider } from '../languageFeatures/documentSymbols.js';
+import { MdWorkspaceSymbolProvider } from '../languageFeatures/workspaceSymbols.js';
+import { MdTableOfContentsProvider } from '../tableOfContents.js';
+import { InMemoryDocument } from '../types/inMemoryDocument.js';
+import { noopToken } from '../util/cancellation.js';
+import { createNewMarkdownEngine } from './engine.js';
+import { InMemoryWorkspace } from './inMemoryWorkspace.js';
+import { nulLogger } from './nulLogging.js';
+import { DisposableStore, joinLines, withStore, workspacePath } from './util.js';
 
 function getWorkspaceSymbols(store: DisposableStore, workspace: IWorkspace, query = ''): Promise<lsp.WorkspaceSymbol[]> {
 	const engine = createNewMarkdownEngine();
@@ -133,7 +133,7 @@ suite('Workspace symbols', () => {
 		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'cdf'), ['# cat dog fish']);
 		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'catfish'), ['# cat dog fish']);
 		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'fishcat'), []); // wrong order
-		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'ccat'), []); 
+		assertSymbolsMatch(await getWorkspaceSymbols(store, workspace, 'ccat'), []);
 	}));
 
 	test('Should strip markup in headers', withStore(async (store) => {

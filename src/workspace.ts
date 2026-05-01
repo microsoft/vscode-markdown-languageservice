@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Event } from 'vscode-languageserver-protocol';
-import { URI, Utils } from 'vscode-uri';
-import { defaultMarkdownFileExtension, LsConfiguration } from './config';
-import { ITextDocument } from './types/textDocument';
-import { ResourceMap } from './util/resourceMap';
+import { URI, Utils } from './util/vscodeUri.js';
+import { defaultMarkdownFileExtension, LsConfiguration } from './config.js';
+import { ITextDocument } from './types/textDocument.js';
+import { ResourceMap } from './util/resourceMap.js';
 
 /**
  * Result of {@link IWorkspace.stat stating} a file.

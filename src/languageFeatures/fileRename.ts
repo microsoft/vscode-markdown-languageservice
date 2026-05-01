@@ -4,17 +4,17 @@
  *--------------------------------------------------------------------------------------------*/
 import * as path from 'path';
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI, Utils } from 'vscode-uri';
-import { LsConfiguration, isExcludedPath } from '../config';
-import { HrefKind, MdLink } from '../types/documentLink';
-import { ITextDocument, getDocUri } from '../types/textDocument';
-import { WorkspaceEditBuilder } from '../util/editBuilder';
-import { removeNewUriExtIfNeeded, resolveInternalDocumentLink } from '../util/mdLinks';
-import { isParentDir, isSameResource, looksLikeMarkdownUri } from '../util/path';
-import { IWorkspace } from '../workspace';
-import { MdWorkspaceInfoCache } from '../workspaceCache';
-import { MdReferenceKind, MdReferencesProvider } from './references';
-import { getLinkRenameEdit, getLinkRenameText } from './rename';
+import { LsConfiguration, isExcludedPath } from '../config.js';
+import { HrefKind, MdLink } from '../types/documentLink.js';
+import { ITextDocument, getDocUri } from '../types/textDocument.js';
+import { WorkspaceEditBuilder } from '../util/editBuilder.js';
+import { removeNewUriExtIfNeeded, resolveInternalDocumentLink } from '../util/mdLinks.js';
+import { isParentDir, isSameResource, looksLikeMarkdownUri } from '../util/path.js';
+import { URI, Utils } from '../util/vscodeUri.js';
+import { IWorkspace } from '../workspace.js';
+import { MdWorkspaceInfoCache } from '../workspaceCache.js';
+import { MdReferenceKind, MdReferencesProvider } from './references.js';
+import { getLinkRenameEdit, getLinkRenameText } from './rename.js';
 
 
 export interface FileRename {

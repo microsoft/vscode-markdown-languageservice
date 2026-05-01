@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { parseLocationInfoFromFragment } from '../util/path';
+import { parseLocationInfoFromFragment } from '../util/path.js';
 
 suite('parseLocationInfoFromFragment', () => {
 

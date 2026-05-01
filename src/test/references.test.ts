@@ -5,19 +5,19 @@
 
 import * as assert from 'assert';
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI } from 'vscode-uri';
-import { getLsConfiguration } from '../config';
-import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks';
-import { MdReferencesProvider } from '../languageFeatures/references';
-import { MdTableOfContentsProvider } from '../tableOfContents';
-import { InMemoryDocument } from '../types/inMemoryDocument';
-import { comparePosition } from '../types/position';
-import { noopToken } from '../util/cancellation';
-import { IWorkspace } from '../workspace';
-import { createNewMarkdownEngine } from './engine';
-import { InMemoryWorkspace } from './inMemoryWorkspace';
-import { nulLogger } from './nulLogging';
-import { DisposableStore, joinLines, withStore, workspacePath, workspaceRoot } from './util';
+import { getLsConfiguration } from '../config.js';
+import { createWorkspaceLinkCache } from '../languageFeatures/documentLinks.js';
+import { MdReferencesProvider } from '../languageFeatures/references.js';
+import { MdTableOfContentsProvider } from '../tableOfContents.js';
+import { InMemoryDocument } from '../types/inMemoryDocument.js';
+import { comparePosition } from '../types/position.js';
+import { noopToken } from '../util/cancellation.js';
+import { URI } from '../util/vscodeUri.js';
+import { IWorkspace } from '../workspace.js';
+import { createNewMarkdownEngine } from './engine.js';
+import { InMemoryWorkspace } from './inMemoryWorkspace.js';
+import { nulLogger } from './nulLogging.js';
+import { DisposableStore, joinLines, withStore, workspacePath, workspaceRoot } from './util.js';
 
 
 async function getReferences(store: DisposableStore, doc: InMemoryDocument, pos: lsp.Position, workspace: IWorkspace) {

@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { InMemoryDocument } from '../types/inMemoryDocument';
-import { MdDocumentInfoCache } from '../workspaceCache';
-import { InMemoryWorkspace } from './inMemoryWorkspace';
+import { InMemoryDocument } from '../types/inMemoryDocument.js';
+import { MdDocumentInfoCache } from '../workspaceCache.js';
+import { InMemoryWorkspace } from './inMemoryWorkspace.js';
 
-import { workspacePath } from './util';
+import { workspacePath } from './util.js';
 
 suite('DocumentInfoCache', () => {
 	test('Repeated calls should only compute value once', async () => {

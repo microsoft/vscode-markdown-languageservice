@@ -6,7 +6,7 @@ import * as lsp from 'vscode-languageserver-protocol';
 import { LsConfiguration } from '../config.js';
 import { ILogger, LogLevel } from '../logging.js';
 import { IMdParser } from '../parser.js';
-import { MdTableOfContentsProvider, TocHeaderEntry } from '../tableOfContents.js';
+import { MdTableOfContentsProvider, TocHeaderEntry, TocHtmlIdEntry } from '../tableOfContents.js';
 import { HrefKind, MdLink, MdLinkKind } from '../types/documentLink.js';
 import { translatePosition } from '../types/position.js';
 import { areRangesEqual, modifyRange, rangeContains } from '../types/range.js';
@@ -20,34 +20,41 @@ import { MdWorkspaceInfoCache } from '../workspaceCache.js';
 export enum MdReferenceKind {
 	Link = 1,
 	Header = 2,
+	HtmlId = 3,
+}
+
+export interface MdReferenceBase {
+	readonly kind: MdReferenceKind;
+	readonly isTriggerLocation: boolean;
+	readonly isDefinition: boolean;
+	readonly location: lsp.Location;
 }
 
 /**
  * A link in a markdown file.
  */
-export interface MdLinkReference {
+export interface MdLinkReference extends MdReferenceBase {
 	readonly kind: MdReferenceKind.Link;
-	readonly isTriggerLocation: boolean;
-	readonly isDefinition: boolean;
-	readonly location: lsp.Location;
-
 	readonly link: MdLink;
 }
 
 /**
  * A header in a markdown file.
  */
-export interface MdHeaderReference {
+export interface MdHeaderReference extends MdReferenceBase {
 	readonly kind: MdReferenceKind.Header;
-
-	readonly isTriggerLocation: boolean;
-	readonly isDefinition: boolean;
-	readonly location: lsp.Location;
-
 	readonly header: TocHeaderEntry;
 }
 
-export type MdReference = MdLinkReference | MdHeaderReference;
+/**
+ * An HTML id attribute in a markdown file.
+ */
+export interface MdHtmlIdReference extends MdReferenceBase {
+	readonly kind: MdReferenceKind.HtmlId;
+	readonly htmlId: TocHtmlIdEntry;
+}
+
+export type MdReference = MdLinkReference | MdHeaderReference | MdHtmlIdReference;
 
 /**
  * Stateful object that computes references for markdown files.
@@ -89,7 +96,7 @@ export class MdReferencesProvider extends Disposable {
 	public async getReferencesAtPosition(document: ITextDocument, position: lsp.Position, token: lsp.CancellationToken): Promise<MdReference[]> {
 		this.#logger.log(LogLevel.Debug, 'ReferencesProvider.getReferencesAtPosition', { document: document.uri, version: document.version });
 
-		const toc = await this.#tocProvider.getForDocument(document);
+		const toc = await this.#tocProvider.getForDocument(document, { includeHtmlIds: true });
 		if (token.isCancellationRequested) {
 			return [];
 		}
@@ -98,6 +105,8 @@ export class MdReferencesProvider extends Disposable {
 		if (header) {
 			if (header.kind === 'header') {
 				return this.#getReferencesToHeader(document, header, token);
+			} else if (header.kind === 'html-id') {
+				return this.#getReferencesToHtmlId(document, header, token);
 			} else {
 				return [];
 			}
@@ -137,6 +146,40 @@ export class MdReferencesProvider extends Disposable {
 			if (link.href.kind === HrefKind.Internal
 				&& looksLikePathToResource(this.#configuration, link.href.path, getDocUri(document))
 				&& this.#parser.slugifier.fromFragment(link.href.fragment).equals(header.slug)
+			) {
+				references.push({
+					kind: MdReferenceKind.Link,
+					isTriggerLocation: false,
+					isDefinition: false,
+					link,
+					location: { uri: link.source.resource.toString(), range: link.source.hrefRange },
+				});
+			}
+		}
+
+		return references;
+	}
+
+	async #getReferencesToHtmlId(document: ITextDocument, htmlId: TocHtmlIdEntry, token: lsp.CancellationToken): Promise<MdReference[]> {
+		const links = await this.#getAllLinksInWorkspace();
+		if (token.isCancellationRequested) {
+			return [];
+		}
+
+		const references: MdReference[] = [];
+
+		references.push({
+			kind: MdReferenceKind.HtmlId,
+			isTriggerLocation: true,
+			isDefinition: true,
+			location: htmlId.declarationLocation,
+			htmlId,
+		});
+
+		for (const link of links) {
+			if (link.href.kind === HrefKind.Internal
+				&& looksLikePathToResource(this.#configuration, link.href.path, getDocUri(document))
+				&& this.#parser.slugifier.fromFragment(link.href.fragment).equals(htmlId.slug)
 			) {
 				references.push({
 					kind: MdReferenceKind.Link,
@@ -212,7 +255,7 @@ export class MdReferencesProvider extends Disposable {
 		const references: MdReference[] = [];
 
 		if (resolvedResource && this.#isMarkdownPath(resolvedResource) && sourceLink.href.fragment && sourceLink.source.hrefFragmentRange && rangeContains(sourceLink.source.hrefFragmentRange, triggerPosition)) {
-			const toc = await this.#tocProvider.get(resolvedResource);
+			const toc = await this.#tocProvider.get(resolvedResource, { includeHtmlIds: true });
 			const entry = toc?.lookupByFragment(sourceLink.href.fragment);
 			if (entry && entry.kind === 'header') {
 				references.push({
@@ -221,6 +264,14 @@ export class MdReferencesProvider extends Disposable {
 					isDefinition: true,
 					location: entry.declarationLocation,
 					header: entry,
+				});
+			} else if (entry && entry.kind === 'html-id') {
+				references.push({
+					kind: MdReferenceKind.HtmlId,
+					isTriggerLocation: false,
+					isDefinition: true,
+					location: entry.declarationLocation,
+					htmlId: entry,
 				});
 			}
 

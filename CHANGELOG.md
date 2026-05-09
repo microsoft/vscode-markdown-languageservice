@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.0-alpha.14 — Unrelease
+- Support renames for html tag ids
+
 ## 0.5.0-alpha.13 — April 30, 2026
 - Switch package to esm.
 - Fixed image completions returning header suggestions.

@@ -908,4 +908,106 @@ suite('Rename', () => {
 			});
 		}));
 	});
+
+	suite('HTML id rename', () => {
+
+		test('Rename on html id should update id and all links to it', withStore(async (store) => {
+			const uri = workspacePath('doc.md');
+			const doc = new InMemoryDocument(uri, joinLines(
+				`<div id="my-section"></div>`,
+				``,
+				`[link](#my-section)`,
+				`[second](#my-section)`,
+			));
+			const workspace = store.add(new InMemoryWorkspace([doc]));
+
+			const info = await prepareRename(store, doc, { line: 0, character: 10 }, workspace);
+			assertRangeEqual(info!.range, lsp.Range.create(0, 9, 0, 19));
+			assert.strictEqual(info!.placeholder, 'my-section');
+
+			const edit = await getRenameEdits(store, doc, { line: 0, character: 10 }, 'new-section', workspace);
+			assertEditsEqual(edit!, {
+				uri, edits: [
+					lsp.TextEdit.replace(lsp.Range.create(0, 9, 0, 19), 'new-section'),
+					lsp.TextEdit.replace(lsp.Range.create(2, 8, 2, 18), 'new-section'),
+					lsp.TextEdit.replace(lsp.Range.create(3, 10, 3, 20), 'new-section'),
+				]
+			});
+		}));
+
+		test('Rename on link to html id should update id and link', withStore(async (store) => {
+			const uri = workspacePath('doc.md');
+			const doc = new InMemoryDocument(uri, joinLines(
+				`<span id="target"></span>`,
+				``,
+				`[link](#target)`,
+			));
+			const workspace = store.add(new InMemoryWorkspace([doc]));
+
+			const info = await prepareRename(store, doc, { line: 2, character: 10 }, workspace);
+			assertRangeEqual(info!.range, lsp.Range.create(2, 8, 2, 14));
+			assert.strictEqual(info!.placeholder, 'target');
+
+			const edit = await getRenameEdits(store, doc, { line: 2, character: 10 }, 'new-target', workspace);
+			assertEditsEqual(edit!, {
+				uri, edits: [
+					lsp.TextEdit.replace(lsp.Range.create(0, 10, 0, 16), 'new-target'),
+					lsp.TextEdit.replace(lsp.Range.create(2, 8, 2, 14), 'new-target'),
+				]
+			});
+		}));
+
+		test('Rename on html id should pick up links across files', withStore(async (store) => {
+			const uri = workspacePath('doc.md');
+			const otherUri = workspacePath('other.md');
+			const doc = new InMemoryDocument(uri, joinLines(
+				`<div id="my-id"></div>`,
+				``,
+				`[link](#my-id)`,
+			));
+
+			const edit = await getRenameEdits(store, doc, { line: 0, character: 10 }, 'new-id', new InMemoryWorkspace([
+				doc,
+				new InMemoryDocument(otherUri, joinLines(
+					`[text](#my-id)`, // Should not find this (different file, no path)
+					`[text](./doc.md#my-id)`, // Should find this
+					`[text](./doc#my-id)`, // And this
+				))
+			]));
+			assertEditsEqual(edit!, {
+				uri, edits: [
+					lsp.TextEdit.replace(lsp.Range.create(0, 9, 0, 14), 'new-id'),
+					lsp.TextEdit.replace(lsp.Range.create(2, 8, 2, 13), 'new-id'),
+				]
+			}, {
+				uri: otherUri, edits: [
+					lsp.TextEdit.replace(lsp.Range.create(1, 16, 1, 21), 'new-id'),
+					lsp.TextEdit.replace(lsp.Range.create(2, 13, 2, 18), 'new-id'),
+				]
+			});
+		}));
+
+		test('Rename on link to html id in other file should update id and links', withStore(async (store) => {
+			const uri = workspacePath('doc.md');
+			const otherUri = workspacePath('other.md');
+			const doc = new InMemoryDocument(uri, joinLines(
+				`<span id="target"></span>`,
+			));
+
+			const otherDoc = new InMemoryDocument(otherUri, joinLines(
+				`[text](./doc.md#target)`,
+			));
+
+			const edit = await getRenameEdits(store, otherDoc, { line: 0, character: 18 }, 'new-target', new InMemoryWorkspace([doc, otherDoc]));
+			assertEditsEqual(edit!, {
+				uri, edits: [
+					lsp.TextEdit.replace(lsp.Range.create(0, 10, 0, 16), 'new-target'),
+				]
+			}, {
+				uri: otherUri, edits: [
+					lsp.TextEdit.replace(lsp.Range.create(0, 16, 0, 22), 'new-target'),
+				]
+			});
+		}));
+	});
 });

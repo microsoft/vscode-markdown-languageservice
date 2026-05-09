@@ -21,7 +21,7 @@ import { computeRelativePath } from '../util/path.js';
 import { tryDecodeUri } from '../util/uri.js';
 import { URI, Utils } from '../util/vscodeUri.js';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace.js';
-import { MdHeaderReference, MdLinkReference, MdReference, MdReferenceKind, MdReferencesProvider } from './references.js';
+import { MdHeaderReference, MdHtmlIdReference, MdLinkReference, MdReference, MdReferenceKind, MdReferencesProvider } from './references.js';
 
 export interface MdReferencesResponse {
 	readonly references: readonly MdReference[];
@@ -90,6 +90,9 @@ export class MdRenameProvider {
 			case MdReferenceKind.Header: {
 				return { range: triggerRef.header.idDeclarationLocation.range, placeholder: triggerRef.header.text };
 			}
+			case MdReferenceKind.HtmlId: {
+				return { range: triggerRef.htmlId.declarationLocation.range, placeholder: triggerRef.htmlId.text };
+			}
 			case MdReferenceKind.Link: {
 				if (triggerRef.link.kind === MdLinkKind.Definition) {
 					// We may have been triggered on the ref or the definition itself
@@ -105,11 +108,15 @@ export class MdRenameProvider {
 				// See if we are renaming the fragment or the path
 				const { hrefFragmentRange } = triggerRef.link.source;
 				if (hrefFragmentRange && rangeContains(hrefFragmentRange, position)) {
-					const declaration = this.#findHeaderDeclaration(allRefsInfo.references);
-					return {
-						range: hrefFragmentRange,
-						placeholder: declaration ? declaration.header.text : document.getText(hrefFragmentRange),
-					};
+					const headerDeclaration = this.#findHeaderDeclaration(allRefsInfo.references);
+					if (headerDeclaration) {
+						return { range: hrefFragmentRange, placeholder: headerDeclaration.header.text };
+					}
+					const htmlIdDeclaration = this.#findHtmlIdDeclaration(allRefsInfo.references);
+					if (htmlIdDeclaration) {
+						return { range: hrefFragmentRange, placeholder: htmlIdDeclaration.htmlId.text };
+					}
+					return { range: hrefFragmentRange, placeholder: document.getText(hrefFragmentRange) };
 				}
 
 				const range = getFilePathRange(triggerRef.link);
@@ -123,6 +130,10 @@ export class MdRenameProvider {
 
 	#findHeaderDeclaration(references: readonly MdReference[]): MdHeaderReference | undefined {
 		return references.find(ref => ref.isDefinition && ref.kind === MdReferenceKind.Header) as MdHeaderReference | undefined;
+	}
+
+	#findHtmlIdDeclaration(references: readonly MdReference[]): MdHtmlIdReference | undefined {
+		return references.find(ref => ref.isDefinition && ref.kind === MdReferenceKind.HtmlId) as MdHtmlIdReference | undefined;
 	}
 
 	public async provideRenameEdits(document: ITextDocument, position: lsp.Position, newName: string, token: lsp.CancellationToken): Promise<lsp.WorkspaceEdit | undefined> {
@@ -141,7 +152,7 @@ export class MdRenameProvider {
 			return this.#renameReferenceLinks(allRefsInfo, newName);
 		} else if (triggerRef.kind === MdReferenceKind.Link && triggerRef.link.href.kind === HrefKind.External) {
 			return this.#renameExternalLink(allRefsInfo, newName);
-		} else if (triggerRef.kind === MdReferenceKind.Header || (triggerRef.kind === MdReferenceKind.Link && triggerRef.link.source.hrefFragmentRange && rangeContains(triggerRef.link.source.hrefFragmentRange, position) && (triggerRef.link.kind === MdLinkKind.Definition || triggerRef.link.kind === MdLinkKind.Link && triggerRef.link.href.kind === HrefKind.Internal))) {
+		} else if (triggerRef.kind === MdReferenceKind.Header || triggerRef.kind === MdReferenceKind.HtmlId || (triggerRef.kind === MdReferenceKind.Link && triggerRef.link.source.hrefFragmentRange && rangeContains(triggerRef.link.source.hrefFragmentRange, position) && (triggerRef.link.kind === MdLinkKind.Definition || triggerRef.link.kind === MdLinkKind.Link && triggerRef.link.href.kind === HrefKind.Internal))) {
 			return this.#renameFragment(allRefsInfo, newName, token);
 		} else if (triggerRef.kind === MdReferenceKind.Link && !(triggerRef.link.source.hrefFragmentRange && rangeContains(triggerRef.link.source.hrefFragmentRange, position)) && (triggerRef.link.kind === MdLinkKind.Link || triggerRef.link.kind === MdLinkKind.Definition) && triggerRef.link.href.kind === HrefKind.Internal) {
 			return this.#renameFilePath(triggerRef.link.source.resource, triggerRef.link.href, allRefsInfo, newName, token);
@@ -274,6 +285,10 @@ export class MdRenameProvider {
 			switch (ref.kind) {
 				case MdReferenceKind.Header:
 					builder.replace(URI.parse(ref.location.uri), ref.header.idDeclarationLocation.range, newHeaderText);
+					break;
+
+				case MdReferenceKind.HtmlId:
+					builder.replace(URI.parse(ref.location.uri), ref.htmlId.declarationLocation.range, newSlug.value);
 					break;
 
 				case MdReferenceKind.Link:

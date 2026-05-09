@@ -20,7 +20,6 @@ import { resolveInternalDocumentLink } from '../util/mdLinks.js';
 import { NoLinkRanges } from '../util/noLinkRanges.js';
 import { parseLocationInfoFromFragment } from '../util/path.js';
 import { r } from '../util/string.js';
-import { tryDecodeUri } from '../util/uri.js';
 import { URI } from '../util/vscodeUri.js';
 import { IWorkspace, tryAppendMarkdownFileExtension } from '../workspace.js';
 import { MdDocumentInfoCache, MdWorkspaceInfoCache } from '../workspaceCache.js';
@@ -35,7 +34,7 @@ function createHref(
 	if (/^[a-z\-][a-z\-]+:/i.test(link)) {
 		// Looks like a uri
 		try {
-			return { kind: HrefKind.External, uri: URI.parse(tryDecodeUri(link)) };
+			return { kind: HrefKind.External, uri: URI.parse(link) };
 		} catch (e) {
 			console.warn(r`Failed to parse link ${link} in ${sourceDocUri.toString(true)}`);
 			return undefined;
@@ -717,7 +716,7 @@ export class MdLinkProvider extends Disposable {
 			case HrefKind.External: {
 				return {
 					range: link.source.hrefRange,
-					target: link.href.uri.toString(true),
+					target: link.source.hrefText,
 				};
 			}
 			case HrefKind.Internal: {

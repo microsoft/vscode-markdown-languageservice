@@ -943,6 +943,22 @@ suite('Link provider', () => {
 		assert.strictEqual(links[0].target, exampleUrl);
 	});
 
+	test('Should preserve encoded reserved characters in external links (#245128)', async () => {
+		const exampleUrl = 'https://ffmpeg.org/ffmpeg-all.html?test=a%23b%20c#:~:text=%2Dversion';
+		const links = await getLinksForFile(joinLines(
+			`[link](${exampleUrl})`
+		));
+		assert.strictEqual(links[0].target, exampleUrl);
+	});
+
+	test('Should preserve encoded slashes in external links (#245128)', async () => {
+		const exampleUrl = 'https://firebasestorage.googleapis.com/v0/b/project/o/folder%2Ffile.png?alt=media&token=abc%2Fdef';
+		const links = await getLinksForFile(joinLines(
+			`[link](${exampleUrl})`
+		));
+		assert.strictEqual(links[0].target, exampleUrl);
+	});
+
 	test('Should resolve href fragment links in angle brackets', async () => {
 		const doc = new InMemoryDocument(testFile, joinLines(
 			`# a b c`,

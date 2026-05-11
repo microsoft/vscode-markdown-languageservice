@@ -758,5 +758,43 @@ suite('References', () => {
 				{ uri, line: 3 },
 			);
 		}));
+
+		test('Should find references when triggered on html id declaration', withStore(async (store) => {
+			const uri = workspacePath('doc.md');
+			const doc = new InMemoryDocument(uri, joinLines(
+				`# header`,
+				``,
+				`<div id="some-id"></div>`,
+				``,
+				`[text](#some-id)`,
+			));
+			const workspace = store.add(new InMemoryWorkspace([doc]));
+
+			// Trigger inside the html id attribute value
+			const refs = await getReferences(store, doc, { line: 2, character: 12 }, workspace);
+			assertReferencesEqual(refs!,
+				{ uri, line: 2 },
+				{ uri, line: 4 },
+			);
+		}));
+
+		test('Should find references when triggered on link to html id', withStore(async (store) => {
+			const uri = workspacePath('doc.md');
+			const doc = new InMemoryDocument(uri, joinLines(
+				`# header`,
+				``,
+				`<div id="some-id"></div>`,
+				``,
+				`[text](#some-id)`,
+			));
+			const workspace = store.add(new InMemoryWorkspace([doc]));
+
+			// Trigger inside the link fragment
+			const refs = await getReferences(store, doc, { line: 4, character: 11 }, workspace);
+			assertReferencesEqual(refs!,
+				{ uri, line: 2 },
+				{ uri, line: 4 },
+			);
+		}));
 	});
 });

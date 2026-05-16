@@ -10,7 +10,7 @@ import { MdLinkProvider } from '../languageFeatures/documentLinks.js';
 import { MdSelectionRangeProvider } from '../languageFeatures/smartSelect.js';
 import { MdTableOfContentsProvider } from '../tableOfContents.js';
 import { InMemoryDocument } from '../types/inMemoryDocument.js';
-import { URI } from '../util/vscodeUri.js';
+import { URI } from 'vscode-uri';
 import { createNewMarkdownEngine } from './engine.js';
 import { InMemoryWorkspace } from './inMemoryWorkspace.js';
 import { nulLogger } from './nulLogging.js';

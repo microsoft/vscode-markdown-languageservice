@@ -28,13 +28,13 @@
     "picomatch": "^2.3.1",
     "vscode-languageserver-protocol": "^3.17.1",
     "vscode-languageserver-textdocument": "^1.0.11",
-    "vscode-uri": "^3.0.7"
+    "vscode-uri": "^3.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.11.1",
     "@microsoft/api-extractor": "^7.31.2",
     "@types/markdown-it": "^12.2.3",
-    "@types/mocha": "^9.1.1",
+    "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
     "@types/picomatch": "^2.3.0",
     "@typescript-eslint/eslint-plugin": "^8.44.0",
@@ -43,7 +43,7 @@
     "github-slugger": "^2.0.0",
     "markdown-it": "^13.0.1",
     "mkdirp": "^1.0.4",
-    "mocha": "^10.0.0",
+    "mocha": "^11.7.5",
     "typescript": "^5.6.0"
   },
   "scripts": {

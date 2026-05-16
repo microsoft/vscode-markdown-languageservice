@@ -18,7 +18,7 @@ import { MediaType, getMediaPreviewType } from '../util/media.js';
 import { computeRelativePath, isSameResource, looksLikeMarkdownFilePath } from '../util/path.js';
 import { Schemes } from '../util/schemes.js';
 import { r } from '../util/string.js';
-import { URI, Utils } from '../util/vscodeUri.js';
+import { URI, Utils } from 'vscode-uri';
 import { FileStat, IWorkspace, getWorkspaceFolder, openLinkToMarkdownFile } from '../workspace.js';
 import { MdWorkspaceInfoCache } from '../workspaceCache.js';
 import { MdLinkProvider } from './documentLinks.js';

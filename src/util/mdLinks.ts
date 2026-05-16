@@ -8,7 +8,7 @@ import { InternalHref } from '../types/documentLink.js';
 import { IWorkspace, getWorkspaceFolder } from '../workspace.js';
 import { looksLikeMarkdownUri } from './path.js';
 import { Schemes } from './schemes.js';
-import { URI, Utils } from './vscodeUri.js';
+import { URI, Utils } from 'vscode-uri';
 
 /**
  * Escapes special characters so that {@linkcode linkText} can be used in an angle bracket link.

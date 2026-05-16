@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { escapeForAngleBracketLink, needsAngleBracketLink } from './mdLinks.js';
-import { URI } from './vscodeUri.js';
+import { URI } from 'vscode-uri';
 
 export function inlineCode(text: string): string {
 	text = text.replace(/\n/, '');

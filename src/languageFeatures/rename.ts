@@ -19,7 +19,7 @@ import { WorkspaceEditBuilder } from '../util/editBuilder.js';
 import { escapeForAngleBracketLink, needsAngleBracketLink, resolveInternalDocumentLink } from '../util/mdLinks.js';
 import { computeRelativePath } from '../util/path.js';
 import { tryDecodeUri } from '../util/uri.js';
-import { URI, Utils } from '../util/vscodeUri.js';
+import { URI, Utils } from 'vscode-uri';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace.js';
 import { MdHeaderReference, MdHtmlIdReference, MdLinkReference, MdReference, MdReferenceKind, MdReferencesProvider } from './references.js';
 

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import picomatch from 'picomatch';
-import { URI } from './util/vscodeUri.js';
+import { URI } from 'vscode-uri';
 
 /**
  * Preferred style for file paths to {@link markdownFileExtensions markdown files}.

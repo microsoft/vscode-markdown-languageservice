@@ -9,7 +9,7 @@ import * as lsp from 'vscode-languageserver-protocol';
 import { DiagnosticLevel, DiagnosticOptions } from '../languageFeatures/diagnostics.js';
 import { InMemoryDocument } from '../types/inMemoryDocument.js';
 import { Disposable, disposeAll, IDisposable } from '../util/dispose.js';
-import * as URI from '../util/vscodeUri.js';
+import * as URI from 'vscode-uri';
 
 export const joinLines = (...args: string[]) => args.join('\n');
 

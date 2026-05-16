@@ -10,7 +10,7 @@ import { InMemoryDocument } from '../types/inMemoryDocument.js';
 import { getDocUri, ITextDocument } from '../types/textDocument.js';
 import { Disposable } from '../util/dispose.js';
 import { ResourceMap } from '../util/resourceMap.js';
-import { URI } from '../util/vscodeUri.js';
+import { URI } from 'vscode-uri';
 import { FileStat, FileWatcherOptions, IFileSystemWatcher, IWorkspaceWithWatching } from '../workspace.js';
 import { workspaceRoot } from './util.js';
 

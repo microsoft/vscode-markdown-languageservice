@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as lsp from 'vscode-languageserver-protocol';
-import { URI } from './util/vscodeUri.js';
+import { URI } from 'vscode-uri';
 import { getLsConfiguration, LsConfiguration } from './config.js';
 import { MdExtractLinkDefinitionCodeActionProvider } from './languageFeatures/codeActions/extractLinkDef.js';
 import { MdRemoveLinkDefinitionCodeActionProvider } from './languageFeatures/codeActions/removeLinkDefinition.js';

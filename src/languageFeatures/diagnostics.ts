@@ -17,7 +17,7 @@ import { Disposable, IDisposable } from '../util/dispose.js';
 import { Limiter } from '../util/limiter.js';
 import { isSameResource, looksLikeMarkdownUri, parseLocationInfoFromFragment } from '../util/path.js';
 import { ResourceMap } from '../util/resourceMap.js';
-import { URI } from '../util/vscodeUri.js';
+import { URI } from 'vscode-uri';
 import { FileStat, IWorkspace, IWorkspaceWithWatching, statLinkToMarkdownFile } from '../workspace.js';
 import { MdLinkProvider } from './documentLinks.js';
 

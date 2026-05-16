@@ -10,7 +10,7 @@ import { ITextDocument, getDocUri } from '../types/textDocument.js';
 import { WorkspaceEditBuilder } from '../util/editBuilder.js';
 import { removeNewUriExtIfNeeded, resolveInternalDocumentLink } from '../util/mdLinks.js';
 import { isParentDir, isSameResource, looksLikeMarkdownUri } from '../util/path.js';
-import { URI, Utils } from '../util/vscodeUri.js';
+import { URI, Utils } from 'vscode-uri';
 import { IWorkspace } from '../workspace.js';
 import { MdWorkspaceInfoCache } from '../workspaceCache.js';
 import { MdReferenceKind, MdReferencesProvider } from './references.js';

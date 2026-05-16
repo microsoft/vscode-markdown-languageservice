@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { URI, Utils } from './vscodeUri.js';
+import { URI, Utils } from 'vscode-uri';
 
 export enum MediaType {
 	Image,

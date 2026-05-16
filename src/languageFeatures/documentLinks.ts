@@ -21,7 +21,7 @@ import { NoLinkRanges } from '../util/noLinkRanges.js';
 import { parseLocationInfoFromFragment } from '../util/path.js';
 import { r } from '../util/string.js';
 import { tryDecodeUri } from '../util/uri.js';
-import { URI } from '../util/vscodeUri.js';
+import { URI } from 'vscode-uri';
 import { IWorkspace, tryAppendMarkdownFileExtension } from '../workspace.js';
 import { MdDocumentInfoCache, MdWorkspaceInfoCache } from '../workspaceCache.js';
 

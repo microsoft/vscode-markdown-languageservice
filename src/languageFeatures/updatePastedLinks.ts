@@ -11,7 +11,7 @@ import { rangeContains } from '../types/range.js';
 import { getDocUri, ITextDocument } from '../types/textDocument.js';
 import { removeNewUriExtIfNeeded } from '../util/mdLinks.js';
 import { computeRelativePath, isSameResource } from '../util/path.js';
-import { URI } from '../util/vscodeUri.js';
+import { URI } from 'vscode-uri';
 import { createAddDefinitionEdit } from './codeActions/extractLinkDef.js';
 import { MdLinkProvider } from './documentLinks.js';
 

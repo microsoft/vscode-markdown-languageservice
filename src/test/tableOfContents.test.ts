@@ -8,7 +8,7 @@ import { TableOfContents } from '../tableOfContents.js';
 import { InMemoryDocument } from '../types/inMemoryDocument.js';
 import { ITextDocument } from '../types/textDocument.js';
 import { noopToken } from '../util/cancellation.js';
-import { URI } from '../util/vscodeUri.js';
+import { URI } from 'vscode-uri';
 import { createNewMarkdownEngine } from './engine.js';
 import { joinLines } from './util.js';
 

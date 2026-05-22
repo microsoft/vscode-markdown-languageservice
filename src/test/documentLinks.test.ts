@@ -11,7 +11,7 @@ import { MdTableOfContentsProvider } from '../tableOfContents.js';
 import { InternalHref, MdLink } from '../types/documentLink.js';
 import { InMemoryDocument } from '../types/inMemoryDocument.js';
 import { noopToken } from '../util/cancellation.js';
-import { URI } from '../util/vscodeUri.js';
+import { URI } from 'vscode-uri';
 import { ContainingDocumentContext, IWorkspace } from '../workspace.js';
 import { createNewMarkdownEngine } from './engine.js';
 import { InMemoryWorkspace } from './inMemoryWorkspace.js';

@@ -7,7 +7,7 @@ import * as path from 'path';
 import * as lsp from 'vscode-languageserver-protocol';
 import { LsConfiguration } from '../config.js';
 import { Schemes } from './schemes.js';
-import { URI, Utils } from './vscodeUri.js';
+import { URI, Utils } from 'vscode-uri';
 
 export function isSameResource(a: URI, b: URI): boolean {
 	return a.toString() === b.toString();

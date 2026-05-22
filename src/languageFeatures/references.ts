@@ -13,7 +13,7 @@ import { areRangesEqual, modifyRange, rangeContains } from '../types/range.js';
 import { getDocUri, ITextDocument } from '../types/textDocument.js';
 import { Disposable } from '../util/dispose.js';
 import { isSameResource, looksLikeMarkdownUri, looksLikePathToResource } from '../util/path.js';
-import { URI } from '../util/vscodeUri.js';
+import { URI } from 'vscode-uri';
 import { IWorkspace, statLinkToMarkdownFile } from '../workspace.js';
 import { MdWorkspaceInfoCache } from '../workspaceCache.js';
 

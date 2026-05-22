@@ -9,7 +9,7 @@ import { MdFoldingProvider } from '../languageFeatures/folding.js';
 import { MdTableOfContentsProvider } from '../tableOfContents.js';
 import { InMemoryDocument } from '../types/inMemoryDocument.js';
 import { noopToken } from '../util/cancellation.js';
-import { URI } from '../util/vscodeUri.js';
+import { URI } from 'vscode-uri';
 import { createNewMarkdownEngine } from './engine.js';
 import { InMemoryWorkspace } from './inMemoryWorkspace.js';
 import { nulLogger } from './nulLogging.js';

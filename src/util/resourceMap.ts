@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { URI } from './vscodeUri.js';
+import { URI } from 'vscode-uri';
 
 
 type ResourceToKey = (uri: URI) => string;

@@ -11,7 +11,7 @@ import { translatePosition } from '../types/position.js';
 import { modifyRange, rangeContains } from '../types/range.js';
 import { getDocUri, ITextDocument } from '../types/textDocument.js';
 import { isSameResource, looksLikePathToResource } from '../util/path.js';
-import { URI } from '../util/vscodeUri.js';
+import { URI } from 'vscode-uri';
 import { tryAppendMarkdownFileExtension } from '../workspace.js';
 import { MdLinkProvider } from './documentLinks.js';
 import { getFilePathRange } from './rename.js';

@@ -5,7 +5,7 @@
 
 import * as lsp from 'vscode-languageserver-protocol';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { URI } from '../util/vscodeUri.js';
+import { URI } from 'vscode-uri';
 import { ITextDocument } from './textDocument.js';
 
 /**

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CancellationToken, CancellationTokenSource } from 'vscode-languageserver-protocol';
-import { URI } from './util/vscodeUri.js';
+import { URI } from 'vscode-uri';
 import { getDocUri, ITextDocument } from './types/textDocument.js';
 import { Disposable } from './util/dispose.js';
 import { lazy, Lazy } from './util/lazy.js';

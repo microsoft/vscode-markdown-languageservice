@@ -5,7 +5,7 @@
 
 import * as lsp from 'vscode-languageserver-protocol';
 import { HTMLElement, parse as parseHtml } from 'node-html-parser';
-import { URI } from './util/vscodeUri.js';
+import { URI } from 'vscode-uri';
 import { ILogger, LogLevel } from './logging.js';
 import { IMdParser, Token } from './parser.js';
 import { ISlug, ISlugifier } from './slugify.js';

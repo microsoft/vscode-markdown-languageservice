@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import { dirname, extname, resolve } from 'path';
+import { dirname, extname, resolve } from 'node:path';
 import type { CancellationToken, CompletionContext } from 'vscode-languageserver-protocol';
 import * as lsp from 'vscode-languageserver-protocol';
 import { LsConfiguration, isExcludedPath } from '../config.js';
@@ -170,7 +170,6 @@ export class MdPathCompletionProvider {
 	}
 
 	public async provideCompletionItems(document: ITextDocument, position: lsp.Position, context: CompletionContext & PathCompletionOptions, token: CancellationToken): Promise<lsp.CompletionItem[]> {
-		console.log('provideCompletionItems', { document, position, context });
 		const pathContext = this.#getPathCompletionContext(document, position);
 		if (!pathContext) {
 			return [];

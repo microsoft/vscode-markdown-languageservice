@@ -3,6 +3,12 @@ import js from '@eslint/js';
 import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
 import { defineConfig } from 'eslint/config';
+import { builtinModules } from 'node:module';
+
+const allowedNodeBuiltinImports = new Set([
+	'node:path',
+]);
+
 
 export default defineConfig([
 	{
@@ -42,6 +48,20 @@ export default defineConfig([
 					message: 'Use #private instead',
 				},
 			],
+		}
+	},
+	{
+		files: ['src/**/*.ts'],
+		ignores: ['src/test/**'],
+		rules: {
+			'no-restricted-imports': ['error', {
+				paths: builtinModules
+					.filter(name => !allowedNodeBuiltinImports.has(name))
+					.map(name => ({
+						name,
+						message: 'Node.js built-ins are restricted in main source files.',
+					})),
+			}],
 		}
 	}
 ]);

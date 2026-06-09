@@ -1,7 +1,13 @@
 # Changelog
 
-## 0.5.0-alpha.14 — Unrelease
-- Support renames for html tag ids
+## 0.5.0 — June 9, 2026
+- Highlights from previous releases:
+	- HTML id support.
+	- Migration to esm.
+	- Smart selection for tables.
+	- Support updating links when copying text across files.
+	- Improved slugifier.
+- Support renames for html tag ids.
 
 ## 0.5.0-alpha.13 — April 30, 2026
 - Switch package to esm.

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import * as path from 'path';
+import * as path from 'node:path';
 import { Emitter } from 'vscode-languageserver-protocol';
 import { InMemoryDocument } from '../types/inMemoryDocument.js';
 import { getDocUri, ITextDocument } from '../types/textDocument.js';

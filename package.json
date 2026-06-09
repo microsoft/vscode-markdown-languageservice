@@ -1,11 +1,11 @@
 {
   "name": "vscode-markdown-languageservice",
   "description": "Markdown language service",
-  "version": "0.5.0-alpha.13",
+  "version": "0.5.0",
   "author": "Microsoft Corporation",
   "license": "MIT",
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "type": "module",
   "main": "./out/index.js",

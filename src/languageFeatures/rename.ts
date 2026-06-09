@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as l10n from '@vscode/l10n';
-import * as path from 'path';
+import * as path from 'node:path';
 import * as lsp from 'vscode-languageserver-protocol';
 import { LsConfiguration, defaultMarkdownFileExtension } from '../config.js';
 import { ILogger, LogLevel } from '../logging.js';

@@ -33,7 +33,7 @@
   "devDependencies": {
     "@eslint/js": "^9.11.1",
     "@microsoft/api-extractor": "^7.31.2",
-    "@types/markdown-it": "^12.2.3",
+    "@types/markdown-it": "^14.1.2",
     "@types/mocha": "^9.1.1",
     "@types/node": "20.x",
     "@types/picomatch": "^2.3.0",
@@ -41,10 +41,13 @@
     "@typescript-eslint/parser": "^8.44.0",
     "eslint": "^9.36.0",
     "github-slugger": "^2.0.0",
-    "markdown-it": "^13.0.1",
+    "markdown-it": "^14.2.0",
     "mkdirp": "^1.0.4",
     "mocha": "^10.0.0",
     "typescript": "^5.6.0"
+  },
+  "overrides": {
+    "serialize-javascript": "7.0.5"
   },
   "scripts": {
     "api-extractor": "mkdirp etc && npx api-extractor run --local",

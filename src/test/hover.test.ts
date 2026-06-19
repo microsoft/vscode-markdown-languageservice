@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import Token from 'markdown-it/lib/token.js';
+import Token from 'markdown-it/lib/token.mjs';
 import * as lsp from 'vscode-languageserver-protocol';
 import { getLsConfiguration } from '../config.js';
 import { MdLinkProvider } from '../languageFeatures/documentLinks.js';
@@ -49,7 +49,7 @@ async function findMdImageSrc(hover: lsp.Hover): Promise<URI | undefined> {
 	assert.ok(lsp.MarkupContent.is(hover.contents));
 	const tokens = await flatTokenizeContents(hover.contents);
 	const img = tokens.find(t => t.type === 'image')!;
-	const src = img!.attrs?.find(x => x[0] === 'src')?.[1];
+	const src = img!.attrs?.find((x: [string, string]) => x[0] === 'src')?.[1];
 	if (!src) {
 		return;
 	}

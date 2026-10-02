@@ -603,7 +603,7 @@ export class MdLinkProvider extends Disposable {
 				if (target.positionOrRange) {
 					inLink.target = this.#createOpenAtPosCommand(target.uri, target.positionOrRange);
 				} else {
-					inLink.target = target.uri.toString(true);
+					inLink.target = target.uri.toString();
 				}
 				break;
 		}
@@ -653,7 +653,7 @@ export class MdLinkProvider extends Disposable {
 				}
 
 				if (!found) {
-					return { kind: 'file', uri: target };
+					return { kind: 'file', uri: linkData.fragment ? target.with({ fragment: linkData.fragment }) : target };
 				}
 			}
 		}
@@ -692,7 +692,7 @@ export class MdLinkProvider extends Disposable {
 			}
 		}
 
-		return { kind: 'file', uri: target };
+		return { kind: 'file', uri: target.with({ fragment: linkData.fragment }) };
 	}
 
 	#reviveLinkHrefData(link: lsp.DocumentLink): LinkData | undefined {

@@ -54,6 +54,8 @@ You can run the lint checks with:
 npm run lint
 ```
 
+File-link resolution is shared by `resolveDocumentLink` and `resolveLinkTarget`. Fragments that resolve to a line or Markdown heading retain their navigation semantics; other fragments are preserved on the file URI for the consuming editor. Changes to this behavior should cover both APIs and parsed HTML attributes, rather than reconstructing fragments from source ranges.
+
 Before opening a pull request, run:
 
 ```sh

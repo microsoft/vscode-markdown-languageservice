@@ -943,6 +943,18 @@ suite('Link provider', () => {
 		assert.strictEqual(links[0].target, exampleUrl);
 	});
 
+	test('Should preserve encoded external link targets', async () => {
+		const encodedPathUrl = 'https://firebasestorage.googleapis.com/v0/b/brewlangerie.appspot.com/o/products%2FzVNZkudXJyq8bPGTXUxx%2FBetterave-Sesame.jpg?alt=media&token=0b2310c4-3ea6-4207-bbde-9c3710ba0437';
+		const textFragmentUrl = 'https://ffmpeg.org/ffmpeg-all.html?test=a%23b%20c#:~:text=%2Dversion';
+		const links = await getLinksForFile(joinLines(
+			`[encoded-path](${encodedPathUrl})`,
+			`[text-fragment](${textFragmentUrl})`,
+		));
+
+		assert.strictEqual(links[0].target, encodedPathUrl);
+		assert.strictEqual(links[1].target, textFragmentUrl);
+	});
+
 	test('Should resolve href fragment links in angle brackets', async () => {
 		const doc = new InMemoryDocument(testFile, joinLines(
 			`# a b c`,

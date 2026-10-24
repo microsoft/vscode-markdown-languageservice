@@ -68,18 +68,21 @@ export const githubSlugifier: ISlugifier = new class implements ISlugifier {
 	}
 
 	createBuilder() {
-		const entries = new Map<string, { count: number }>();
+		// Same as github-slugger: a suffixed slug is recorded too, so that it can't collide with a
+		// later heading whose own slug is that suffixed value (e.g. `Foo`, `Foo`, `Foo 1`)
+		const occurrences = new Map<string, number>();
 		return {
 			add: (heading: string): ISlug => {
-				const slug = this.fromHeading(heading);
-				const existingSlugEntry = entries.get(slug.value);
-				if (existingSlugEntry) {
-					++existingSlugEntry.count;
-					return this.fromHeading(slug.value + '-' + existingSlugEntry.count);
+				const originalSlug = this.fromHeading(heading).value;
+				let slug = originalSlug;
+				while (occurrences.has(slug)) {
+					const count = occurrences.get(originalSlug)! + 1;
+					occurrences.set(originalSlug, count);
+					slug = originalSlug + '-' + count;
 				}
 
-				entries.set(slug.value, { count: 0 });
-				return slug;
+				occurrences.set(slug, 0);
+				return new GithubSlug(slug);
 			}
 		};
 	}

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as lsp from 'vscode-languageserver-protocol';
-import { HrefKind, MdLink } from '../types/documentLink.js';
+import { HrefKind, MdLink, MdLinkDefinition } from '../types/documentLink.js';
 import { rangeContains } from '../types/range.js';
 import { ITextDocument } from '../types/textDocument.js';
 import * as mdBuilder from '../util/mdBuilder.js';
@@ -20,17 +20,19 @@ export class MdHoverProvider {
 	}
 
 	public async provideHover(document: ITextDocument, pos: lsp.Position, token: lsp.CancellationToken): Promise<lsp.Hover | undefined> {
-		const links = await this.#linkProvider.getLinks(document);
+		const linksInfo = await this.#linkProvider.getLinks(document);
 		if (token.isCancellationRequested) {
 			return;
 		}
 
-		const link = links.links.find(link => rangeContains(link.source.hrefRange, pos));
-		if (!link || link.href.kind === HrefKind.Reference) {
+		const link = linksInfo.links.find(link => rangeContains(link.source.hrefRange, pos));
+		if (!link) {
 			return;
 		}
 
-		const contents = this.#getHoverContents(link);
+		const contents = link.href.kind === HrefKind.Reference
+			? this.#getReferenceLinkHover(document, linksInfo.definitions.lookup(link.href.ref))
+			: this.#getHoverContents(link);
 		return contents && {
 			contents,
 			range: link.source.hrefRange
@@ -61,4 +63,21 @@ export class MdHoverProvider {
 		}
 		return undefined;
 	}
+
+	#getReferenceLinkHover(document: ITextDocument, definition: MdLinkDefinition | undefined): lsp.MarkupContent | undefined {
+		if (!definition) {
+			return undefined;
+		}
+
+		return {
+			kind: 'markdown',
+			value: codeBlock('markdown', document.getText(definition.source.range)),
+		};
+	}
+}
+
+function codeBlock(language: string, contents: string): string {
+	const longestBacktickSequence = Math.max(0, ...Array.from(contents.matchAll(/`+/g), ([match]) => match.length));
+	const backticks = '`'.repeat(Math.max(3, longestBacktickSequence + 1));
+	return `${backticks}${language}\n${contents}\n${backticks}`;
 }

@@ -881,6 +881,99 @@ suite('Link provider', () => {
 		}
 	}
 
+	test('Should preserve unconsumed file fragments through both resolution APIs', async () => {
+		const pdf = workspacePath('file.pdf');
+		const cases = [
+			{ href: 'file.pdf#page=3', fragment: 'page=3' },
+			{ href: 'file.pdf#page%3D3', fragment: 'page=3' },
+			{ href: 'file.pdf#nameddest=Chapter%201', fragment: 'nameddest=Chapter 1' },
+			{ href: 'file.pdf#nameddest=Chapter%25201', fragment: 'nameddest=Chapter%201' },
+			{ href: 'file.pdf', fragment: '' },
+			{ href: 'file.pdf#', fragment: '' },
+			{ href: 'missing.pdf#page=3', fragment: 'page=3' },
+			{ href: 'file.pdf#zoom=100%', fragment: 'zoom=100%' },
+		];
+		const actual = [];
+		for (const { href } of cases) {
+			const source = new InMemoryDocument(testFile, `[pdf](${href})`, -1);
+			const provider = createLinkProvider(new InMemoryWorkspace([source, pdf]));
+			const [link] = await provider.provideDocumentLinks(source, noopToken);
+			const documentLink = await provider.resolveDocumentLink(link, noopToken);
+			const linkTarget = await provider.resolveLinkTarget(href, testFile, noopToken);
+			actual.push({
+				documentLink: documentLink?.target && URI.parse(documentLink.target).fragment,
+				linkTarget: linkTarget?.uri.fragment,
+			});
+		}
+		assert.deepStrictEqual(actual, cases.map(({ fragment }) => ({ documentLink: fragment, linkTarget: fragment })));
+	});
+
+	test('Should preserve parsed HTML fragments and reference definition targets', async () => {
+		const doc = new InMemoryDocument(testFile, joinLines(
+			'<a href="file.pdf&#35;page=3">pdf</a>',
+			'<a href="file.pdf#nameddest=A&amp;B">pdf</a>',
+			'[pdf](<file.pdf#page=3>)',
+			'[pdf][ref]',
+			'[ref]: file.pdf#page=3',
+		));
+		const provider = createLinkProvider(new InMemoryWorkspace([doc, workspacePath('file.pdf')]));
+		const links = await provider.provideDocumentLinks(doc, noopToken);
+		const actual = [];
+		for (const link of links) {
+			const resolved = link.target ? link : await provider.resolveDocumentLink(link, noopToken);
+			actual.push({
+				line: link.range.start.line,
+				fragment: resolved?.target && URI.parse(resolved.target).fragment,
+			});
+		}
+		assert.deepStrictEqual(actual.sort((a, b) => a.line - b.line), [
+			{ line: 0, fragment: 'page=3' },
+			{ line: 1, fragment: 'nameddest=A&B' },
+			{ line: 2, fragment: 'page=3' },
+			{ line: 3, fragment: 'L5,8' },
+			{ line: 4, fragment: 'page=3' },
+		]);
+	});
+
+	test('Should resolve the computed fragment after source text changes', async () => {
+		const doc = new InMemoryDocument(testFile, '[pdf](file.pdf#page=3)');
+		const workspace = new InMemoryWorkspace([doc, workspacePath('file.pdf')]);
+		const provider = createLinkProvider(workspace);
+		const [link] = await provider.provideDocumentLinks(doc, noopToken);
+		doc.replaceContents('[pdf](file.pdf#page=4)');
+		workspace.updateDocument(doc);
+		const resolved = await provider.resolveDocumentLink(link, noopToken);
+		assert.strictEqual(resolved?.target && URI.parse(resolved.target).fragment, 'page=3');
+	});
+
+	test('Should retain resolved line ranges, headings and folder commands', async () => {
+		const target = new InMemoryDocument(workspacePath('target.md'), '# Heading');
+		const doc = new InMemoryDocument(testFile, joinLines(
+			'[line](file.pdf#L10)',
+			'[range](file.pdf#L10%2C2-L12%2C4)',
+			'[heading](target.md#heading)',
+			'[unknown](target.md#unknown)',
+			'[folder](folder#page=3)',
+		));
+		const provider = createLinkProvider(new InMemoryWorkspace([doc, target, workspacePath('file.pdf'), workspacePath('folder/child.md')]));
+		const links = await provider.provideDocumentLinks(doc, noopToken);
+		const targets = [];
+		for (const link of links) {
+			const resolved = await provider.resolveDocumentLink(link, noopToken);
+			const uri = resolved?.target ? URI.parse(resolved.target) : undefined;
+			targets.push(uri?.scheme === 'command'
+				? { command: uri.path, resource: URI.revive(JSON.parse(decodeURIComponent(uri.query))[0]).toString(true) }
+				: uri?.toString(true));
+		}
+		assert.deepStrictEqual(targets, [
+			workspacePath('file.pdf').with({ fragment: 'L10,1' }).toString(true),
+			workspacePath('file.pdf').with({ fragment: 'L10,2-L12,4' }).toString(true),
+			target.$uri.with({ fragment: 'L1,1' }).toString(true),
+			target.$uri.with({ fragment: 'unknown' }).toString(true),
+			{ command: 'revealInExplorer', resource: workspacePath('folder').toString(true) },
+		]);
+	});
+
 	test('Should include defined reference links (#141285)', async () => {
 		const links = await getLinksForFile(joinLines(
 			'[ref]',

@@ -92,7 +92,7 @@ function createMdLink(
 
 	let titleRange: lsp.Range | undefined;
 	if (titleMatch) {
-		const indexOfTitleInLink = fullMatch.indexOf(titleMatch);
+		const indexOfTitleInLink = fullMatch.indexOf(titleMatch, pre.length + rawLink.length);
 		if (indexOfTitleInLink >= 0) {
 			const titleStartOffset = linkStartOffset + indexOfTitleInLink;
 			titleRange = lsp.Range.create(

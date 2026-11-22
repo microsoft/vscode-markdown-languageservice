@@ -610,6 +610,16 @@ suite('Smart select', () => {
 		assertNestedRangesEqual(ranges![0], [0, 29, 0, 47], [0, 9, 0, 47], [0, 8, 0, 48], [0, 2, 0, 48], [0, 0, 0, 50]);
 	});
 
+	test('Smart select of link title repeated in the label', async () => {
+		const ranges = await getSelectionRangesForDocument('a ["title"](file.md "title") b', [lsp.Position.create(0, 22)]);
+		assertNestedRangesEqual(ranges![0], [0, 20, 0, 27], [0, 12, 0, 27], [0, 11, 0, 28], [0, 2, 0, 28], [0, 0, 0, 30]);
+	});
+
+	test('Smart select of link title repeated in the destination', async () => {
+		const ranges = await getSelectionRangesForDocument('a [text](file"title".md "title") b', [lsp.Position.create(0, 26)]);
+		assertNestedRangesEqual(ranges![0], [0, 24, 0, 31], [0, 9, 0, 31], [0, 8, 0, 32], [0, 2, 0, 32], [0, 0, 0, 34]);
+	});
+
 	test('Smart select of link with title should have extra stop with just href', async () => {
 		const ranges = await getSelectionRangesForDocument(joinLines(
 			`a [text](https${CURSOR}://example.com "atitle") b`

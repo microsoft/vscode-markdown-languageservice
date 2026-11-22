@@ -447,7 +447,7 @@ export class MdLinkComputer {
 					range: { start: linkStart, end: linkEnd },
 					targetRange: hrefRange,
 					hrefRange,
-					...getLinkSourceFragmentInfo(document, rawLinkText, hrefStart, hrefEnd),
+					...getLinkSourceFragmentInfo(document, linkText, hrefStart, hrefEnd),
 					titleRange: undefined, // TODO: support title
 				},
 				ref: { text: reference, range: refRange },

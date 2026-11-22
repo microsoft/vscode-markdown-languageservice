@@ -854,6 +854,16 @@ suite('Link computer', () => {
 			lsp.Range.create(1, 8, 1, 14),
 		]);
 	});
+
+	for (const path of ['', 'doc.md', 'some doc.md']) {
+		test(`Should locate angle bracket definition fragments after path ${JSON.stringify(path)}`, async () => {
+			const links = await getLinksForText(`[ref]: <${path}#heading>`);
+			assert.strictEqual(links.length, 1);
+			assert.strictEqual(links[0].source.hrefPathText, path);
+			assert.ok(links[0].source.hrefFragmentRange);
+			assertRangeEqual(links[0].source.hrefFragmentRange, lsp.Range.create(0, 9 + path.length, 0, 16 + path.length));
+		});
+	}
 });
 
 

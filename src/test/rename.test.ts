@@ -425,6 +425,38 @@ suite('Rename', () => {
 			});
 		}));
 
+		test('Prepare rename should select the entire angle bracket definition fragment', withStore(async (store) => {
+			const uri = workspacePath('doc.md');
+			const doc = new InMemoryDocument(uri, joinLines(
+				`# Heading`,
+				`[ref]: <#heading>`,
+				`[text][ref]`,
+			));
+			const workspace = store.add(new InMemoryWorkspace([doc]));
+
+			const info = await prepareRename(store, doc, { line: 1, character: 9 }, workspace);
+			assert.strictEqual(info!.placeholder, 'Heading');
+			assertRangeEqual(info!.range, lsp.Range.create(1, 9, 1, 16));
+		}));
+
+		test('Header rename should preserve angle bracket definition fragments', withStore(async (store) => {
+			const uri = workspacePath('doc.md');
+			const doc = new InMemoryDocument(uri, joinLines(
+				`# Heading`,
+				`[ref]: <#heading>`,
+				`[text][ref]`,
+			));
+			const workspace = store.add(new InMemoryWorkspace([doc]));
+
+			const edit = await getRenameEdits(store, doc, { line: 0, character: 2 }, 'New Heading', workspace);
+			assertEditsEqual(edit!, {
+				uri, edits: [
+					lsp.TextEdit.replace(lsp.Range.create(0, 2, 0, 9), 'New Heading'),
+					lsp.TextEdit.replace(lsp.Range.create(1, 9, 1, 16), 'new-heading'),
+				]
+			});
+		}));
+
 		test('Rename should not be supported on link text', withStore(async (store) => {
 			const uri = workspacePath('doc.md');
 			const doc = new InMemoryDocument(uri, joinLines(

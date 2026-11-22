@@ -75,6 +75,19 @@ suite('Diagnostic Computer', () => {
 		]);
 	}));
 
+	test('Should not validate external URI schemes as local files', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`[external](git+ssh://example.com/missing.md)`,
+			`[external](web.v1://example.com/missing.md)`,
+			`[external](web2://example.com/missing.md)`,
+			`[external](x://example.com/missing.md)`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const diagnostics = await getComputedDiagnostics(store, doc, workspace);
+		assertDiagnosticsEqual(diagnostics, []);
+	}));
+
 	test('Should generate diagnostics for links to header that does not exist in current file', withStore(async (store) => {
 		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
 			`[good](#good-header)`,

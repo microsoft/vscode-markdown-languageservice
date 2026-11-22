@@ -8,7 +8,7 @@ import * as lsp from 'vscode-languageserver-protocol';
 import { getLsConfiguration } from '../config.js';
 import { MdLinkComputer, MdLinkProvider } from '../languageFeatures/documentLinks.js';
 import { MdTableOfContentsProvider } from '../tableOfContents.js';
-import { InternalHref, MdLink } from '../types/documentLink.js';
+import { HrefKind, InternalHref, MdLink } from '../types/documentLink.js';
 import { InMemoryDocument } from '../types/inMemoryDocument.js';
 import { noopToken } from '../util/cancellation.js';
 import { URI } from '../util/vscodeUri.js';
@@ -65,6 +65,28 @@ suite('Link computer', () => {
 		assertLinksEqual(links, [
 			lsp.Range.create(0, 6, 0, 25)
 		]);
+	});
+
+	for (const scheme of ['x', 'web2', 'git+ssh', 'web.v1', 'web-demo', 'WEB+DEMO']) {
+		test(`Should preserve external URI scheme ${scheme}`, async () => {
+			const href = `${scheme}://example.com/file.md`;
+			for (const text of [`[text](${href})`, `[ref]: ${href}`, `<a href="${href}">text</a>`]) {
+				const links = await getLinksForText(text);
+				const start = text.indexOf(href);
+				assertLinksEqual(links, [{ range: lsp.Range.create(0, start, 0, start + href.length), sourceText: href }]);
+				assert.ok(links[0].href.kind === HrefKind.External);
+				assert.strictEqual(links[0].href.uri.toString(), URI.parse(href).toString());
+			}
+		});
+	}
+
+	test('Should keep scheme-like relative paths internal', async () => {
+		for (const href of ['./git+ssh:notes.md', 'folder/web.v1:notes.md']) {
+			const links = await getLinksForText(`[text](${href})`);
+			assert.strictEqual(links.length, 1);
+			assert.ok(links[0].href.kind === HrefKind.Internal);
+			assert.strictEqual(links[0].href.path.toString(), workspacePath(href).toString());
+		}
 	});
 
 	test('Should detect basic workspace links', async () => {
@@ -437,6 +459,23 @@ suite('Link computer', () => {
 			lsp.Range.create(0, 5, 0, 23)
 		]);
 	});
+
+	for (const scheme of ['web2', 'git+ssh', 'web.v1', 'web-demo', 'WEB+DEMO', 'a'.repeat(32)]) {
+		test(`Should find autolinks with URI scheme ${scheme}`, async () => {
+			const href = `${scheme}://example.com/file.md`;
+			const links = await getLinksForText(`<${href}>`);
+			assertLinksEqual(links, [{ range: lsp.Range.create(0, 1, 0, 1 + href.length), sourceText: href }]);
+			assert.ok(links[0].href.kind === HrefKind.External);
+			assert.strictEqual(links[0].href.uri.toString(), URI.parse(href).toString());
+		});
+	}
+
+	for (const scheme of ['x', 'a'.repeat(33), 'web_demo', '1web', '-web']) {
+		test(`Should not find autolinks with invalid CommonMark scheme ${scheme}`, async () => {
+			const links = await getLinksForText(`<${scheme}://example.com/file.md>`);
+			assertLinksEqual(links, []);
+		});
+	}
 
 	test('Should not detect links inside html comment blocks', async () => {
 		const links = await getLinksForText(joinLines(

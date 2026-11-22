@@ -32,8 +32,8 @@ function createHref(
 	link: string,
 	workspace: IWorkspace,
 ): ExternalHref | InternalHref | undefined {
-	if (/^[a-z\-][a-z\-]+:/i.test(link)) {
-		// Looks like a uri
+	if (/^[a-z\-][a-z0-9+.-]*:/i.test(link)) {
+		// Looks like a uri; URI.parse also validates the scheme.
 		try {
 			return { kind: HrefKind.External, uri: URI.parse(tryDecodeUri(link)) };
 		} catch (e) {
@@ -201,7 +201,7 @@ const referenceLinkPattern = new RegExp(
 /**
  * Matches `<http://example.com>`
  */
-const autoLinkPattern = /(?<!\\)\<(\w+:[^\>\s]+)\>/g;
+const autoLinkPattern = /(?<!\\)\<([a-z][a-z0-9+.-]{1,31}:[^\>\s]+)\>/gi;
 
 /**
  * Matches `[text]: link`

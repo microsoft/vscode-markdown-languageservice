@@ -89,6 +89,17 @@ suite('Link computer', () => {
 		]);
 	});
 
+	for (const title of ['"title"', `'title'`, '(title)']) {
+		for (const prefix of [`a [${title}](file.md `, `a [text](file${title}.md `]) {
+			test(`Should locate the title ${title} after the link destination in ${prefix}`, async () => {
+				const links = await getLinksForText(`${prefix}${title}) b`);
+				assert.strictEqual(links.length, 1);
+				assert.ok(links[0].source.titleRange);
+				assertRangeEqual(links[0].source.titleRange, lsp.Range.create(0, prefix.length, 0, prefix.length + title.length));
+			});
+		}
+	}
+
 	test('Should handle links with escaped characters in name (#35245)', async () => {
 		const links = await getLinksForText('a [b\\]](./file)');
 		assertLinksEqual(links, [

@@ -257,6 +257,41 @@ suite('Organize link definitions', () => {
 		));
 	}));
 
+	for (const reference of ['[label]', '[label][]', '[text][label]']) {
+		for (const label of ['LaBeL', ' LaBeL ']) {
+			test(`Should retain a used definition ${JSON.stringify(label)} for ${reference}`, withStore(async (store) => {
+				const definition = `[${label}]: https://example.com/used`;
+				const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(
+					reference,
+					``,
+					definition,
+					`[unused]: https://example.com/unused`,
+				));
+
+				const edits = await getOrganizeEdits(store, doc, /* removeUnused */ true);
+				assert.strictEqual(doc.previewEdits(edits), joinLines(reference, ``, definition));
+			}));
+		}
+	}
+
+	test('Should preserve duplicate used definitions when removing unused ones', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(
+			`[label]`,
+			``,
+			`[label]: https://example.com/first`,
+			`[label]: https://example.com/second`,
+			`[unused]: https://example.com/unused`,
+		));
+
+		const edits = await getOrganizeEdits(store, doc, /* removeUnused */ true);
+		assert.strictEqual(doc.previewEdits(edits), joinLines(
+			`[label]`,
+			``,
+			`[label]: https://example.com/first`,
+			`[label]: https://example.com/second`,
+		));
+	}));
+
 	test('Should remove unused definitions when enabled', withStore(async (store) => {
 		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(
 			`text [b] text`,

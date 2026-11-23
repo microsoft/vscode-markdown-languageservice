@@ -52,8 +52,9 @@ export class MdOrganizeLinkDefinitionProvider {
 				if (!options.removeUnused) {
 					return true;
 				}
+				const definition = links.definitions.lookup(def.ref.text);
 				return links.links.some(link => {
-					return link.kind === MdLinkKind.Link && link.href.kind === HrefKind.Reference && link.href.ref === def.ref.text;
+					return link.kind === MdLinkKind.Link && link.href.kind === HrefKind.Reference && links.definitions.lookup(link.href.ref) === definition;
 				});
 			});
 

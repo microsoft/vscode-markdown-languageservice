@@ -55,6 +55,59 @@ suite('Organize link definitions', () => {
 		));
 	}));
 
+	for (const title of ['"A title"', `'A title'`, '(A title)']) {
+		test(`Should preserve definition syntax when sorting titles ${title}`, withStore(async (store) => {
+			const first = `[a]: docs.md ${title}`;
+			const second = `[b]: <folder/file name.md#heading> ${title}`;
+			const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(second, first));
+
+			const edits = await getOrganizeEdits(store, doc);
+			const newContent = doc.previewEdits(edits);
+			assert.strictEqual(newContent, joinLines(first, second));
+			const organizedDoc = new InMemoryDocument(workspacePath('test.md'), newContent);
+			assert.deepStrictEqual(await getOrganizeEdits(store, organizedDoc), []);
+		}));
+	}
+
+	test('Should preserve angle brackets without a title', withStore(async (store) => {
+		const first = `[a]: <file name.md>`;
+		const second = `[b]: <other.md>`;
+		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(second, first));
+
+		const edits = await getOrganizeEdits(store, doc);
+		assert.strictEqual(doc.previewEdits(edits), joinLines(first, second));
+	}));
+
+	test('Should preserve whitespace around titles', withStore(async (store) => {
+		const first = `[a]: docs.md\t"Bare title"  `;
+		const second = `[b]: <file name.md>  'Bracketed title'\t`;
+		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(second, first));
+
+		const edits = await getOrganizeEdits(store, doc);
+		assert.strictEqual(doc.previewEdits(edits), joinLines(first, second));
+	}));
+
+	test('Should preserve definition syntax when moving to the end', withStore(async (store) => {
+		const definition = `[ref]: <file name.md> "Link title"`;
+		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(`before`, definition, `after`));
+
+		const edits = await getOrganizeEdits(store, doc);
+		assert.strictEqual(doc.previewEdits(edits), joinLines(`before`, ``, `after`, ``, definition));
+	}));
+
+	test('Should preserve definition syntax when removing unused definitions', withStore(async (store) => {
+		const definition = `[ref]: <file name.md> "Link title"`;
+		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(
+			`[text][ref]`,
+			``,
+			definition,
+			`[unused]: other.md`,
+		));
+
+		const edits = await getOrganizeEdits(store, doc, /* removeUnused */ true);
+		assert.strictEqual(doc.previewEdits(edits), joinLines(`[text][ref]`, ``, definition));
+	}));
+
 	test('Should move link definition to bottom of file', withStore(async (store) => {
 		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(
 			`x`,

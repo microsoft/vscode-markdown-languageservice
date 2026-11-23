@@ -5,6 +5,7 @@
 
 import * as lsp from 'vscode-languageserver-protocol';
 import { HrefKind, MdLinkDefinition, MdLinkKind } from '../types/documentLink.js';
+import { translatePosition } from '../types/position.js';
 import { getLine, ITextDocument } from '../types/textDocument.js';
 import { maxLspUInt } from '../util/number.js';
 import { isEmptyOrWhitespace } from '../util/string.js';
@@ -58,7 +59,14 @@ export class MdOrganizeLinkDefinitionProvider {
 			});
 
 		const defBlock = newDefs
-			.map((def => `[${def.ref.text}]: ${def.source.hrefText}`))
+			.map(def => {
+				const href = def.source.isAngleBracketLink ? `<${def.source.hrefText}>` : def.source.hrefText;
+				const suffixStart = def.source.isAngleBracketLink
+					? translatePosition(def.source.hrefRange.end, { characterDelta: 1 })
+					: def.source.hrefRange.end;
+				const suffix = doc.getText({ start: suffixStart, end: def.source.range.end });
+				return `[${def.ref.text}]: ${href}${suffix}`;
+			})
 			.join('\n');
 
 		if (existingDefBlockRange) {

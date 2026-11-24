@@ -759,6 +759,34 @@ suite('References', () => {
 			);
 		}));
 
+		for (const [attribute, quote] of [['data-id', '"'], ['aria-id', '\''], ['custom:id', '"']]) {
+			for (const trigger of ['declaration', 'link']) {
+				test(`Should find the actual html id after ${attribute} from ${trigger}`, withStore(async (store) => {
+					const uri = workspacePath('doc.md');
+					const declaration = `<div ${attribute}=${quote}preview${quote} id=${quote}target${quote}></div>`;
+					const idStart = declaration.indexOf('target');
+					const doc = new InMemoryDocument(uri, joinLines(declaration, '', '[link](#target)'));
+					const workspace = store.add(new InMemoryWorkspace([doc]));
+					const position = trigger === 'declaration'
+						? lsp.Position.create(0, idStart + 1)
+						: lsp.Position.create(2, 9);
+					const refs = await getReferences(store, doc, position, workspace);
+					assertReferencesEqual(refs,
+						{ uri, line: 0, startCharacter: idStart, endCharacter: idStart + 6 },
+						{ uri, line: 2, startCharacter: 7, endCharacter: 14 });
+				}));
+			}
+
+			test(`Should not treat ${attribute} as the html id declaration`, withStore(async (store) => {
+				const uri = workspacePath('doc.md');
+				const declaration = `<div ${attribute}=${quote}preview${quote} id=${quote}target${quote}></div>`;
+				const doc = new InMemoryDocument(uri, joinLines(declaration, '', '[link](#target)'));
+				const workspace = store.add(new InMemoryWorkspace([doc]));
+				const refs = await getReferences(store, doc, lsp.Position.create(0, declaration.indexOf('preview') + 1), workspace);
+				assert.deepStrictEqual(refs, []);
+			}));
+		}
+
 		test('Should find references when triggered on html id declaration', withStore(async (store) => {
 			const uri = workspacePath('doc.md');
 			const doc = new InMemoryDocument(uri, joinLines(

@@ -758,6 +758,19 @@ suite('Link computer', () => {
 		]);
 	});
 
+	test('Should not match the link attribute inside another attribute name', async () => {
+		const links = await getLinksForText(joinLines(
+			`<img data-src="lazy.png" src="cat.png">`,
+			``,
+			`<a data-href="other.md" href="doc.md">x</a>`,
+		));
+
+		assertLinksEqual(links, [
+			lsp.Range.create(0, 30, 0, 37),
+			lsp.Range.create(2, 30, 2, 36),
+		]);
+	});
+
 	test('Should find src in inline html <img>', async () => {
 		const links = await getLinksForText(joinLines(
 			`text <img src="cat.png"> more text`,

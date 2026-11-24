@@ -471,7 +471,8 @@ export class MdLinkComputer {
 	}
 
 	static readonly #linkAttrsByTag = new Map(Array.from(htmlTagPathAttrs.entries(), ([key, value]) => [key, value.map(attr => {
-		return { attr, regexp: new RegExp(`(${attr}=["'])([^'"]*)["']`, 'i') };
+		// The attribute name must start after whitespace, so that `src` doesn't match inside `data-src`
+		return { attr, regexp: new RegExp(`(?<=\\s)(${attr}=["'])([^'"]*)["']`, 'i') };
 	})]));
 
 	*#getHtmlLinksFromNode(document: ITextDocument, node: HTMLElement, noLinkRanges: NoLinkRanges): Iterable<MdLink> {

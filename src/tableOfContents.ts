@@ -273,7 +273,7 @@ export class TableOfContents {
 			.trim();
 	}
 
-	static readonly #htmlIdAttrPattern = /\bid\s*=\s*["']/i;
+	static readonly #htmlIdAttrPattern = /(?<=\s)id\s*=\s*["']/i;
 
 	static #getHtmlIdEntries(parser: IMdParser, document: ITextDocument, tokens: readonly Token[]): TocHtmlIdEntry[] {
 		const text = document.getText();

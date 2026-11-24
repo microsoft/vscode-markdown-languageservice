@@ -911,6 +911,45 @@ suite('Rename', () => {
 
 	suite('HTML id rename', () => {
 
+		for (const [attribute, quote, separator] of [
+			['data-id', '"', ' '],
+			['aria-id', '\'', '\t'],
+			['custom:id', '"', '  '],
+		]) {
+			for (const trigger of ['declaration', 'link']) {
+				test(`Rename on ${trigger} should preserve preceding ${attribute} attribute`, withStore(async (store) => {
+					const uri = workspacePath('doc.md');
+					const declaration = `<div ${attribute}=${quote}preview${quote}${separator}id = ${quote}target${quote}></div>`;
+					const idStart = declaration.indexOf('target');
+					const doc = new InMemoryDocument(uri, joinLines(declaration, '', '[link](#target)'));
+					const workspace = store.add(new InMemoryWorkspace([doc]));
+					const position = trigger === 'declaration'
+						? lsp.Position.create(0, idStart + 1)
+						: lsp.Position.create(2, 9);
+
+					const info = await prepareRename(store, doc, position, workspace);
+					assert.ok(info);
+					assertRangeEqual(info.range, trigger === 'declaration'
+						? lsp.Range.create(0, idStart, 0, idStart + 6)
+						: lsp.Range.create(2, 8, 2, 14));
+					assert.strictEqual(info.placeholder, 'target');
+
+					const edit = await getRenameEdits(store, doc, position, 'new-target', workspace);
+					assert.ok(edit);
+					assertEditsEqual(edit, {
+						uri, edits: [
+							lsp.TextEdit.replace(lsp.Range.create(0, idStart, 0, idStart + 6), 'new-target'),
+							lsp.TextEdit.replace(lsp.Range.create(2, 8, 2, 14), 'new-target'),
+						]
+					});
+					const textEdit = edit.documentChanges?.find(lsp.TextDocumentEdit.is);
+					assert.ok(textEdit);
+					assert.strictEqual(doc.previewEdits(textEdit.edits), joinLines(
+						declaration.replace('target', 'new-target'), '', '[link](#new-target)'));
+				}));
+			}
+		}
+
 		test('Rename on html id should update id and all links to it', withStore(async (store) => {
 			const uri = workspacePath('doc.md');
 			const doc = new InMemoryDocument(uri, joinLines(

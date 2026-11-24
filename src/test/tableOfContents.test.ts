@@ -142,6 +142,21 @@ suite('Table of contents', () => {
 		}
 	});
 
+	test('Suffixed slugs of repeated headers should not collide with other headers', async () => {
+		const doc = new InMemoryDocument(testFileName, joinLines(
+			`# Foo`,
+			`# Foo`,
+			`# Foo 1`,
+			`# Foo-2`,
+			`# Foo`,
+		));
+		const provider = await createToc(doc);
+
+		assert.deepStrictEqual(
+			provider.entries.map(entry => entry.slug.value),
+			['foo', 'foo-1', 'foo-1-1', 'foo-2', 'foo-3']);
+	});
+
 	test('Should preserve underscores in headers', async () => {
 		const doc = new InMemoryDocument(testFileName, joinLines(
 			`# A_B c`,

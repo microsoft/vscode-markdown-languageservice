@@ -142,6 +142,20 @@ suite('Table of contents', () => {
 		}
 	});
 
+	test('Lookup should not reuse a suffix taken by another header', async () => {
+		const doc = new InMemoryDocument(testFileName, joinLines(
+			`# a-1`,
+			`# a`,
+			`# a`,
+			`# a`,
+		));
+		const provider = await createToc(doc);
+
+		assert.deepStrictEqual(
+			provider.entries.map(entry => entry.slug.value),
+			['a-1', 'a', 'a-2', 'a-3']);
+	});
+
 	test('Should preserve underscores in headers', async () => {
 		const doc = new InMemoryDocument(testFileName, joinLines(
 			`# A_B c`,

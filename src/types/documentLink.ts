@@ -14,6 +14,7 @@ export enum HrefKind {
 export interface ExternalHref {
 	readonly kind: HrefKind.External;
 	readonly uri: URI;
+	readonly rawTarget: string;
 }
 
 export interface InternalHref {

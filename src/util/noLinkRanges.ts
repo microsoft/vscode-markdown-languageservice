@@ -9,6 +9,7 @@ import { rangeContains } from '../types/range.js';
 import { ITextDocument } from '../types/textDocument.js';
 
 const inlineCodePattern = /(?<!`)(`+)((?:.+?|.*?(?:(?:\r?\n).+?)*?)(?:\r?\n)?\1)(?!`)/gm;
+const htmlCommentPattern = /<!--[\s\S]*?-->/g;
 
 class InlineRanges {
 
@@ -56,6 +57,11 @@ export class NoLinkRanges {
 		const inlineRanges = InlineRanges.create();
 		const text = document.getText();
 		for (const match of text.matchAll(inlineCodePattern)) {
+			const startOffset = match.index ?? 0;
+			const startPosition = document.positionAt(startOffset);
+			inlineRanges.add(lsp.Range.create(startPosition, document.positionAt(startOffset + match[0].length)));
+		}
+		for (const match of text.matchAll(htmlCommentPattern)) {
 			const startOffset = match.index ?? 0;
 			const startPosition = document.positionAt(startOffset);
 			inlineRanges.add(lsp.Range.create(startPosition, document.positionAt(startOffset + match[0].length)));

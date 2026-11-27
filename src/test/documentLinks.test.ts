@@ -459,8 +459,8 @@ suite('Link computer', () => {
 		assertLinksEqual(links, []);
 	});
 
-	test.skip('Should not detect links inside inline html comments', async () => {
-		// See #149678
+	test('Should not detect links inside inline html comments', async () => {
+		// See microsoft/vscode-markdown-languageservice#52
 		const links = await getLinksForText(joinLines(
 			`text <!-- <http://example.com> --> text`,
 			`text <!-- [text](./foo.md) --> text`,

@@ -7,7 +7,7 @@ import * as l10n from '@vscode/l10n';
 import * as lsp from 'vscode-languageserver-protocol';
 import { ExternalHref, HrefKind, InternalHref, LinkDefinitionSet, MdAutoLink, MdInlineLink, MdLink, MdLinkDefinition, MdLinkKind } from '../../types/documentLink.js';
 import { comparePosition, translatePosition } from '../../types/position.js';
-import { rangeIntersects } from '../../types/range.js';
+import { areRangesEqual, rangeIntersects } from '../../types/range.js';
 import { getDocUri, getLine, ITextDocument } from '../../types/textDocument.js';
 import { WorkspaceEditBuilder } from '../../util/editBuilder.js';
 import { isSameResource } from '../../util/path.js';
@@ -53,7 +53,7 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 			return [];
 		}
 
-		const linksInRange = linkInfo.links.filter(link => link.kind !== MdLinkKind.Definition && rangeIntersects(range, link.source.range)) as MdInlineLink[];
+		const linksInRange = linkInfo.links.filter(isMarkdownLink).filter(link => rangeIntersects(range, link.source.range));
 		if (!linksInRange.length) {
 			return [MdExtractLinkDefinitionCodeActionProvider.notOnLinkAction];
 		}
@@ -68,7 +68,7 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 			return [MdExtractLinkDefinitionCodeActionProvider.alreadyRefLinkAction];
 		}
 
-		return [this.#getExtractLinkAction(doc, linkInfo, targetLink as MdInlineLink<InternalHref | ExternalHref>)];
+		return [this.#getExtractLinkAction(doc, linkInfo, targetLink as MdInlineLink<InternalHref | ExternalHref> | MdAutoLink)];
 	}
 
 	#isEnabled(context: lsp.CodeActionContext): boolean {
@@ -79,14 +79,14 @@ export class MdExtractLinkDefinitionCodeActionProvider {
 		return context.only.some(kind => codeActionKindContains(lsp.CodeActionKind.Refactor, kind));
 	}
 
-	#getExtractLinkAction(doc: ITextDocument, linkInfo: MdDocumentLinksInfo, targetLink: MdInlineLink<InternalHref | ExternalHref>): lsp.CodeAction {
+	#getExtractLinkAction(doc: ITextDocument, linkInfo: MdDocumentLinksInfo, targetLink: MdInlineLink<InternalHref | ExternalHref> | MdAutoLink): lsp.CodeAction {
 		const builder = new WorkspaceEditBuilder();
 		const resource = getDocUri(doc);
 		const placeholder = this.#getPlaceholder(linkInfo.definitions);
 
 		// Rewrite all inline occurrences of the link
 		for (const link of linkInfo.links) {
-			if (link.kind === MdLinkKind.Link || link.kind === MdLinkKind.AutoLink) {
+			if (isMarkdownLink(link)) {
 				if (this.#matchesHref(targetLink.href, link)) {
 					const targetRange = link.kind === MdLinkKind.AutoLink ? link.source.range : link.source.targetRange;
 					builder.replace(resource, targetRange, `[${placeholder}]`);
@@ -145,6 +145,12 @@ export function createAddDefinitionEdit(doc: ITextDocument, existingDefinitions:
 		const line = getLine(doc, defBlock.endLine);
 		return lsp.TextEdit.insert({ line: defBlock.endLine, character: line.length }, '\n' + newDefText);
 	}
+}
+
+function isMarkdownLink(link: MdLink): link is MdInlineLink | MdAutoLink {
+	// HTML attribute links have no Markdown delimiters around their target.
+	return link.kind === MdLinkKind.AutoLink
+		|| (link.kind === MdLinkKind.Link && !areRangesEqual(link.source.targetRange, link.source.hrefRange));
 }
 
 function getLinkTargetText(doc: ITextDocument, link: MdInlineLink | MdAutoLink) {

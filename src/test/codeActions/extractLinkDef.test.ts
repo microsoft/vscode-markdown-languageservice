@@ -49,6 +49,67 @@ suite('Extract link definition code action', () => {
 		assert.strictEqual(actions[0].disabled?.reason, MdExtractLinkDefinitionCodeActionProvider.alreadyRefLinkAction.disabled!.reason!);
 	}));
 
+	for (const href of ['./img.png', 'https://example.com/img.png']) {
+		for (const html of [
+			`<a href="${href}">text</a>`,
+			`<img src='${href}' alt="image">`,
+			`<div>\n<a href="${href}">text</a>\n</div>`,
+			`text <img src="${href}" alt="image"> text`,
+		]) {
+			test(`Should not extract HTML link: ${html}`, withStore(async (store) => {
+				const doc = new InMemoryDocument(workspacePath('test.md'), html);
+				const actions = await getActions(store, doc, doc.positionAt(html.indexOf(href) + 1));
+				assert.strictEqual(actions.length, 1);
+				assertActiveActionCount(actions, 0);
+				assert.strictEqual(actions[0].disabled?.reason, MdExtractLinkDefinitionCodeActionProvider.notOnLinkAction.disabled!.reason);
+			}));
+
+			test(`Should preserve matching HTML link when extracting Markdown link: ${html}`, withStore(async (store) => {
+				const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(
+					`[text](${href})`,
+					``,
+					html,
+				));
+				const actions = await getActions(store, doc, { line: 0, character: 3 });
+				assertActiveActionCount(actions, 1);
+				assert.strictEqual(applyActionEdit(doc, actions[0]), joinLines(
+					`[text][def]`,
+					``,
+					html,
+					``,
+					`[def]: ${href}`,
+				));
+			}));
+		}
+	}
+
+	test('Should not extract HTML link even when a matching Markdown link exists', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(
+			`[text](https://example.com)`,
+			``,
+			`<a href="https://example.com">text</a>`,
+		));
+		const actions = await getActions(store, doc, { line: 2, character: 12 });
+		assertActiveActionCount(actions, 0);
+	}));
+
+	test('Should extract matching Markdown links and autolinks without changing HTML attributes', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(
+			`<https://example.com>`,
+			`[text](https://example.com) ![alt](https://example.com)`,
+			`<a href="https://example.com">text</a> <img src="https://example.com">`,
+		));
+		const actions = await getActions(store, doc, { line: 0, character: 5 });
+		assertActiveActionCount(actions, 1);
+		assert.strictEqual(applyActionEdit(doc, actions[0]), joinLines(
+			`[def]`,
+			`[text][def] ![alt][def]`,
+			`<a href="https://example.com">text</a> <img src="https://example.com">`,
+			``,
+			`[def]: https://example.com`,
+		));
+	}));
+
 	test('Should return action for simple internal link', withStore(async (store) => {
 		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(
 			`[text](./img.png)`

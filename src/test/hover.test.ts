@@ -73,6 +73,22 @@ suite('Hover', () => {
 		assert.ok(!await getHover(store, doc, { line: 0, character: 19 }, workspace));
 	}));
 
+	test('Should show reference link definition on hover', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
+			`[example][ref]`,
+			``,
+			`[ref]: https://example.com "Example"`,
+		));
+		const workspace = store.add(new InMemoryWorkspace([doc]));
+
+		const hover = await getHover(store, doc, { line: 0, character: 11 }, workspace);
+		assert.ok(hover);
+		assert.ok(lsp.MarkupContent.is(hover.contents));
+		assert.strictEqual(hover.contents.value, '```markdown\n[ref]: https://example.com "Example"\n```');
+
+		assertRangeEqual(lsp.Range.create(0, 10, 0, 13), hover.range!);
+	}));
+
 	test('Should return image hover on MD image path', withStore(async (store) => {
 		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines(
 			`![img](./cat.png)`,

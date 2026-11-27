@@ -33,7 +33,7 @@ export class MdOrganizeLinkDefinitionProvider {
 		const edits: lsp.TextEdit[] = [];
 
 		// First replace all inline definitions that are not the definition block
-		for (const group of this.#getDefinitionBlockGroups(doc, definitions)) {
+		for (const group of this.#getDefinitionBlockGroups(definitions)) {
 			if (!existingDefBlockRange || group.startLine < existingDefBlockRange.startLine) {
 				// Don't replace trailing newline of last definition in group
 				edits.push({
@@ -86,25 +86,20 @@ export class MdOrganizeLinkDefinitionProvider {
 		return edits;
 	}
 
-	*#getDefinitionBlockGroups(doc: ITextDocument, definitions: readonly MdLinkDefinition[]): Iterable<{ readonly startLine: number, readonly endLine: number }> {
+	*#getDefinitionBlockGroups(definitions: readonly MdLinkDefinition[]): Iterable<{ readonly startLine: number, readonly endLine: number }> {
 		if (!definitions.length) {
 			return;
 		}
 
 		let i = 0;
-		const startDef = definitions[i];
-		let endDef = startDef;
-		for (; i < definitions.length - 1; ++i) {
-			const nextDef = definitions[i + 1];
-			if (nextDef.source.range.start.line === endDef.source.range.start.line + 1) {
-				endDef = nextDef;
-			} else {
-				break;
+		while (i < definitions.length) {
+			const startDef = definitions[i++];
+			let endDef = startDef;
+			while (i < definitions.length && definitions[i].source.range.start.line === endDef.source.range.start.line + 1) {
+				endDef = definitions[i++];
 			}
+			yield { startLine: startDef.source.range.start.line, endLine: endDef.source.range.start.line };
 		}
-
-		yield { startLine: startDef.source.range.start.line, endLine: endDef.source.range.start.line };
-		yield* this.#getDefinitionBlockGroups(doc, definitions.slice(i + 1));
 	}
 
 	#getLastNonWhitespaceLine(doc: ITextDocument, orderedDefinitions: readonly MdLinkDefinition[]): number {

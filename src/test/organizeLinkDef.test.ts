@@ -27,6 +27,33 @@ async function getOrganizeEdits(store: DisposableStore, doc: InMemoryDocument, r
 }
 
 suite('Organize link definitions', () => {
+	test('Should organize thousands of scattered definitions without overflowing the stack', withStore(async (store) => {
+		const count = 8000;
+		const definitions = Array.from({ length: count }, (_, index) => {
+			const id = String(count - index - 1).padStart(4, '0');
+			return `[ref-${id}]: https://example.com/${id}`;
+		});
+		const content = definitions.flatMap((definition, index) => [definition, '', `Paragraph ${index}`, '']).concat('Tail').join('\n');
+		const doc = new InMemoryDocument(workspacePath('large.md'), content);
+		const edits = await getOrganizeEdits(store, doc);
+
+		assert.strictEqual(edits.length, count + 1);
+		const expected = definitions.flatMap((_, index) => ['', '', `Paragraph ${index}`, ''])
+			.concat('Tail', '', [...definitions].reverse().join('\n')).join('\n');
+		assert.strictEqual(doc.previewEdits(edits), expected);
+	}));
+
+	test('Should preserve mixed group boundaries and replace the trailing definition block', withStore(async (store) => {
+		const definitions = ['a', 'b', 'c', 'd'].map(id => `[${id}]: https://example.com/${id}`);
+		const doc = new InMemoryDocument(workspacePath('mixed.md'), joinLines(
+			'head', definitions[1], definitions[0], 'middle', definitions[3], 'tail', '', definitions[2],
+		));
+		const edits = await getOrganizeEdits(store, doc);
+		assert.strictEqual(doc.previewEdits(edits), joinLines(
+			'head', '', 'middle', '', 'tail', '', ...definitions,
+		));
+	}));
+
 	test('Should return empty edit for file without links', withStore(async (store) => {
 		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(`# h1`));
 		const edits = await getOrganizeEdits(store, doc);

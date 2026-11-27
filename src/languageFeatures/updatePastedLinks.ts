@@ -138,9 +138,11 @@ export class MdUpdatePastedLinksProvider {
 					continue;
 				}
 
-				let newHrefText = newPathText;
-				if (link.source.hrefFragmentRange) {
-					newHrefText += '#' + link.href.fragment;
+				// Serialize the relative path so filename delimiters cannot become URI syntax.
+				const relativeTarget = URI.from({ scheme: 'vscode-resource', path: newPathText, fragment: link.href.fragment });
+				let newHrefText = relativeTarget.toString().slice(relativeTarget.scheme.length + 1);
+				if (link.source.hrefFragmentRange && !link.href.fragment) {
+					newHrefText += '#';
 				}
 
 				if (link.source.hrefText !== newHrefText) {

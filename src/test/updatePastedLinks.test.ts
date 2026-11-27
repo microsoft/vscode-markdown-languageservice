@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
+import MarkdownIt from 'markdown-it';
 import * as lsp from 'vscode-languageserver-protocol';
 import { getLsConfiguration, LsConfiguration, PreferredMdPathExtensionStyle } from '../config.js';
 import { MdLinkProvider } from '../languageFeatures/documentLinks.js';
@@ -33,6 +34,66 @@ async function applyUpdateLinksEdits(store: DisposableStore, docs: { copyFrom: I
 
 
 suite('Update pasted links', () => {
+	for (const [folder, encodedFolder] of [
+		['folder with spaces', 'folder%20with%20spaces'],
+		['hash#dir', 'hash%23dir'],
+		['query?dir', 'query%3Fdir'],
+		['open(dir', 'open%28dir'],
+		['close)dir', 'close%29dir'],
+		['percent%dir', 'percent%25dir'],
+		['percent%20dir', 'percent%2520dir'],
+		['caf\u00e9', 'caf%C3%A9'],
+		['sub', 'sub'],
+	]) {
+		for (const { name, before, after } of [
+			{ name: 'link', before: '[link](', after: ' "title")' },
+			{ name: 'image', before: '![alt](', after: ' "title")' },
+			{ name: 'angle-bracket link', before: '[link](<', after: '> "title")' },
+			{ name: 'HTML image', before: '<img src="', after: '" alt="image">' },
+			{ name: 'definition', before: '[link][ref]\n\n[ref]: ', after: ' "title"' },
+		]) {
+			test(`Should encode the rebased ${name} target from ${folder}`, withStore(async (store) => {
+				const target = new InMemoryDocument(workspacePath('target.md'), '');
+				const workspace = store.add(new InMemoryWorkspace([target]));
+				const input = before + 'image.png' + after;
+				const result = await applyUpdateLinksEdits(store,
+					{ copyFrom: new InMemoryDocument(workspacePath(folder, 'source.md'), ''), pasteTo: target },
+					[lsp.TextEdit.insert(lsp.Position.create(0, 0), input)], workspace);
+
+				assert.strictEqual(result, before + encodedFolder + '/image.png' + after);
+				if (name !== 'HTML image') {
+					const parsed = new MarkdownIt().parse(result!, {});
+					const links = parsed.flatMap(token => token.children ?? []).filter(token => token.type === 'link_open' || token.type === 'image');
+					assert.strictEqual(links.length, 1);
+					const href = links[0].attrGet(name === 'image' ? 'src' : 'href');
+					assert.strictEqual(href, encodedFolder + '/image.png');
+				}
+			}));
+		}
+	}
+
+	for (const fragment of ['#heading%20space', '#part%23literal', '#percent%2520text', '#']) {
+		test(`Should preserve an encoded or empty fragment while rebasing: ${fragment}`, withStore(async (store) => {
+			const target = new InMemoryDocument(workspacePath('target.md'), '');
+			const workspace = store.add(new InMemoryWorkspace([target]));
+			const result = await applyUpdateLinksEdits(store,
+				{ copyFrom: new InMemoryDocument(workspacePath('folder with spaces', 'source.md'), ''), pasteTo: target },
+				[lsp.TextEdit.insert(lsp.Position.create(0, 0), `[link](image.png${fragment})`)], workspace);
+			assert.strictEqual(result, `[link](folder%20with%20spaces/image.png${fragment})`);
+		}));
+	}
+
+	test('Should preserve multiple paste ranges when encoded targets grow', withStore(async (store) => {
+		const target = new InMemoryDocument(workspacePath('target.md'), 'start\nend');
+		const workspace = store.add(new InMemoryWorkspace([target]));
+		const result = await applyUpdateLinksEdits(store,
+			{ copyFrom: new InMemoryDocument(workspacePath('folder with spaces', 'source.md'), ''), pasteTo: target },
+			[
+				lsp.TextEdit.insert(lsp.Position.create(0, 5), ' [first](a.png)'),
+				lsp.TextEdit.insert(lsp.Position.create(1, 0), '![second](<b image.png> "title") '),
+			], workspace);
+		assert.strictEqual(result, 'start [first](folder%20with%20spaces/a.png)\n![second](<folder%20with%20spaces/b%20image.png> "title") end');
+	}));
 
 	test('Should noop for empty edit', withStore(async (store) => {
 		const doc = new InMemoryDocument(workspacePath('doc.md'), joinLines());

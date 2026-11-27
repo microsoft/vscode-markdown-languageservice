@@ -241,11 +241,16 @@ export class MdLinkComputer {
 		const noLinkRanges = NoLinkRanges.compute(tokens, document);
 
 		const inlineLinks = Array.from(this.#getInlineLinks(document, noLinkRanges));
+		const definitions = Array.from(this.#getLinkDefinitions(document, noLinkRanges));
+		const noAutoLinkRanges = noLinkRanges.concatInline([
+			...inlineLinks.map(link => link.source.targetRange),
+			...definitions.map(link => link.source.range),
+		]);
 		return [
 			...inlineLinks,
 			...this.#getReferenceLinks(document, noLinkRanges.concatInline(inlineLinks.map(x => x.source.range))),
-			...this.#getLinkDefinitions(document, noLinkRanges),
-			...this.#getAutoLinks(document, noLinkRanges),
+			...definitions,
+			...this.#getAutoLinks(document, noAutoLinkRanges),
 			...this.#getHtmlLinks(document, noLinkRanges),
 		];
 	}
@@ -281,7 +286,9 @@ export class MdLinkComputer {
 		for (const match of text.matchAll(autoLinkPattern)) {
 			const linkOffset = (match.index ?? 0);
 			const linkStart = document.positionAt(linkOffset);
-			if (noLinkRanges.contains(linkStart)) {
+			const hrefStart = translatePosition(linkStart, { characterDelta: 1 });
+			// Check inside the brackets so a preceding excluded range does not hide an adjacent autolink.
+			if (noLinkRanges.contains(hrefStart)) {
 				continue;
 			}
 
@@ -292,7 +299,6 @@ export class MdLinkComputer {
 			}
 
 			const linkEnd = translatePosition(linkStart, { characterDelta: match[0].length });
-			const hrefStart = translatePosition(linkStart, { characterDelta: 1 });
 			const hrefEnd = translatePosition(hrefStart, { characterDelta: link.length });
 			const hrefRange = { start: hrefStart, end: hrefEnd };
 			yield {

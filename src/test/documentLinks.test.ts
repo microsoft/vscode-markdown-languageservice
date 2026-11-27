@@ -8,7 +8,7 @@ import * as lsp from 'vscode-languageserver-protocol';
 import { getLsConfiguration } from '../config.js';
 import { MdLinkComputer, MdLinkProvider } from '../languageFeatures/documentLinks.js';
 import { MdTableOfContentsProvider } from '../tableOfContents.js';
-import { InternalHref, MdLink } from '../types/documentLink.js';
+import { InternalHref, MdLink, MdLinkKind } from '../types/documentLink.js';
 import { InMemoryDocument } from '../types/inMemoryDocument.js';
 import { noopToken } from '../util/cancellation.js';
 import { URI } from '../util/vscodeUri.js';
@@ -436,6 +436,51 @@ suite('Link computer', () => {
 		assertLinksEqual(links, [
 			lsp.Range.create(0, 5, 0, 23)
 		]);
+	});
+
+	for (const prefix of ['', '!']) {
+		for (const title of ['', ' "title <https://other.example>"']) {
+			test(`Should not find autolinks inside ${prefix || 'normal'} link destinations or titles ${title}`, async () => {
+				const text = `${prefix}[text](<https://example.com>\n${title})`;
+				const links = await getLinksForText(text);
+				assertLinksEqual(links, [{
+					range: lsp.Range.create(0, 8 + prefix.length, 0, 27 + prefix.length),
+					sourceText: 'https://example.com',
+				}]);
+				assert.strictEqual(links[0].kind, MdLinkKind.Link);
+			});
+		}
+	}
+
+	for (const text of [
+		`[ref]: <https://example.com>`,
+		`[ref]: <https://example.com> "title <https://other.example>"`,
+		`[ref]: https://example.com 'title <https://other.example>'`,
+	]) {
+		test(`Should not find autolinks inside reference definitions: ${text}`, async () => {
+			const links = await getLinksForText(text);
+			const hrefStart = text.indexOf('https://example.com');
+			assertLinksEqual(links, [{
+				range: lsp.Range.create(0, hrefStart, 0, hrefStart + 'https://example.com'.length),
+				sourceText: 'https://example.com',
+			}]);
+			assert.strictEqual(links[0].kind, MdLinkKind.Definition);
+		});
+	}
+
+	test('Should still find standalone autolinks next to inline links and definitions', async () => {
+		const links = await getLinksForText(joinLines(
+			`[text](<https://example.com>)<https://example.com>`,
+			`[ref]: <https://example.com>`,
+			`<https://example.com>`,
+		));
+		assertLinksEqual(links, [
+			lsp.Range.create(0, 8, 0, 27),
+			lsp.Range.create(1, 8, 1, 27),
+			lsp.Range.create(0, 30, 0, 49),
+			lsp.Range.create(2, 1, 2, 20),
+		]);
+		assert.deepStrictEqual(links.map(link => link.kind), [MdLinkKind.Link, MdLinkKind.Definition, MdLinkKind.AutoLink, MdLinkKind.AutoLink]);
 	});
 
 	test('Should not detect links inside html comment blocks', async () => {

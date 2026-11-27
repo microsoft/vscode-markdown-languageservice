@@ -300,6 +300,45 @@ suite('Extract link definition code action', () => {
 		));
 	}));
 
+	for (const prefix of ['', '!']) {
+		for (const title of ['', ' "title"']) {
+			for (const onDestination of [false, true]) {
+				test(`Extract should handle angle bracket ${prefix || 'normal'} link ${title} from ${onDestination ? 'destination' : 'text'}`, withStore(async (store) => {
+					const text = `${prefix}[text](<https://example.com>${title})`;
+					const doc = new InMemoryDocument(workspacePath('test.md'), text);
+					const actions = await getActions(store, doc, doc.positionAt(onDestination ? text.indexOf('https:') + 1 : 3));
+					assertActiveActionCount(actions, 1);
+					assert.strictEqual(applyActionEdit(doc, actions[0]), joinLines(
+						`${prefix}[text][def]`,
+						``,
+						`[def]: <https://example.com>${title}`,
+					));
+				}));
+			}
+		}
+	}
+
+	test('Extract should handle matching bracketed links and standalone autolinks', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(
+			`[text](<https://example.com>)`,
+			`![alt](<https://example.com>) <https://example.com>`,
+		));
+		const actions = await getActions(store, doc, { line: 0, character: 3 });
+		assertActiveActionCount(actions, 1);
+		assert.strictEqual(applyActionEdit(doc, actions[0]), joinLines(
+			`[text][def]`,
+			`![alt][def] [def]`,
+			``,
+			`[def]: <https://example.com>`,
+		));
+	}));
+
+	test('Extract should be disabled on angle bracket reference definition destinations', withStore(async (store) => {
+		const doc = new InMemoryDocument(workspacePath('test.md'), `[ref]: <https://example.com>`);
+		const actions = await getActions(store, doc, { line: 0, character: 12 });
+		assertActiveActionCount(actions, 0);
+	}));
+
 	test('Extract should extract entire autolink', withStore(async (store) => {
 		const doc = new InMemoryDocument(workspacePath('test.md'), joinLines(
 			`Lorem <https://daringfireball.net/projects/markdown> dolor`,

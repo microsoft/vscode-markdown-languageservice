@@ -200,7 +200,7 @@ export class TableOfContents {
 
 			const headerTextLocation: lsp.Location = {
 				uri: docUri.toString(),
-				range: lsp.Range.create(lineNumber, line.match(/^#+\s*/)?.[0].length ?? 0, lineNumber, line.length - (line.match(/\s*#*$/)?.[0].length ?? 0))
+				range: TableOfContents.#getHeaderTextRange(open, body, lineNumber, line)
 			};
 
 			toc.push({
@@ -239,6 +239,23 @@ export class TableOfContents {
 				}
 			};
 		});
+	}
+
+	static #getHeaderTextRange(open: Token, body: readonly Token[], lineNumber: number, line: string): lsp.Range {
+		const rawText = body.find(token => token.type === 'inline')?.content;
+		if (rawText && !rawText.includes('\n')) {
+			// The line may start with block quote or list markers, which never contain `#`.
+			// ATX header text follows the opening `#`s and may be followed by a closing sequence.
+			// Setext header text ends the line.
+			const start = open.markup.startsWith('#')
+				? line.indexOf(rawText, line.indexOf(open.markup) + open.markup.length)
+				: line.lastIndexOf(rawText);
+			if (start >= 0) {
+				return lsp.Range.create(lineNumber, start, lineNumber, start + rawText.length);
+			}
+		}
+
+		return lsp.Range.create(lineNumber, line.match(/^#+\s*/)?.[0].length ?? 0, lineNumber, line.length - (line.match(/\s*#*$/)?.[0].length ?? 0));
 	}
 
 	static #getHeaderLevel(markup: string): number {

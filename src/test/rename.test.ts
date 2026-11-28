@@ -134,6 +134,70 @@ suite('Rename', () => {
 			});
 		}));
 
+		test('Rename on header in block quote should only replace header text', withStore(async (store) => {
+			const uri = workspacePath('doc.md');
+			const doc = new InMemoryDocument(uri, joinLines(
+				`> # Foo`,
+				``,
+				`[link](#foo)`,
+			));
+
+			const workspace = store.add(new InMemoryWorkspace([doc]));
+			const edit = await getRenameEdits(store, doc, { line: 0, character: 4 }, 'Bar', workspace);
+			assertEditsEqual(edit!, {
+				uri, edits: [
+					lsp.TextEdit.replace(lsp.Range.create(0, 4, 0, 7), 'Bar'),
+					lsp.TextEdit.replace(lsp.Range.create(2, 8, 2, 11), 'bar'),
+				]
+			});
+		}));
+
+		test('Rename on header in list should only replace header text', withStore(async (store) => {
+			const uri = workspacePath('doc.md');
+			const doc = new InMemoryDocument(uri, joinLines(
+				`- # Foo`,
+			));
+
+			const workspace = store.add(new InMemoryWorkspace([doc]));
+			const edit = await getRenameEdits(store, doc, { line: 0, character: 4 }, 'Bar', workspace);
+			assertEditsEqual(edit!, {
+				uri, edits: [
+					lsp.TextEdit.replace(lsp.Range.create(0, 4, 0, 7), 'Bar'),
+				]
+			});
+		}));
+
+		test('Rename on setext header in block quote should only replace header text', withStore(async (store) => {
+			const uri = workspacePath('doc.md');
+			const doc = new InMemoryDocument(uri, joinLines(
+				`> Foo`,
+				`> ===`,
+			));
+
+			const workspace = store.add(new InMemoryWorkspace([doc]));
+			const edit = await getRenameEdits(store, doc, { line: 0, character: 2 }, 'Bar', workspace);
+			assertEditsEqual(edit!, {
+				uri, edits: [
+					lsp.TextEdit.replace(lsp.Range.create(0, 2, 0, 5), 'Bar'),
+				]
+			});
+		}));
+
+		test('Rename on header should include trailing # that is part of header text', withStore(async (store) => {
+			const uri = workspacePath('doc.md');
+			const doc = new InMemoryDocument(uri, joinLines(
+				`# C#`,
+			));
+
+			const workspace = store.add(new InMemoryWorkspace([doc]));
+			const edit = await getRenameEdits(store, doc, { line: 0, character: 2 }, 'F#', workspace);
+			assertEditsEqual(edit!, {
+				uri, edits: [
+					lsp.TextEdit.replace(lsp.Range.create(0, 2, 0, 4), 'F#'),
+				]
+			});
+		}));
+
 		test('Rename on header should pick up links in doc', withStore(async (store) => {
 			const uri = workspacePath('doc.md');
 			const doc = new InMemoryDocument(uri, joinLines(
